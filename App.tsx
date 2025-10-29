@@ -13,6 +13,7 @@ import { DistroBlueprintPanel } from './components/DistroBlueprintPanel';
 import { SystemScanModal } from './components/SystemScanModal';
 import { BuildModal } from './components/BuildModal';
 import { CodexModal } from './components/CodexModal';
+import { IsoModal } from './components/IsoModal';
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
 
@@ -28,6 +29,7 @@ const App: React.FC = () => {
     const [isScanModalOpen, setIsScanModalOpen] = useState(false);
     const [isBuildModalOpen, setIsBuildModalOpen] = useState(false);
     const [isCodexModalOpen, setIsCodexModalOpen] = useState(false);
+    const [isIsoModalOpen, setIsIsoModalOpen] = useState(false);
     const [generatedScript, setGeneratedScript] = useState('');
     const [isBlueprintLocked, setIsBlueprintLocked] = useState(false);
 
@@ -164,8 +166,17 @@ const App: React.FC = () => {
     return (
         <div className="bg-slate-900 text-white font-sans min-h-screen flex flex-col md:flex-row">
             {isScanModalOpen && <SystemScanModal onClose={() => setIsScanModalOpen(false)} onComplete={handleScanComplete} />}
-            {isBuildModalOpen && <BuildModal steps={BUILD_STEPS} script={generatedScript} onClose={() => setIsBuildModalOpen(false)} />}
+            {isBuildModalOpen && <BuildModal 
+                steps={BUILD_STEPS} 
+                script={generatedScript} 
+                onClose={() => setIsBuildModalOpen(false)}
+                onShowInstructions={() => {
+                    setIsBuildModalOpen(false);
+                    setIsIsoModalOpen(true);
+                }}
+            />}
             {isCodexModalOpen && <CodexModal snippets={CODEX_SNIPPETS} onClose={() => setIsCodexModalOpen(false)} />}
+            {isIsoModalOpen && <IsoModal onClose={() => setIsIsoModalOpen(false)} />}
             
             <main className="flex-1 flex flex-col p-4 md:p-6 h-screen">
                 <header className="mb-4 flex justify-between items-center">

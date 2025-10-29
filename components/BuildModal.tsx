@@ -6,9 +6,10 @@ interface BuildModalProps {
   steps: BuildStep[];
   script: string;
   onClose: () => void;
+  onShowInstructions: () => void;
 }
 
-export const BuildModal: React.FC<BuildModalProps> = ({ steps, script, onClose }) => {
+export const BuildModal: React.FC<BuildModalProps> = ({ steps, script, onClose, onShowInstructions }) => {
     const [currentStep, setCurrentStep] = useState(0);
     const [progress, setProgress] = useState(0);
     const [isComplete, setIsComplete] = useState(false);
@@ -76,9 +77,12 @@ export const BuildModal: React.FC<BuildModalProps> = ({ steps, script, onClose }
                         <pre className="bg-slate-950/70 border border-slate-700 rounded-lg p-4 text-sm text-slate-300 max-h-60 overflow-y-auto font-mono">
                            <code>{script}</code>
                         </pre>
-                        <div className="mt-4 flex justify-center">
-                             <button onClick={handleCopy} className="bg-yellow-500 text-slate-900 font-bold py-2 px-6 rounded-lg hover:bg-yellow-400 transition-colors">
-                                {copied ? "Copied Installation Ritual!" : "Copy Ritual Script"}
+                        <div className="mt-6 flex flex-col sm:flex-row justify-center items-center gap-3">
+                             <button onClick={handleCopy} className="bg-yellow-500 text-slate-900 font-bold py-2 px-6 rounded-lg hover:bg-yellow-400 transition-colors w-full sm:w-auto">
+                                {copied ? "Ritual Copied!" : "Copy Installation Ritual"}
+                            </button>
+                            <button onClick={onShowInstructions} className="bg-slate-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-slate-500 transition-colors w-full sm:w-auto">
+                                How to Use This Script
                             </button>
                         </div>
                     </div>
