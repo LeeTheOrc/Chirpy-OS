@@ -56,6 +56,10 @@ chmod +x install.sh && ./install.sh
 
     const createScriptCommand = `# Create the installation script on your host machine
 echo '${utf8ToBase64(generatedScript)}' | base64 -d > install.sh`;
+    
+    // This base64 string contains the 'customize_airootfs.sh' script.
+    // It is responsible for making the generated ISO boot directly into the installer.
+    const customizeScriptBase64 = 'IyEvYmluL2Jhc2gKc2V0IC1ldW8gcGlwZWZhaWwKCiMgVGhpcyBzY3JpcHQgaXMgcnVuIGJ5IG1rYXJjaGlzbyB0byBjdXN0b21pemUgdGhlIElTTyBpbWFnZS4KCiMgMS4gTWFrZSBvdXIgaW5zdGFsbGVyIHNjcmlwdCBleGVjdXRhYmxlLgpjaG1vZCAreCAvcm9vdC9pbnN0YWxsLnNoCgojIDIuIENvbmZpZ3VyZSBzeXN0ZW1kIHRvIGF1dG8tbG9naW4gYXMgcm9vdCBvbiB0aGUgZmlyc3QgdGVybWluYWwgKHR0eTEpLgpta2RpciAtcCAvZXRjL3N5c3RlbWQvc3lzdGVtL2dldHR5QHR0eTEuc2VydmljZS5kCmNhdCA+IC9ldGMvc3lzdGVtZC9zeXN0ZW0vZ2V0dHlAdHR5MS5zZXJ2aWNlLmQvYXV0b2xvZ2luLmNvbmYgPDwnRU9GCltTZXJ2aWNlXQpFeGVjU3RhcnQ9CkV4ZWNTdGFydD0tL3Vzci9iaW4vYWdldHR5IC0tYXV0b2xvZ2luIHJvb3QgLS1ub2NsZWFyICVJICRURVJNCkVPRgoKIyAzLiBDcmVhdGUgYW5kIGVuYWJsZSBhIHN5c3RlbWQgc2VydmljZSB0byBydW4gb3VyIGluc3RhbGxlciBzY3JpcHQgYXV0b21hdGljYWxseSBhZnRlciBsb2dpbi4KIyBUaGlzIGlzIG11Y2ggbW9yZSByZWxpYWJsZSB0aGFuIGhpamFja2luZyBzaGVsbCBwcm9maWxlcy4KY2F0ID4gL2V0Yy9zeXN0ZW1kL3N5c3RlbS9jaGlycHktaW5zdGFsbGVyLnNlcnZpY2UgPDwnRU9GCltVbml0XQpEZXNjcmlwdGlvbj1DaGlycHkgT1MgSW5zdGFsbGVyIFNlcnZpY2UKIyBXZSB3YW50IHRoaXMgdG8gcnVuIGFmdGVyIHRoZSB1c2VyIHNlc3Npb24gaXMgc2V0IHVwIG9uIHRoZSBUVFkKQWZ0ZXI9c3lzdGVtZC11c2VyLXNlc3Npb25zLnNlcnZpY2UgZ2V0dHlAdHR5MS5zZXJ2aWNlCgpbU2VydmljZV0KVHlwZT1zaW1wbGUKIyBUaGUgaW5zdGFsbGVyIHNjcmlwdCBuZWVkcyB0byBydW4gb24gdGhlIFRUWSB3aGVyZSB0aGUgdXNlciBpcyBsb2dnZWQgaW4KRXhlY1N0YXJ0PS9yb290L2luc3RhbGwuc2gKU3RhbmRhcmRJbnB1dD10dHkKU3RhbmRhcmRPdXRwdXQ9dHR5ClN0YW5kYXJkRXJyb3I9dHR5ClRUWVBhdGg9L2Rldi90dHkxCgpbSW5zdGFsbF0KIyBIb29rIGludG8gdGhlIGRlZmF1bHQgdGFyZ2V0IHRvIHJ1biBvbiBib290CldhbnRlZEJ5PWRlZmF1bHQudGFyZ2V0CkVPRgoKIyBFbmFibGUgb3VyIG5ldyBzZXJ2aWNlIHNvIGl0IHN0YXJ0cyBvbiBib290CnN5c3RlbWN0bCBlbmFibGUgY2hpcnB5LWluc3RhbGxlci5zZXJ2aWNlCgojIDQuIFJlYnJhbmQgdGhlIGJvb3QgbWVudSBmb3IgYSBzZWFtbGVzcywgZnJpZW5kbHkgZXhwZXJpZW5jZS4KIyBUaGVzZSBzZWQgY29tbWFuZHMgdXNlIG1vcmUgcm9idXN0IHBhdHRlcm5zIHRvIG1hdGNoIHRoZSBkZWZhdWx0IGFyY2hpc28gbWVudSBlbnRyaWVzCiMgcmVnYXJkbGVzcyBvZiB0aGUgc3BlY2lmaWMgdmVyc2lvbiBkYXRlIGluIHRoZSBsYWJlbC4KCiMgRm9yIEdSVUIgKG1vZXJuIEVGSSBzeXN0ZW1zKSwgd2hpY2ggdXNlcyBkb3VibGUgcXVvdGVzLgppZiBbIC1mIC9ib290L2dydWIvZ3J1Yi5jZmcgXTsgdGhlbgogICAgIyBNYXRjaCB0aGUgZGVmYXVsdCBBcmNoIElTTyBlbnRyeSBhbmQgcmVwbGFjZSBpdC4KICAgIHNlZCAtaSAtRSAicy9tZW51ZWVudHJ5IFwiQXJjaCBMaW51eCBhcmNoaXNvIHg4Nl82NFteXCJdKlwiL21lbnVlZW50cnkgXCJJbnN0YWxsIENoaXJweSBPXCIvZyIgL2Jvb3QvZ3J1Yi9ncnViLmNmZwpmaQoKIyBGb3IgU3lzbGludXggKG9sZGVyIEJJT1Mgc3lzdGVtcyksIHdoaWNoIHVzZXMgYSBzaW1wbGVyIGxhYmVsLgppZiBbIC1mIC9pc29saW51eC9zeXNsaW51eC5jZmcgXTsgdGhlbgogICAgIyBNYXRjaCB0aGUgZGVmYXVsdCBBcmNoIElTTyBsYWJlbCBhbmQgcmVwbGFjZSBpdC4KICAgIHNlZCAtaSAtRSAicy9NRU5VIExBQkVMIEFyY2ggTGludXggYXJjaGlzbyB4ODZfNjQuKi9NRU5VIExBQkVMIE luc3RhbGwgQ2hpcnB5IE9TL2ciIC9pc29saW51eC9zeXNsaW51eC5jZmcKZmkK';
 
     return (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center animate-fade-in-fast" onClick={onClose}>
@@ -171,7 +175,7 @@ curl http://YOUR_HOST_IP:8000/install.sh -o install.sh`}</CodeBlock>
                     )}
                     {activeTab === 'advanced' && (
                         <div className="animate-fade-in-fast space-y-4">
-                            <p>This path allows you to build a completely custom Arch Linux ISO with your script and other modifications baked in. This requires an existing Arch Linux system (or a VM running Arch).</p>
+                            <p>This path forges a completely custom Arch Linux ISO that boots directly into your installer. This is the ultimate "noob friendly" method for sharing your creation. It requires an existing Arch Linux system (or a VM running Arch) to perform the build.</p>
                             
                             <div>
                                 <h3 className="font-semibold text-lg text-white mt-4 mb-2">Step 1: Install ArchISO</h3>
@@ -197,44 +201,24 @@ mv install.sh releng/airootfs/root/install.sh`}</CodeBlock>
                             
                              <div>
                                 <h3 className="font-semibold text-lg text-white mt-4 mb-2">Step 4: Pre-install Dependencies</h3>
-                                <p>To make the TUI installer work without an internet connection, we'll embed the `dialog` package directly into the ISO.</p>
+                                <p>To make the TUI installer work without an internet connection on the live ISO, we'll embed the `dialog` package directly.</p>
                                 <CodeBlock>{`# Add 'dialog' to the list of packages to install in the ISO
 echo "dialog" >> releng/packages.x86_64`}</CodeBlock>
                             </div>
 
                             <div>
-                                <h3 className="font-semibold text-lg text-white mt-6 mb-2">Step 5: Customize the Live Environment</h3>
-                                <p>We'll create a customization script. This is the official ArchISO method to set permissions and enable services. This script will create a <strong className="text-yellow-400">systemd service</strong> to reliably auto-start your installer on boot.</p>
+                                <h3 className="font-semibold text-lg text-white mt-6 mb-2">Step 5: Automate & Rebrand the ISO</h3>
+                                <p>This is the crucial step. We'll create a customization script that uses a robust <strong className="text-yellow-400">systemd service</strong> to automatically run your installer on boot and rebrands the boot menu for a professional, user-friendly experience.</p>
+                                <p className="mt-2">Copy the command below and paste it into your terminal to create the <strong className="font-mono text-slate-400">customize_airootfs.sh</strong> script. This script will:</p>
+                                <ul className="list-disc list-inside my-2 space-y-1 pl-2 text-slate-400">
+                                    <li>Configure the live environment to auto-login as root.</li>
+                                    <li>Create and enable a <strong className="font-mono text-slate-300">systemd service</strong> to reliably run <strong className="font-mono text-slate-300">/root/install.sh</strong>.</li>
+                                    <li>Intelligently rename the default GRUB/BIOS boot menu entry to <strong className="text-yellow-300">"Install Chirpy OS"</strong>.</li>
+                                </ul>
                                 <CodeBlock>
-{`cat > releng/customize_airootfs.sh <<'EOF'
-#!/bin/bash
-set -e
-
-# Make the installer executable
-chmod +x /root/install.sh
-
-# Create the systemd service to auto-start the installer
-cat > /etc/systemd/system/chirpy-installer.service <<'SERVICE'
-[Unit]
-Description=Chirpy OS Installation Ritual
-Wants=getty@tty1.service
-After=getty@tty1.service
-
-[Service]
-Type=oneshot
-ExecStart=/root/install.sh
-StandardInput=tty-force
-TTYPath=/dev/tty1
-
-[Install]
-WantedBy=multi-user.target
-SERVICE
-
-# Enable the service
-systemctl enable chirpy-installer.service
-EOF`}
+                                    {`echo '${customizeScriptBase64}' | base64 -d > releng/customize_airootfs.sh`}
                                 </CodeBlock>
-                                <p>Finally, make this new customization script executable:</p>
+                                <p className="mt-4">After creating the file, you must make this customization script itself executable:</p>
                                 <CodeBlock>chmod +x releng/customize_airootfs.sh</CodeBlock>
                             </div>
 
@@ -242,7 +226,7 @@ EOF`}
                                 <h3 className="font-semibold text-lg text-white mt-6 mb-2">Step 6: Build the ISO</h3>
                                 <p>From your <strong className="font-mono text-slate-400">~/chirpy-iso</strong> directory, run the build command. This can take some time.</p>
                                 <CodeBlock>sudo mkarchiso -v -w /tmp/archiso-work -o . releng</CodeBlock>
-                                <p>Your custom ISO will be created in the current directory. When you boot it, the installation ritual will start automatically.</p>
+                                <p>Your custom, auto-installing ISO will be created in the current directory. When you boot it, the installation ritual will start automatically.</p>
                             </div>
                         </div>
                     )}
