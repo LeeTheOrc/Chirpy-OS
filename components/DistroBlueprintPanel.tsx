@@ -4,27 +4,46 @@ import { DistroConfig } from '../types';
 import { generateInstallScript } from '../lib/script-generator';
 import { BlueprintIcon, CopyIcon, DiscIcon, GpuIcon, PlusCircleIcon, ScanIcon } from './Icons';
 import { Tooltip } from './Tooltip';
+import { AI_RESOURCE_PROFILES } from '../constants';
 
 interface DistroBlueprintPanelProps {
   config: DistroConfig;
-  onPackagesChange: (packages: string) => void;
+  onConfigChange: (newConfig: Partial<DistroConfig>) => void;
   onNewBlueprint: () => void;
   onOpenScanModal: () => void;
   onOpenBuildModal: () => void;
 }
 
-const DetailItem: React.FC<{ label: string; value: string; tooltip?: string; icon?: React.ReactNode }> = ({ label, value, tooltip, icon }) => (
-    <div className="flex justify-between items-center text-sm py-2 border-b border-slate-700/50">
+const DetailItem: React.FC<{ label: string; value?: string; tooltip?: string; icon?: React.ReactNode; children?: React.ReactNode }> = ({ label, value, tooltip, icon, children }) => (
+    <div className="flex justify-between items-center text-sm py-2 border-b border-slate-700/50 min-h-[41px]">
         <div className="flex items-center gap-1.5">
             {icon}
             <span className="text-slate-400">{label}</span>
             {tooltip && <Tooltip text={tooltip} />}
         </div>
-        <span className="font-mono text-slate-200">{value || 'N/A'}</span>
+        {value && <span className="font-mono text-slate-200">{value}</span>}
+        {children}
     </div>
 );
 
-export const DistroBlueprintPanel: React.FC<DistroBlueprintPanelProps> = ({ config, onPackagesChange, onNewBlueprint, onOpenScanModal, onOpenBuildModal }) => {
+const SegmentedControl: React.FC<{ options: string[]; value: string; onChange: (value: string) => void; disabled?: boolean }> = ({ options, value, onChange, disabled }) => (
+    <div className={`flex items-center bg-slate-800/80 rounded-md p-1 ${disabled ? 'opacity-50' : ''}`}>
+        {options.map(option => (
+            <button
+                key={option}
+                onClick={() => !disabled && onChange(option)}
+                disabled={disabled}
+                className={`flex-1 text-center text-xs font-semibold uppercase tracking-wider px-2 py-1 rounded-md transition-colors ${
+                    value === option ? 'bg-slate-600 text-white' : 'text-slate-400 hover:bg-slate-700/50'
+                } ${disabled ? 'cursor-not-allowed' : ''}`}
+            >
+                {option}
+            </button>
+        ))}
+    </div>
+);
+
+export const DistroBlueprintPanel: React.FC<DistroBlueprintPanelProps> = ({ config, onConfigChange, onNewBlueprint, onOpenScanModal, onOpenBuildModal }) => {
     const [activeTab, setActiveTab] = useState('config');
     const [copied, setCopied] = useState(false);
 
@@ -35,6 +54,21 @@ export const DistroBlueprintPanel: React.FC<DistroBlueprintPanelProps> = ({ conf
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
     };
+    
+    const handleProfileChange = (key: string) => {
+        const newAllocation = key as DistroConfig['aiResourceAllocation'];
+        const newConfig: Partial<DistroConfig> = { aiResourceAllocation: newAllocation };
+
+        if (newAllocation === 'dynamic' && config.graphicsMode === 'hybrid') {
+            newConfig.aiGpuMode = 'dynamic';
+        } else {
+            // When switching away from dynamic, or if not hybrid, reset GPU mode.
+            newConfig.aiGpuMode = 'none';
+        }
+        onConfigChange(newConfig);
+    };
+
+    const isGpuControlDisabled = config.graphicsMode !== 'hybrid' || config.aiResourceAllocation === 'dynamic';
 
   return (
     <div className="w-full lg:w-[480px] bg-slate-900/60 border-r border-slate-800/50 backdrop-blur-sm flex flex-col flex-shrink-0 animate-slide-in-left">
@@ -74,15 +108,52 @@ export const DistroBlueprintPanel: React.FC<DistroBlueprintPanelProps> = ({ conf
             
             {activeTab === 'config' && (
                 <div className="space-y-1 animate-fade-in-fast">
-                    <h3 className="text-sm font-semibold text-slate-400 pt-2 pb-1 uppercase tracking-wider">Core Features</h3>
-                    <DetailItem label="Chirpy AI Core" value="Hybrid" tooltip="The AI assistant is a core, permanent feature. It uses powerful online models when connected and a specialized offline model (running on-device) when disconnected, ensuring you always have guidance." />
-                    <DetailItem label="Neofetch Greeting" value="Enabled" tooltip="Shows system info with a custom ASCII logo on terminal login." />
-                    <DetailItem label="BTRFS Snapshots" value="Enabled" tooltip="Configures snapper and grub-btrfs for bootable filesystem snapshots, allowing system rollbacks directly from the boot menu. Requires BTRFS." />
-                    
-                    <h3 className="text-sm font-semibold text-slate-400 pt-4 pb-1 uppercase tracking-wider">User & Security</h3>
+                    <h3 className="text-sm font-semibold text-slate-400 pt-2 pb-1 uppercase tracking-wider">User & Security</h3>
                     <DetailItem label="Hostname" value={config.hostname} tooltip="The name of the computer on the network."/>
                     <DetailItem label="Username" value={config.username} tooltip="The name of the primary user account."/>
                     <DetailItem label="Password" value="********" tooltip="The user and root password will be set during the interactive installation." />
+
+                    <h3 className="text-sm font-semibold text-slate-400 pt-4 pb-1 uppercase tracking-wider">AI Core Configuration</h3>
+                     <div className="py-2">
+                        <div className="flex items-center gap-1.5 mb-2">
+                            <span className="text-slate-400 text-sm">Resource Profile</span>
+                            <Tooltip text="Set resource limits for the AI's offline core to balance system performance." />
+                        </div>
+                        <div className="space-y-2">
+                            {Object.entries(AI_RESOURCE_PROFILES).map(([key, profile]) => (
+                                <button
+                                    key={key}
+                                    onClick={() => handleProfileChange(key)}
+                                    className={`w-full text-left p-3 border rounded-lg transition-all duration-200 ease-in-out ${
+                                        config.aiResourceAllocation === key
+                                            ? 'bg-slate-700/70 border-yellow-500 shadow-lg shadow-yellow-500/10'
+                                            : 'bg-slate-800/50 border-slate-700 hover:border-slate-500'
+                                    }`}
+                                >
+                                    <div className="font-semibold text-slate-100">{profile.name}</div>
+                                    <div className="text-xs text-slate-400 mt-1 leading-relaxed">{profile.description}</div>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                    <DetailItem 
+                        label="iGPU Mode" 
+                        tooltip={
+                            config.graphicsMode !== 'hybrid' 
+                            ? "Only available on systems with hybrid graphics." 
+                            : config.aiResourceAllocation === 'dynamic'
+                            ? "Automatically set to 'Dynamic' when using the Dynamic resource profile."
+                            : "None: iGPU is unused by AI. Dedicated: iGPU is exclusive to AI. Dynamic: iGPU is shared."
+                        }
+                    >
+                        <SegmentedControl
+                            options={['none', 'dedicated', 'dynamic']}
+                            value={config.aiGpuMode}
+                            onChange={(value) => onConfigChange({ aiGpuMode: value as DistroConfig['aiGpuMode'] })}
+                            disabled={isGpuControlDisabled}
+                        />
+                    </DetailItem>
+
 
                     <h3 className="text-sm font-semibold text-slate-400 pt-4 pb-1 uppercase tracking-wider">Software Stack</h3>
                      <DetailItem label="Shell" value={config.shell.charAt(0).toUpperCase() + config.shell.slice(1)} tooltip="The command-line interface for your OS. Fish is the standard." />
@@ -97,7 +168,7 @@ export const DistroBlueprintPanel: React.FC<DistroBlueprintPanelProps> = ({ conf
                         <textarea
                             id="packages"
                             value={config.packages}
-                            onChange={(e) => onPackagesChange(e.target.value)}
+                            onChange={(e) => onConfigChange({ packages: e.target.value })}
                             placeholder="git&#10;docker&#10;neovim"
                             className="w-full h-32 bg-slate-800/80 border border-slate-700 rounded-lg p-2 font-mono text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-yellow-500 transition-all"
                         />

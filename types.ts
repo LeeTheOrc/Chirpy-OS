@@ -43,6 +43,9 @@ export interface DistroConfig {
   ipAddress?: string; // e.g., '192.168.1.100/24'
   gateway?: string; // e.g., '192.168.1.1'
   dnsServers?: string; // e.g., '1.1.1.1,8.8.8.8'
+  // AI Core Configuration
+  aiResourceAllocation: 'minimal' | 'balanced' | 'performance' | 'dynamic';
+  aiGpuMode: 'none' | 'dedicated' | 'dynamic';
 }
 
 export interface Snippet {

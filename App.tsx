@@ -354,7 +354,7 @@ User Request: "${input}"
       
       <DistroBlueprintPanel 
         config={distroConfig}
-        onPackagesChange={(packages) => setDistroConfig(p => ({ ...p, packages }))}
+        onConfigChange={(newConfig) => setDistroConfig(p => ({ ...p, ...newConfig }))}
         onNewBlueprint={handleNewBlueprint}
         onOpenScanModal={() => setShowScanModal(true)}
         onOpenBuildModal={() => setShowBuildModal(true)}

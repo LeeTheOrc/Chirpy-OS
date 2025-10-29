@@ -76,6 +76,50 @@ EOF
 chmod 600 /etc/NetworkManager/system-connections/wired.nmconnection
 ` : '';
 
+const aiResourceSetup = `
+echo "INFO: Configuring resource limits for Chirpy AI offline core to '${config.aiResourceAllocation}'..."
+# In a real scenario, this would create a systemd slice or cgroup configuration.
+if [ "${config.aiResourceAllocation}" == "dynamic" ]; then
+    echo "INFO: Setting up dynamic resource allocation daemon..."
+    # This would install and configure a service that monitors system load
+    # and adjusts the AI's cgroup limits in real-time.
+    touch /etc/chirpy-ai/dynamic_resources.conf
+else
+    # Example for static limits: mkdir -p /etc/systemd/system/chirpy-ai.service.d
+    # echo -e "[Service]\\nCPUQuota=...\\nMemoryMax=..." > /etc/systemd/system/chirpy-ai.service.d/resources.conf
+    echo "INFO: Static resource limits would be applied here."
+fi
+`;
+
+const getAiGpuSetup = () => {
+    if (config.graphicsMode !== 'hybrid' || config.aiGpuMode === 'none') {
+        return '';
+    }
+    
+    switch (config.aiGpuMode) {
+        case 'dedicated':
+            return `
+echo "INFO: Dedicating integrated GPU to Chirpy AI offline core..."
+# This is a complex task involving Xorg/Wayland configuration, udev rules,
+# and possibly VFIO/IOMMU setup for full isolation.
+# As a placeholder, we'll signify the intent by creating a config file.
+touch /etc/chirpy-ai/igpu_dedicated.conf
+# A real script might also modify /etc/optimus-manager/optimus-manager.conf
+# to blacklist the iGPU from general use by other applications.
+`;
+        case 'dynamic':
+            return `
+echo "INFO: Setting up dynamic iGPU sharing for Chirpy AI offline core..."
+# This would involve configuring the AI service to request the iGPU via
+# specific environment variables or launch wrappers (e.g., prime-run).
+# The system would manage GPU access dynamically.
+touch /etc/chirpy-ai/igpu_dynamic.conf
+`;
+        default:
+            return '';
+    }
+};
+
 
   const script = `#!/bin/bash
 # Chirpy OS Automated Installer Script
@@ -184,6 +228,10 @@ systemctl enable NetworkManager.service
 ${hybridGraphicsSetup}
 ${snapshotSetup}
 ${staticNetworkConfig}
+
+# AI Core Configuration
+${aiResourceSetup}
+${getAiGpuSetup()}
 
 echo "INFO: Finalizing setup in chroot..."
 CHROOT_EOF
