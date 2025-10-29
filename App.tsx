@@ -7,13 +7,14 @@ import { generateInstallScript } from './lib/script-generator';
 import { Logo } from './components/Logo';
 import { ChatMessage } from './components/ChatMessage';
 import { CommandSuggestions } from './components/CommandSuggestions';
-import { SendIcon, AttachmentIcon } from './components/Icons';
+import { SendIcon, AttachmentIcon, BlueprintIcon } from './components/Icons';
 import { FileAttachment } from './components/FileAttachment';
 import { DistroBlueprintPanel } from './components/DistroBlueprintPanel';
 import { SystemScanModal } from './components/SystemScanModal';
 import { BuildModal } from './components/BuildModal';
 import { CodexModal } from './components/CodexModal';
 import { IsoModal } from './components/IsoModal';
+import { MobileBlueprintDrawer } from './components/MobileBlueprintDrawer';
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
 
@@ -30,6 +31,7 @@ const App: React.FC = () => {
     const [isBuildModalOpen, setIsBuildModalOpen] = useState(false);
     const [isCodexModalOpen, setIsCodexModalOpen] = useState(false);
     const [isIsoModalOpen, setIsIsoModalOpen] = useState(false);
+    const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const [generatedScript, setGeneratedScript] = useState('');
     const [isBlueprintLocked, setIsBlueprintLocked] = useState(false);
 
@@ -177,16 +179,32 @@ const App: React.FC = () => {
             />}
             {isCodexModalOpen && <CodexModal snippets={CODEX_SNIPPETS} onClose={() => setIsCodexModalOpen(false)} />}
             {isIsoModalOpen && <IsoModal onClose={() => setIsIsoModalOpen(false)} />}
+            {isDrawerOpen && <MobileBlueprintDrawer
+                config={distroConfig}
+                onConfigChange={setDistroConfig}
+                isLocked={isBlueprintLocked}
+                onLockToggle={() => setIsBlueprintLocked(prev => !prev)}
+                onClose={() => setIsDrawerOpen(false)}
+            />}
             
             <main className="flex-1 flex flex-col p-4 md:p-6 h-screen">
                 <header className="mb-4 flex justify-between items-center">
                     <Logo linkState={linkState} onToggle={() => setLinkState(s => s === 'online' ? 'offline' : 'online')} />
-                    <button 
-                        className="text-slate-400 hover:text-white transition-colors text-sm font-semibold hidden md:block"
-                        onClick={() => setIsCodexModalOpen(true)}
-                    >
-                        Codex
-                    </button>
+                    <div className="flex items-center gap-4">
+                        <button 
+                            className="text-slate-400 hover:text-white transition-colors text-sm font-semibold hidden md:block"
+                            onClick={() => setIsCodexModalOpen(true)}
+                        >
+                            Codex
+                        </button>
+                         <button 
+                            className="text-slate-400 hover:text-white transition-colors md:hidden"
+                            onClick={() => setIsDrawerOpen(true)}
+                            aria-label="Open Blueprint"
+                        >
+                           <BlueprintIcon className="w-6 h-6"/>
+                        </button>
+                    </div>
                 </header>
 
                 <div className="flex-1 overflow-y-auto pr-4 space-y-6">
