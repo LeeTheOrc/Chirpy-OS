@@ -1,11 +1,23 @@
-<div align="center">
+# Chirpy OS
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+**Forge a custom Arch Linux OS with your AI co-op partner, Chirpy AI.**
 
-  <h1>Built with AI Studio</h2>
+Chirpy helps you craft a custom, high-performance operating system, debug configs, and achieve root access over your daily quests... without bricking the system.
 
-  <p>The fastest path from prompt to production with Gemini.</p>
+## ✨ Features
 
-  <a href="https://aistudio.google.com/apps">Start building</a>
+*   **AI-Powered Blueprints:** Describe your ideal OS and let Chirpy AI translate it into a detailed configuration.
+*   **Performance First:** Built on an Arch Linux + CachyOS foundation for maximum speed.
+*   **System Resilience:** BTRFS snapshots for easy system rollbacks.
+*   **Gamer Ready:** Automatic GPU detection and pre-configuration for gaming.
+*   **Interactive TUI Installer:** A user-friendly, terminal-based installer guides you through the final setup.
 
-</div>
+## 🚀 Our Workflow
+
+This project is a collaboration between a human Architect (you) and an AI Agent (Chirpy AI).
+
+1.  The Architect provides high-level goals and requirements.
+2.  The AI Agent generates the necessary code, scripts, and configurations.
+3.  The Architect reviews the generated code and commits it to this repository.
+
+This repository serves as the single source of truth for the Chirpy OS project.

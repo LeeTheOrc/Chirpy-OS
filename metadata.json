@@ -1,0 +1,5 @@
+{
+  "name": "Chirpy OS",
+  "description": "Forge a custom Arch Linux OS with your AI co-op partner, Chirpy AI. Chirpy helps you craft a custom, high-performance operating system, debug configs, and achieve root access over your daily quests... without bricking the system.",
+  "requestFramePermissions": []
+}
