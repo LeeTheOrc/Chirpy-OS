@@ -1,9 +1,11 @@
 // Fix: Create type definitions for the application.
 export type Role = 'user' | 'model';
+export type LinkState = 'online' | 'offline';
 
 export interface Message {
   role: Role;
   text: string;
+  linkState?: LinkState;
 }
 
 export interface BuildStep {

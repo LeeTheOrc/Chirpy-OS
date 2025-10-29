@@ -1,7 +1,51 @@
 // Fix: Implement the Logo component.
-import React from 'react';
+import React, { useState } from 'react';
+import { LinkState } from '../types';
 
-export const Logo = () => (
+interface LinkStateIndicatorProps {
+    linkState: LinkState;
+    onToggle: () => void;
+}
+
+const LinkStateIndicator: React.FC<LinkStateIndicatorProps> = ({ linkState, onToggle }) => {
+    const isOnline = linkState === 'online';
+    const [isHovered, setIsHovered] = useState(false);
+
+    const indicatorClasses = isOnline
+        ? 'bg-green-500 animate-pulse'
+        : 'bg-slate-500';
+
+    const tooltipText = isOnline
+      ? "Online: Connected to powerful cloud models for full creative and analytical support."
+      : "Offline: Using local, on-device core. Functionality is limited to essential tasks.";
+
+    return (
+        <div 
+            className="relative"
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+        >
+            <button
+                onClick={onToggle}
+                className={`w-3 h-3 rounded-full transition-colors ${indicatorClasses}`}
+                aria-label={`Current status: ${linkState}. Click to toggle.`}
+            />
+            {isHovered && (
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-slate-950 border border-slate-700 text-slate-300 text-xs rounded-lg shadow-lg z-10 animate-fade-in-fast">
+                    {tooltipText}
+                </div>
+            )}
+        </div>
+    );
+}
+
+
+interface LogoProps {
+    linkState: LinkState;
+    onToggle?: () => void;
+}
+
+export const Logo: React.FC<LogoProps> = ({ linkState, onToggle }) => (
   <div className="flex items-center gap-3 text-2xl font-semibold text-white">
     <div className="w-8 h-8 rounded-full bg-gradient-to-br from-red-600 via-purple-600 to-yellow-500 flex-shrink-0 flex items-center justify-center shadow-lg">
         <svg
@@ -16,6 +60,9 @@ export const Logo = () => (
             ></path>
         </svg>
     </div>
-    <span>Chirpy AI</span>
+    <div className="flex items-center gap-2">
+        <span>Chirpy AI</span>
+        {onToggle && <LinkStateIndicator linkState={linkState} onToggle={onToggle} />}
+    </div>
   </div>
 );

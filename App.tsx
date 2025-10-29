@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { GoogleGenAI, GenerateContentResponse, Type } from "@google/genai";
+import { GoogleGenAI, GenerateContentResponse, Type, Chat } from "@google/genai";
 import { DistroBlueprintPanel } from './components/DistroBlueprintPanel';
 import { ChatMessage } from './components/ChatMessage';
 import { CommandSuggestions } from './components/CommandSuggestions';
@@ -8,8 +8,8 @@ import { SystemScanModal } from './components/SystemScanModal';
 import { BuildModal } from './components/BuildModal';
 import { FileAttachment } from './components/FileAttachment';
 import { AttachmentIcon, SendIcon, CloseIcon, InformationCircleIcon } from './components/Icons';
-import { INITIAL_MESSAGES, COMMAND_SUGGESTIONS, INITIAL_DISTRO_CONFIG } from './constants';
-import { Message, DistroConfig } from './types';
+import { INITIAL_MESSAGES, COMMAND_SUGGESTIONS, INITIAL_DISTRO_CONFIG, SYSTEM_INSTRUCTION } from './constants';
+import { Message, DistroConfig, LinkState } from './types';
 
 // In a Vite/Create-React-App environment, env vars are prefixed.
 // This is a common way to handle them. For this exercise, we'll assume process.env is available.
@@ -19,7 +19,6 @@ if (!API_KEY) {
   console.warn("API_KEY environment variable not set. Gemini API calls will fail.");
 }
 
-// FIX: Initialize GoogleGenAI with a named apiKey parameter.
 const ai = new GoogleGenAI({apiKey: API_KEY!});
 
 // --- About Modal Component ---
@@ -45,7 +44,7 @@ const AboutModal: React.FC<AboutModalProps> = ({ onClose }) => {
             onClick={(e) => e.stopPropagation()}
         >
             <header className="flex items-center justify-between p-4 border-b border-slate-800">
-                <Logo />
+                <Logo linkState="online" />
                 <button onClick={onClose} className="text-slate-400 hover:text-white">
                     <CloseIcon className="w-6 h-6" />
                 </button>
@@ -112,6 +111,8 @@ function App() {
   const [showBuildModal, setShowBuildModal] = useState(false);
   const [showAboutModal, setShowAboutModal] = useState(false);
   const [attachedFile, setAttachedFile] = useState<{name: string, content: string} | null>(null);
+  const [chat, setChat] = useState<Chat | null>(null);
+  const [linkState, setLinkState] = useState<LinkState>('online');
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -127,6 +128,34 @@ function App() {
     }
   }, [userInput]);
 
+  const initializeChat = () => {
+    const newChat = ai.chats.create({
+        model: 'gemini-2.5-pro',
+        config: {
+            systemInstruction: SYSTEM_INSTRUCTION,
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    configUpdate: {
+                        type: Type.OBJECT,
+                        description: "The configuration fields to update."
+                    },
+                    response: {
+                        type: Type.STRING,
+                        description: "The natural language response to the user."
+                    }
+                }
+            }
+        },
+    });
+    setChat(newChat);
+  };
+
+  useEffect(() => {
+    initializeChat();
+  }, []);
+
   useEffect(() => {
     // Automatically update swap size based on RAM.
     const ram = distroConfig.ram;
@@ -139,7 +168,6 @@ function App() {
         const unit = match[2];
     
         if (unit.startsWith('g')) { // Handles gb, gib, g
-            // GiB to GB conversion factor is 1.073741824
             return unit.includes('i') ? value * 1.073741824 : value;
         }
         if (unit.startsWith('m')) { // Handles mb, mib, m
@@ -165,26 +193,8 @@ function App() {
     }
   }, [distroConfig.ram]);
 
-  const createPrompt = (input: string, config: DistroConfig, fileContent: string | null): string => {
-    let prompt = `You are Chirpy, a hybrid AI assistant for creating custom Arch Linux blueprints. You operate online using Google's powerful models, but you also have a local, offline counterpart pre-loaded with extensive Arch Linux knowledge.
-Your goal is to modify a configuration JSON based on user requests.
-Analyze the user's request and the current configuration, then generate a JSON object containing ONLY the key-value pairs that need to be changed.
-You can configure network settings like networkMode ('dhcp' or 'static'), ipAddress (e.g., '192.168.1.100/24'), gateway, and dnsServers.
-
-IMPORTANT: The following configuration values are part of the core Chirpy OS experience and are locked. DO NOT change them:
-- desktopEnvironment: "KDE Plasma (Wayland)"
-- shell: "fish"
-- filesystem: "btrfs"
-- enableSnapshots: true (Enables bootable BTRFS snapshots with snapper and grub-btrfs for system rollbacks.)
-- bootloader: "grub"
-- aurHelpers: ["paru", "yay"]
-- extraRepositories: ["cachy", "chaotic"]
-- kernels: The primary kernel is auto-detected and should not be changed. The second kernel must be "linux-lts". Example: ["linux-cachyos-x86-64-v3", "linux-lts"]
-
-The Chirpy AI Core (your own integration) and the local, offline LLM are permanent, core features of the OS and cannot be disabled.
-
-If the user sets a password, update the 'password' field in the JSON. For security, DO NOT mention the password in your natural language 'response' field. Simply confirm that the password has been set.
-
+  const createPromptForModel = (input: string, config: DistroConfig, fileContent: string | null, currentLinkState: LinkState): string => {
+    let prompt = `AI Link State: ${currentLinkState.toUpperCase()}
 Current Configuration:
 ${JSON.stringify(config, null, 2)}
 
@@ -193,20 +203,16 @@ User Request: "${input}"
     if (fileContent) {
         prompt += `\nAttached Context (e.g., hardware report):\n${fileContent}`;
     }
-
-    prompt += `
-Respond with a single JSON object in the following format, and nothing else. Do not wrap it in markdown backticks.
-{
-  "configUpdate": { /* keys from DistroConfig to update */ },
-  "response": "Your friendly summary of changes."
-}
-`;
     return prompt;
   }
 
   const handleSend = async (command?: string) => {
     const textToSend = command || userInput;
     if (!textToSend.trim() && !attachedFile) return;
+    if (!chat) {
+        console.error("Chat not initialized");
+        return;
+    }
 
     const newUserMessage: Message = { role: 'user', text: textToSend };
     setMessages(prev => [...prev, newUserMessage]);
@@ -214,37 +220,15 @@ Respond with a single JSON object in the following format, and nothing else. Do 
     setAttachedFile(null);
     setIsLoading(true);
     
-    // Add a placeholder for the model's response
-    setMessages(prev => [...prev, { role: 'model', text: '...' }]);
+    setMessages(prev => [...prev, { role: 'model', text: '...', linkState: linkState }]);
 
     try {
-        const prompt = createPrompt(textToSend, distroConfig, attachedFile?.content ?? null);
+        const prompt = createPromptForModel(textToSend, distroConfig, attachedFile?.content ?? null, linkState);
 
-        // FIX: Use ai.models.generateContent to query GenAI
-        const response: GenerateContentResponse = await ai.models.generateContent({
-            // FIX: Use a recommended model for complex text tasks
-            model: 'gemini-2.5-pro',
-            contents: prompt,
-            config: {
-                 // FIX: Use responseMimeType and responseSchema for structured JSON output
-                responseMimeType: "application/json",
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        configUpdate: {
-                            type: Type.OBJECT,
-                            description: "The configuration fields to update."
-                        },
-                        response: {
-                            type: Type.STRING,
-                            description: "The natural language response to the user."
-                        }
-                    }
-                }
-            }
+        const response: GenerateContentResponse = await chat.sendMessage({
+            message: prompt,
         });
         
-        // FIX: Access the 'text' property directly to get the model's response.
         const responseText = response.text;
         const parsedResponse = JSON.parse(responseText);
 
@@ -254,10 +238,9 @@ Respond with a single JSON object in the following format, and nothing else. Do 
             setDistroConfig(prev => ({ ...prev, ...configUpdate }));
         }
 
-        // Replace the placeholder with the actual response
         setMessages(prev => {
             const newMessages = [...prev];
-            newMessages[newMessages.length - 1] = { role: 'model', text: modelText || "I've updated the blueprint based on your request." };
+            newMessages[newMessages.length - 1] = { role: 'model', text: modelText || "I've updated the blueprint based on your request.", linkState };
             return newMessages;
         });
 
@@ -266,7 +249,7 @@ Respond with a single JSON object in the following format, and nothing else. Do 
         const errorMessage = "Sorry, I encountered an error. I might be having trouble connecting to my core services. Please check the console for details and try again.";
         setMessages(prev => {
             const newMessages = [...prev];
-            newMessages[newMessages.length - 1] = { role: 'model', text: errorMessage };
+            newMessages[newMessages.length - 1] = { role: 'model', text: errorMessage, linkState };
             return newMessages;
         });
     } finally {
@@ -302,7 +285,6 @@ Respond with a single JSON object in the following format, and nothing else. Do 
         
         let newConfig = { ...prevConfig };
 
-        // Kernel Optimization
         let primaryKernel = 'linux-cachyos';
         if (microarchMatch && microarchMatch[1]) {
             const microarch = microarchMatch[1].trim();
@@ -312,7 +294,6 @@ Respond with a single JSON object in the following format, and nothing else. Do 
         }
         newConfig.kernels = [primaryKernel, newConfig.kernels[1] || 'linux-lts'];
 
-        // GPU and Graphics Mode
         const gpuInfo = gpuReportMatch ? gpuReportMatch[1] : '';
         const hasNvidia = /nvidia/i.test(gpuInfo);
         const hasIntel = /intel/i.test(gpuInfo);
@@ -332,7 +313,6 @@ Respond with a single JSON object in the following format, and nothing else. Do 
             modelResponseText = `I've configured the blueprint for your integrated graphics using Mesa drivers and optimized the kernel as \`${primaryKernel}\`.`;
         }
 
-        // RAM
         newConfig.ram = ramMatch && ramMatch[1] ? ramMatch[1].trim() : 'N/A';
         
         return newConfig;
@@ -341,7 +321,7 @@ Respond with a single JSON object in the following format, and nothing else. Do 
     setShowScanModal(false);
     
     const userMessage: Message = { role: 'user', text: "Here is my hardware report. Please configure the blueprint for optimal performance on this system." };
-    const modelMessage: Message = { role: 'model', text: modelResponseText || "I've analyzed the hardware report and updated the blueprint." };
+    const modelMessage: Message = { role: 'model', text: modelResponseText || "I've analyzed the hardware report and updated the blueprint.", linkState: 'online' };
     
     setMessages(prev => [...prev, userMessage, modelMessage]);
   };
@@ -350,9 +330,21 @@ Respond with a single JSON object in the following format, and nothing else. Do 
     setDistroConfig(INITIAL_DISTRO_CONFIG);
     setMessages([
         ...INITIAL_MESSAGES,
-        { role: 'model', text: "Alright, I've cleared the slate. We're starting fresh with a new blueprint. What's our new mission?" }
+        { role: 'model', text: "Alright, I've cleared the slate. We're starting fresh with a new blueprint. What's our new mission?", linkState: 'online' }
     ]);
+    initializeChat(); // Re-initialize chat for a fresh context
   };
+
+  const toggleLinkState = () => {
+    const newLinkState = linkState === 'online' ? 'offline' : 'online';
+    setLinkState(newLinkState);
+    const stateText = newLinkState === 'online' 
+      ? "My connection to the cloud has been restored. I now have access to my full creative and analytical capabilities."
+      : "I've switched to my local, on-device core. My responses will be more direct, and my capabilities are limited to essential tasks.";
+    
+    setMessages(prev => [...prev, { role: 'model', text: stateText, linkState: newLinkState }]);
+  };
+
 
   return (
     <main className="flex h-screen bg-slate-950 text-slate-100 font-sans antialiased overflow-hidden">
@@ -370,7 +362,7 @@ Respond with a single JSON object in the following format, and nothing else. Do 
 
       <div className="flex flex-col flex-1 h-screen">
         <header className="flex items-center justify-between p-4 border-b border-slate-800/50 flex-shrink-0">
-          <Logo />
+          <Logo linkState={linkState} onToggle={toggleLinkState} />
           <button 
             onClick={() => setShowAboutModal(true)} 
             className="flex items-center gap-1.5 text-slate-400 hover:text-white transition-colors text-sm"

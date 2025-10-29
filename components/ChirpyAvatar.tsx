@@ -1,9 +1,15 @@
 // Fix: Implement the ChirpyAvatar component.
 import React from 'react';
 
-export const ChirpyAvatar = () => {
+interface ChirpyAvatarProps {
+    isOnline?: boolean;
+}
+
+export const ChirpyAvatar: React.FC<ChirpyAvatarProps> = ({ isOnline }) => {
+    const onlineClasses = isOnline ? 'shadow-[0_0_10px_#34d399,0_0_20px_#10b981]' : '';
+
     return (
-        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-red-600 via-purple-600 to-yellow-500 flex-shrink-0 flex items-center justify-center shadow-lg">
+        <div className={`w-8 h-8 rounded-full bg-gradient-to-br from-red-600 via-purple-600 to-yellow-500 flex-shrink-0 flex items-center justify-center shadow-lg transition-shadow duration-500 ${onlineClasses}`}>
             <svg
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 256 256"
