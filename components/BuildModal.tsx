@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { DistroConfig } from '../types';
 import { CloseIcon, DiscIcon } from './Icons';
 
@@ -12,44 +12,66 @@ interface BuildStep {
     duration: number; // in ms
 }
 
-const BUILD_STEPS: BuildStep[] = [
-    { name: 'Initializing forge environment...', duration: 1500 },
-    { name: 'Downloading base system packages...', duration: 4000 },
-    { name: 'Installing kernel and firmware...', duration: 3000 },
-    { name: 'Setting up bootloader...', duration: 2500 },
-    { name: 'Configuring network services...', duration: 2000 },
-    { name: 'Installing desktop environment...', duration: 5000 },
-    { name: 'Installing additional packages...', duration: 3500 },
-    { name: 'Applying user customizations...', duration: 2000 },
-    { name: 'Running final system checks...', duration: 2500 },
-    { name: 'Compressing live environment...', duration: 4000 },
-    { name: 'Generating ISO image...', duration: 3000 },
-];
+// Turn the static array into a dynamic function
+const generateBuildSteps = (config: DistroConfig): BuildStep[] => {
+    const steps: BuildStep[] = [
+        { name: 'Initializing forge environment...', duration: 1500 },
+        { name: 'Downloading base system packages...', duration: 4000 },
+        { name: `Installing kernel (${config.kernels[0]})...`, duration: 3000 },
+        { name: 'Setting up bootloader (GRUB)...', duration: 2500 },
+        { name: 'Configuring network services...', duration: 2000 },
+        { name: `Installing desktop environment (KDE Plasma)...`, duration: 5000 },
+        { name: `Configuring graphics stack (${config.gpuDriver})...`, duration: 2200 },
+    ];
 
-const TOTAL_DURATION = BUILD_STEPS.reduce((acc, step) => acc + step.duration, 0);
+    if (config.graphicsMode === 'hybrid') {
+        steps.push({ name: 'Setting up optimus-manager...', duration: 1800 });
+    }
+
+    if (config.packages.trim()) {
+        const packageSummary = config.packages.split('\n').filter(p => p.trim()).slice(0, 2).join(', ');
+        const ellipsis = config.packages.split('\n').filter(p => p.trim()).length > 2 ? '...' : '';
+        steps.push({ name: `Installing user packages (${packageSummary}${ellipsis})...`, duration: 3500 });
+    }
+
+    if (config.enableSnapshots) {
+        steps.push({ name: 'Configuring BTRFS snapshots with snapper...', duration: 2000 });
+    }
+
+    steps.push(
+        { name: 'Applying user customizations...', duration: 2000 },
+        { name: 'Running final system checks...', duration: 2500 },
+        { name: 'Compressing live environment...', duration: 4000 },
+        { name: 'Generating ISO image...', duration: 3000 },
+    );
+    
+    return steps;
+};
+
 
 export const BuildModal: React.FC<BuildModalProps> = ({ config, onClose }) => {
     const [currentStep, setCurrentStep] = useState(0);
     const [progress, setProgress] = useState(0);
     const [isFinished, setIsFinished] = useState(false);
+    
+    // Memoize the generated steps to avoid recalculating on every render
+    const buildSteps = useMemo(() => generateBuildSteps(config), [config]);
+    const totalDuration = useMemo(() => buildSteps.reduce((acc, step) => acc + step.duration, 0), [buildSteps]);
 
     useEffect(() => {
-        // Fix: Use browser-compatible types for timeout and interval IDs instead of Node.js specific types.
         let stepTimeout: ReturnType<typeof setTimeout>;
         let progressInterval: ReturnType<typeof setInterval>;
 
-        if (currentStep < BUILD_STEPS.length) {
+        if (currentStep < buildSteps.length) {
             stepTimeout = setTimeout(() => {
                 setCurrentStep(prev => prev + 1);
-            }, BUILD_STEPS[currentStep].duration);
-        } else {
-            setIsFinished(true);
+            }, buildSteps[currentStep].duration);
         }
         
         const startTime = Date.now();
         progressInterval = setInterval(() => {
             const elapsedTime = Date.now() - startTime;
-            const currentProgress = Math.min(100, (elapsedTime / TOTAL_DURATION) * 100);
+            const currentProgress = Math.min(100, (elapsedTime / totalDuration) * 100);
             setProgress(currentProgress);
             if(currentProgress >= 100) {
                 clearInterval(progressInterval);
@@ -61,7 +83,7 @@ export const BuildModal: React.FC<BuildModalProps> = ({ config, onClose }) => {
             clearTimeout(stepTimeout);
             clearInterval(progressInterval);
         };
-    }, [currentStep]);
+    }, [currentStep, buildSteps, totalDuration]);
 
     const isoFileName = `ChirpyOS-${config.hostname}-${new Date().toISOString().split('T')[0]}.iso`;
 
@@ -98,7 +120,7 @@ export const BuildModal: React.FC<BuildModalProps> = ({ config, onClose }) => {
                     
                     <div className="h-6 text-center">
                         <p className="text-sm font-mono text-slate-300 animate-fade-in">
-                            {isFinished ? 'Build Complete!' : BUILD_STEPS[currentStep]?.name || 'Finalizing...'}
+                            {isFinished ? 'Build Complete!' : buildSteps[currentStep]?.name || 'Finalizing...'}
                         </p>
                     </div>
 
