@@ -171,7 +171,7 @@ curl http://YOUR_HOST_IP:8000/install.sh -o install.sh`}</CodeBlock>
                     )}
                     {activeTab === 'advanced' && (
                         <div className="animate-fade-in-fast space-y-4">
-                            <p>This path allows you to build a completely custom Arch Linux ISO with your script and any other modifications baked in. This requires an existing Arch Linux system.</p>
+                            <p>This path allows you to build a completely custom Arch Linux ISO with your script and other modifications baked in. This requires an existing Arch Linux system (or a VM running Arch).</p>
                             
                             <div>
                                 <h3 className="font-semibold text-lg text-white mt-4 mb-2">Step 1: Install ArchISO</h3>
@@ -188,45 +188,54 @@ cp -r /usr/share/archiso/configs/releng .`}</CodeBlock>
 
                             <div>
                                 <h3 className="font-semibold text-lg text-white mt-4 mb-2">Step 3: Embed the Ritual Script</h3>
-                                <p>
-                                    First, create the `install.sh` file on your host system. This command decodes the script you just forged and saves it locally. Run it from your <strong className="font-mono text-slate-400">~/chirpy-iso</strong> directory.
-                                </p>
-                                <CodeBlock>
-                                    {createScriptCommand}
-                                </CodeBlock>
-                                <p className="mt-4">
-                                    Now, move the generated script into the profile for the ISO build.
-                                </p>
-                                <CodeBlock>
-{`# Move the script into the ISO's root directory
-mv install.sh releng/airootfs/root/install.sh`}
-                                </CodeBlock>
+                                <p>First, create the `install.sh` file on your host system. This command decodes the script you just forged and saves it locally. Run it from your <strong className="font-mono text-slate-400">~/chirpy-iso</strong> directory.</p>
+                                <CodeBlock>{createScriptCommand}</CodeBlock>
+                                <p className="mt-4">Now, move the generated script into the profile for the ISO build.</p>
+                                <CodeBlock>{`# Move the script into the ISO's root directory
+mv install.sh releng/airootfs/root/install.sh`}</CodeBlock>
                             </div>
                             
-                            <div>
-                                <h3 className="font-semibold text-lg text-white mt-6 mb-2">Step 4: Set Final Permissions</h3>
-                                <p>To ensure the script is executable inside the final ISO, we create a customization script that `mkarchiso` will run automatically during the build process.</p>
-                                <CodeBlock>
-{`# Create the customization script
-printf '%s\\n' \\
-'#!/bin/bash' \\
-'set -e' \\
-'chmod +x /root/install.sh' > releng/customize_airootfs.sh`}
-                                </CodeBlock>
-                                <p>This creates a new script, <code className="text-slate-400 bg-slate-800 p-1 rounded text-sm">customize_airootfs.sh</code>, which contains the command to make your installer executable. This is the official ArchISO method for customizing the final image.</p>
+                             <div>
+                                <h3 className="font-semibold text-lg text-white mt-4 mb-2">Step 4: Pre-install Dependencies</h3>
+                                <p>To make the TUI installer work without an internet connection, we'll embed the `dialog` package directly into the ISO.</p>
+                                <CodeBlock>{`# Add 'dialog' to the list of packages to install in the ISO
+echo "dialog" >> releng/packages.x86_64`}</CodeBlock>
                             </div>
 
                             <div>
-                                <h3 className="font-semibold text-lg text-white mt-6 mb-2">Step 5: Configure Autorun</h3>
-                                <p>To make the ritual begin automatically when the ISO boots, create a profile script that launches the installer on the main console. This command is compatible with most shells, including `bash`, `zsh`, and `fish`.</p>
+                                <h3 className="font-semibold text-lg text-white mt-6 mb-2">Step 5: Customize the Live Environment</h3>
+                                <p>We'll create a customization script. This is the official ArchISO method to set permissions and enable services. This script will create a <strong className="text-yellow-400">systemd service</strong> to reliably auto-start your installer on boot.</p>
                                 <CodeBlock>
-{`printf '%s\\n' \\
-'# Autostart the Chirpy OS installation ritual on TTY1' \\
-'if [ -z "$DISPLAY" ] && [ "$(fgconsole)" -eq 1 ]; then' \\
-'  /root/install.sh' \\
-'fi' > releng/airootfs/root/.bash_profile`}
+{`cat > releng/customize_airootfs.sh <<'EOF'
+#!/bin/bash
+set -e
+
+# Make the installer executable
+chmod +x /root/install.sh
+
+# Create the systemd service to auto-start the installer
+cat > /etc/systemd/system/chirpy-installer.service <<'SERVICE'
+[Unit]
+Description=Chirpy OS Installation Ritual
+Wants=getty@tty1.service
+After=getty@tty1.service
+
+[Service]
+Type=oneshot
+ExecStart=/root/install.sh
+StandardInput=tty-force
+TTYPath=/dev/tty1
+
+[Install]
+WantedBy=multi-user.target
+SERVICE
+
+# Enable the service
+systemctl enable chirpy-installer.service
+EOF`}
                                 </CodeBlock>
-                                <p>This creates a <code className="text-slate-400 bg-slate-800 p-1 rounded text-sm">.bash_profile</code> for the root user. When the ISO boots, this script will run, starting your interactive installer.</p>
+                                <p>Finally, make this new customization script executable:</p>
+                                <CodeBlock>chmod +x releng/customize_airootfs.sh</CodeBlock>
                             </div>
 
                             <div>
