@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GoogleGenAI, Type } from "@google/genai";
-import type { Message, LinkState, DistroConfig, BuildStep } from './types';
+import type { Message, LinkState, DistroConfig, BuildStep, BuildTarget } from './types';
 import { WELCOME_MESSAGE, INITIAL_SUGGESTIONS, DEFAULT_DISTRO_CONFIG, SYSTEM_INSTRUCTION, CODEX_SNIPPETS } from './constants';
 import { generateInstallScript } from './lib/script-generator';
 
@@ -15,6 +15,7 @@ import { BuildModal } from './components/BuildModal';
 import { CodexModal } from './components/CodexModal';
 import { IsoModal } from './components/IsoModal';
 import { MobileBlueprintDrawer } from './components/MobileBlueprintDrawer';
+import { TargetSelectionModal } from './components/TargetSelectionModal';
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
 
@@ -29,6 +30,7 @@ const App: React.FC = () => {
     const [distroConfig, setDistroConfig] = useState<DistroConfig>(DEFAULT_DISTRO_CONFIG);
     const [isScanModalOpen, setIsScanModalOpen] = useState(false);
     const [isBuildModalOpen, setIsBuildModalOpen] = useState(false);
+    const [isTargetModalOpen, setIsTargetModalOpen] = useState(false);
     const [isCodexModalOpen, setIsCodexModalOpen] = useState(false);
     const [isIsoModalOpen, setIsIsoModalOpen] = useState(false);
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -46,43 +48,33 @@ const App: React.FC = () => {
     const handleSend = async (prompt?: string) => {
         const userMessage = prompt || input;
         if (!userMessage.trim() && !attachedFile) return;
+        
+        const currentAttachment = attachedFile;
 
-        if (isBlueprintLocked && !userMessage.toLowerCase().includes('build script')) {
+        setMessages(prev => [...prev, { role: 'user', text: userMessage }]);
+        setInput('');
+        setAttachedFile(null);
+
+        const lowerCaseMessage = userMessage.toLowerCase();
+        
+        if (lowerCaseMessage.includes('scan system')) {
+            setIsScanModalOpen(true);
+            return;
+        }
+
+        if (isBlueprintLocked) {
             setMessages(prev => [...prev, 
-                { role: 'user', text: userMessage },
                 { role: 'model', text: "The blueprint is currently locked. To make further changes, please unlock it using the icon in the blueprint panel, then send your request again.", linkState }
             ]);
-            setInput('');
             return;
         }
 
         setIsLoading(true);
-        setInput('');
-        
-        const newUserMessage: Message = { role: 'user', text: userMessage };
-        setMessages(prev => [...prev, newUserMessage]);
-        
-        setTimeout(() => setMessages(prev => [...prev, { role: 'model', text: '...', linkState }]), 50);
+        setMessages(prev => [...prev, { role: 'model', text: '...', linkState }]);
 
-        if (userMessage.toLowerCase().includes('scan system')) {
-            setIsScanModalOpen(true);
-            setMessages(prev => prev.slice(0, -1));
-            setIsLoading(false);
-            return;
-        }
-
-        if (userMessage.toLowerCase().includes('build script') && distroConfig) {
-            const script = generateInstallScript(distroConfig);
-            setGeneratedScript(script);
-            setIsBuildModalOpen(true);
-            setMessages(prev => prev.slice(0, -1));
-            setIsLoading(false);
-            return;
-        }
-        
         try {
             const conversationHistory = messages.map(m => `${m.role}: ${m.text}`).join('\n');
-            const fullPrompt = `${conversationHistory}\nuser: ${userMessage}${attachedFile ? `\n\nSystem Report Context:\n${attachedFile}` : ''}\n\nBased on this conversation and context, generate the JSON configuration.`;
+            const fullPrompt = `${conversationHistory}\nuser: ${userMessage}${currentAttachment ? `\n\nSystem Report Context:\n${currentAttachment}` : ''}\n\nBased on this conversation and context, generate the JSON configuration.`;
 
             const responseSchema = {
                 type: Type.OBJECT,
@@ -130,12 +122,46 @@ const App: React.FC = () => {
             });
 
             const text = result.text;
-            const config = JSON.parse(text) as DistroConfig;
-            setDistroConfig(config);
-            setIsBlueprintLocked(true); // Lock the blueprint after successful generation
-            setAttachedFile(null);
+            const newConfig = JSON.parse(text);
 
-            const modelResponse = `The Architect's Blueprint has been updated and locked in. The changes are reflected on the right. What is our next move? We can refine the details (unlock first), or type "build script" to forge the installer.`;
+            if (typeof newConfig !== 'object' || newConfig === null || Array.isArray(newConfig)) {
+                throw new Error("AI did not return a valid configuration object.");
+            }
+
+            // Create a deeply sanitized configuration to prevent render-time crashes from malformed AI responses.
+            const sanitizedConfig = { ...DEFAULT_DISTRO_CONFIG };
+            for (const key of Object.keys(sanitizedConfig)) {
+                const k = key as keyof DistroConfig;
+                const defaultValue = DEFAULT_DISTRO_CONFIG[k];
+                const incomingValue = (newConfig as any)[k];
+
+                if (incomingValue === undefined) {
+                    continue; // Keep the default if the AI didn't provide this key
+                }
+        
+                if (Array.isArray(defaultValue)) {
+                    (sanitizedConfig as any)[k] = Array.isArray(incomingValue) ? incomingValue.map(String) : defaultValue;
+                } else if (typeof defaultValue === 'boolean') {
+                    (sanitizedConfig as any)[k] = typeof incomingValue === 'boolean' ? incomingValue : defaultValue;
+                } else if (typeof defaultValue === 'string') {
+                    if (typeof incomingValue === 'object' && incomingValue !== null) {
+                        (sanitizedConfig as any)[k] = defaultValue; // Reject objects
+                    } else {
+                        (sanitizedConfig as any)[k] = String(incomingValue ?? defaultValue); // Coerce null/number/bool
+                    }
+                }
+            }
+
+            // Handle optional fields separately
+            sanitizedConfig.password = (newConfig.password && typeof newConfig.password !== 'object') ? String(newConfig.password) : undefined;
+            sanitizedConfig.ipAddress = (newConfig.ipAddress && typeof newConfig.ipAddress !== 'object') ? String(newConfig.ipAddress) : undefined;
+            sanitizedConfig.gateway = (newConfig.gateway && typeof newConfig.gateway !== 'object') ? String(newConfig.gateway) : undefined;
+            sanitizedConfig.dnsServers = (newConfig.dnsServers && typeof newConfig.dnsServers !== 'object') ? String(newConfig.dnsServers) : undefined;
+
+            setDistroConfig(sanitizedConfig);
+            setIsBlueprintLocked(true);
+
+            const modelResponse = `The Architect's Blueprint has been updated and locked in. The changes are reflected on the left. To forge the installer, use the gear icon in the blueprint panel.`;
             setMessages(prev => [...prev.slice(0, -1), { role: 'model', text: modelResponse, linkState }]);
 
         } catch (error) {
@@ -156,6 +182,17 @@ const App: React.FC = () => {
         ]);
     };
 
+    const handleInitiateBuild = () => {
+        setIsTargetModalOpen(true);
+    };
+
+    const handleTargetSelection = (target: BuildTarget) => {
+        const script = generateInstallScript(distroConfig, target);
+        setGeneratedScript(script);
+        setIsTargetModalOpen(false);
+        setIsBuildModalOpen(true);
+    };
+
     const BUILD_STEPS: BuildStep[] = [
         { name: "Lighting the forge fires...", duration: 500 },
         { name: "Scribing the partitioning runes...", duration: 800 },
@@ -168,6 +205,7 @@ const App: React.FC = () => {
     return (
         <div className="bg-slate-900 text-white font-sans min-h-screen flex flex-col md:flex-row">
             {isScanModalOpen && <SystemScanModal onClose={() => setIsScanModalOpen(false)} onComplete={handleScanComplete} />}
+            {isTargetModalOpen && <TargetSelectionModal onClose={() => setIsTargetModalOpen(false)} onSelectTarget={handleTargetSelection} />}
             {isBuildModalOpen && <BuildModal 
                 steps={BUILD_STEPS} 
                 script={generatedScript} 
@@ -185,19 +223,24 @@ const App: React.FC = () => {
                 isLocked={isBlueprintLocked}
                 onLockToggle={() => setIsBlueprintLocked(prev => !prev)}
                 onClose={() => setIsDrawerOpen(false)}
+                onBuild={handleInitiateBuild}
             />}
+            
+            <aside className="w-full md:w-1/3 lg:w-2/5 xl:w-1/3 bg-slate-950/50 border-r border-slate-800 p-6 h-screen overflow-y-auto hidden md:block">
+               <DistroBlueprintPanel 
+                    config={distroConfig} 
+                    onConfigChange={setDistroConfig} 
+                    isLocked={isBlueprintLocked}
+                    onLockToggle={() => setIsBlueprintLocked(prev => !prev)}
+                    onBuild={handleInitiateBuild}
+                />
+            </aside>
             
             <main className="flex-1 flex flex-col p-4 md:p-6 h-screen">
                 <header className="mb-4 flex justify-between items-center">
-                    <Logo linkState={linkState} onToggle={() => setLinkState(s => s === 'online' ? 'offline' : 'online')} />
                     <div className="flex items-center gap-4">
+                        <Logo linkState={linkState} onToggle={() => setLinkState(s => s === 'online' ? 'offline' : 'online')} />
                         <button 
-                            className="text-slate-400 hover:text-white transition-colors text-sm font-semibold hidden md:block"
-                            onClick={() => setIsCodexModalOpen(true)}
-                        >
-                            Codex
-                        </button>
-                         <button 
                             className="text-slate-400 hover:text-white transition-colors md:hidden"
                             onClick={() => setIsDrawerOpen(true)}
                             aria-label="Open Blueprint"
@@ -205,6 +248,12 @@ const App: React.FC = () => {
                            <BlueprintIcon className="w-6 h-6"/>
                         </button>
                     </div>
+                    <button 
+                        className="text-slate-400 hover:text-white transition-colors text-sm font-semibold hidden md:block"
+                        onClick={() => setIsCodexModalOpen(true)}
+                    >
+                        Codex
+                    </button>
                 </header>
 
                 <div className="flex-1 overflow-y-auto pr-4 space-y-6">
@@ -250,15 +299,6 @@ const App: React.FC = () => {
                     </div>
                 </div>
             </main>
-
-            <aside className="w-full md:w-1/3 lg:w-2/5 xl:w-1/3 bg-slate-950/50 border-l border-slate-800 p-6 h-screen overflow-y-auto hidden md:block">
-               <DistroBlueprintPanel 
-                    config={distroConfig} 
-                    onConfigChange={setDistroConfig} 
-                    isLocked={isBlueprintLocked}
-                    onLockToggle={() => setIsBlueprintLocked(prev => !prev)}
-                />
-            </aside>
         </div>
     );
 };

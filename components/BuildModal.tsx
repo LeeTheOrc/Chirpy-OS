@@ -9,11 +9,23 @@ interface BuildModalProps {
   onShowInstructions: () => void;
 }
 
+// Helper to safely Base64-encode a string that might contain Unicode characters.
+const utf8ToBase64 = (str: string): string => {
+    try {
+        return btoa(unescape(encodeURIComponent(str)));
+    } catch (e) {
+        console.error("Failed to base64 encode script:", e);
+        // Return a safe, encoded error message to prevent a UI crash.
+        return btoa("Error: Could not encode script due to invalid characters.");
+    }
+}
+
 export const BuildModal: React.FC<BuildModalProps> = ({ steps, script, onClose, onShowInstructions }) => {
     const [currentStep, setCurrentStep] = useState(0);
     const [progress, setProgress] = useState(0);
     const [isComplete, setIsComplete] = useState(false);
-    const [copied, setCopied] = useState(false);
+    const [copied, setCopied] = useState<null | 'script' | 'command'>(null);
+    const [view, setView] = useState<'command' | 'script'>('command'); // Default to the new command view
 
     useEffect(() => {
         if (currentStep < steps.length) {
@@ -38,15 +50,32 @@ export const BuildModal: React.FC<BuildModalProps> = ({ steps, script, onClose, 
         }
     }, [currentStep, steps]);
     
-    const handleCopy = () => {
-        navigator.clipboard.writeText(script);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+    const quickInstallCommand = `# Create the installation script
+echo '${utf8ToBase64(script)}' | base64 -d > install.sh
+
+# Make it executable and run the ritual
+chmod +x install.sh && ./install.sh
+`;
+
+    const handleCopy = (type: 'script' | 'command') => {
+        const textToCopy = type === 'script' ? script : quickInstallCommand;
+        navigator.clipboard.writeText(textToCopy);
+        setCopied(type);
+        setTimeout(() => setCopied(null), 2000);
     };
 
     const totalDuration = steps.reduce((acc, step) => acc + step.duration, 0);
     const elapsedDuration = steps.slice(0, currentStep).reduce((acc, step) => acc + step.duration, 0) + (steps[currentStep]?.duration * (progress / 100) || 0);
     const overallProgress = (elapsedDuration / totalDuration) * 100;
+
+    const TabButton: React.FC<{ active: boolean; onClick: () => void; children: React.ReactNode }> = ({ active, onClick, children }) => (
+        <button
+            onClick={onClick}
+            className={`whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm transition-colors ${active ? 'border-yellow-400 text-yellow-400' : 'border-transparent text-slate-400 hover:text-white'}`}
+        >
+            {children}
+        </button>
+    );
 
     return (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center animate-fade-in-fast" onClick={onClose}>
@@ -74,17 +103,48 @@ export const BuildModal: React.FC<BuildModalProps> = ({ steps, script, onClose, 
                 ) : (
                     <div className="animate-fade-in">
                         <h3 className="text-2xl font-bold text-center text-green-400 mb-4">Artifact Forged!</h3>
-                        <pre className="bg-slate-950/70 border border-slate-700 rounded-lg p-4 text-sm text-slate-300 max-h-60 overflow-y-auto font-mono">
-                           <code>{script}</code>
-                        </pre>
-                        <div className="mt-6 flex flex-col sm:flex-row justify-center items-center gap-3">
-                             <button onClick={handleCopy} className="bg-yellow-500 text-slate-900 font-bold py-2 px-6 rounded-lg hover:bg-yellow-400 transition-colors w-full sm:w-auto">
-                                {copied ? "Ritual Copied!" : "Copy Installation Ritual"}
-                            </button>
-                            <button onClick={onShowInstructions} className="bg-slate-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-slate-500 transition-colors w-full sm:w-auto">
-                                How to Use This Script
-                            </button>
+                        
+                        <div className="border-b border-slate-700 mb-4 flex justify-center">
+                            <nav className="-mb-px flex space-x-4">
+                               <TabButton active={view === 'command'} onClick={() => setView('command')}>
+                                   Quick Install Command
+                               </TabButton>
+                               <TabButton active={view === 'script'} onClick={() => setView('script')}>
+                                   View Full Script
+                               </TabButton>
+                            </nav>
                         </div>
+
+                        {view === 'command' ? (
+                            <div>
+                                <p className="text-slate-400 text-sm mb-2 text-center">Paste this command block into your Arch Linux live environment to perform the ritual.</p>
+                                <pre className="bg-slate-950/70 border border-slate-700 rounded-lg p-4 text-sm text-slate-300 max-h-60 overflow-y-auto font-mono">
+                                    <code>{quickInstallCommand}</code>
+                                </pre>
+                                <div className="mt-6 flex flex-col sm:flex-row justify-center items-center gap-3">
+                                    <button onClick={() => handleCopy('command')} className="bg-yellow-500 text-slate-900 font-bold py-2 px-6 rounded-lg hover:bg-yellow-400 transition-colors w-full sm:w-auto">
+                                        {copied === 'command' ? "Command Copied!" : "Copy Quick Install Command"}
+                                    </button>
+                                    <button onClick={onShowInstructions} className="bg-slate-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-slate-500 transition-colors w-full sm:w-auto">
+                                        Full Instructions
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                             <div>
+                                <pre className="bg-slate-950/70 border border-slate-700 rounded-lg p-4 text-sm text-slate-300 max-h-60 overflow-y-auto font-mono">
+                                   <code>{script}</code>
+                                </pre>
+                                <div className="mt-6 flex flex-col sm:flex-row justify-center items-center gap-3">
+                                     <button onClick={() => handleCopy('script')} className="bg-yellow-500 text-slate-900 font-bold py-2 px-6 rounded-lg hover:bg-yellow-400 transition-colors w-full sm:w-auto">
+                                        {copied === 'script' ? "Script Copied!" : "Copy Installation Script"}
+                                    </button>
+                                    <button onClick={onShowInstructions} className="bg-slate-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-slate-500 transition-colors w-full sm:w-auto">
+                                        How to Use This Script
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

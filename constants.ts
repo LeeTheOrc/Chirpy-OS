@@ -6,7 +6,6 @@ export const INITIAL_SUGGESTIONS = [
   "Forge a lean OS for a stealthy coding mission.",
   "I need a realm built for epic gaming battles.",
   "Craft a balanced workstation for creative endeavors.",
-  "Show me a hardened configuration for a fortress-like server.",
 ];
 
 export const AI_RESOURCE_PROFILES = {

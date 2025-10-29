@@ -1,33 +1,41 @@
-import type { DistroConfig } from '../types';
+import type { DistroConfig, BuildTarget } from '../types';
 
-export function generateInstallScript(config: DistroConfig): string {
-  const {
-    hostname,
-    username,
-    password,
-    timezone,
-    locale,
-    desktopEnvironment,
-    kernels,
-    targetDisk,
-    filesystem,
-    bootloader,
-    gpuDriver,
-    packages,
-    aurHelpers,
-    extraRepositories,
-    shell,
-    enableSnapshots,
-    efiPartitionSize,
-    swapSize,
-    networkMode,
-    ipAddress,
-    gateway,
-    dnsServers,
-    aiResourceAllocation,
-    aiGpuMode,
-    graphicsMode,
-  } = config;
+export function generateInstallScript(config: DistroConfig, target: BuildTarget = 'bare-metal'): string {
+  // Add a guard clause for the entire config object to prevent crashes.
+  if (!config) {
+    console.error("generateInstallScript called with null or undefined config. Using default.");
+    config = {} as DistroConfig; // Fallback to an empty object to allow defaults to kick in.
+  }
+  
+  // Use || to handle all falsy values (null, undefined, "") and provide a sensible default.
+  const hostname = config.hostname || 'chirpy-realm';
+  const username = config.username || 'chirpy';
+  const password = config.password;
+  const timezone = config.timezone || 'UTC';
+  const locale = config.locale || 'en_US.UTF-8';
+  const desktopEnvironment = config.desktopEnvironment || 'kde plasma';
+  const targetDisk = config.targetDisk || '/dev/nvme0n1';
+  const filesystem = config.filesystem || 'btrfs';
+  const bootloader = config.bootloader || 'grub';
+  const gpuDriver = config.gpuDriver || 'nvidia';
+  const packages = config.packages || 'git, vim, firefox, docker, steam, lutris';
+  const shell = config.shell || 'fish';
+  // For booleans, ?? is better as we want to preserve `false`.
+  const enableSnapshots = config.enableSnapshots ?? true;
+  const efiPartitionSize = config.efiPartitionSize || '512M';
+  const swapSize = config.swapSize || '18GB';
+  const networkMode = config.networkMode || 'dhcp';
+  const ipAddress = config.ipAddress;
+  const gateway = config.gateway;
+  const dnsServers = config.dnsServers;
+  const aiResourceAllocation = config.aiResourceAllocation || 'dynamic';
+  const aiGpuMode = config.aiGpuMode || 'dynamic';
+  const graphicsMode = config.graphicsMode || 'hybrid';
+
+  // Ensure arrays are valid and have content where required.
+  const safeKernels = Array.isArray(config.kernels) && config.kernels.length > 0 ? config.kernels : ['linux'];
+  const safeAurHelpers = Array.isArray(config.aurHelpers) ? config.aurHelpers : [];
+  const safeExtraRepositories = Array.isArray(config.extraRepositories) ? config.extraRepositories : [];
 
   let deInstallScript: string;
   if (desktopEnvironment.toLowerCase().includes('kde')) {
@@ -43,9 +51,27 @@ systemctl enable gdm`;
 systemctl enable gdm`;
   }
 
+  let vmPackages = '';
+  let vmServices = '';
+
+  if (target === 'qemu') {
+    vmPackages = ' qemu-guest-agent';
+    vmServices = `
+echo "Enabling QEMU Guest Agent..."
+systemctl enable qemu-guest-agent.service
+`;
+  } else if (target === 'virtualbox') {
+    vmPackages = ' virtualbox-guest-utils';
+    vmServices = `
+echo "Enabling VirtualBox Guest Services..."
+systemctl enable vboxservice.service
+`;
+  }
+
   const script = `#!/bin/bash
 # Chirpy AI :: Installation Ritual
 # Forged on: ${new Date().toUTCString()}
+# Build Target: ${target}
 # 
 # WARNING: This sacred ritual will re-format the runes on ${targetDisk}.
 # Meditate upon its contents before proceeding.
@@ -79,7 +105,7 @@ mount ${targetDisk}1 /mnt/boot
 # Phase 2: Summoning the Base System
 # -----------------------------------------------------------------------------
 echo "Summoning the base system and kernel spirits..."
-pacstrap /mnt base ${kernels.join(' ')} linux-firmware
+pacstrap /mnt base ${safeKernels.join(' ')} linux-firmware
 
 echo "Generating the fstab grimoire..."
 genfstab -U /mnt >> /mnt/etc/fstab
@@ -136,7 +162,7 @@ swapon /swapfile
 echo '/swapfile none swap defaults 0 0' >> /etc/fstab
 
 # Opening portals to other realms (Extra Repos)
-${extraRepositories.includes('chaotic') ? `
+${safeExtraRepositories.includes('chaotic') ? `
 echo "Opening a chaotic portal..."
 pacman-key --recv-key 3056513887B78AEB --keyserver keyserver.ubuntu.com
 pacman-key --lsign-key 3056513887B78AEB
@@ -146,7 +172,7 @@ echo '[chaotic-aur]' >> /etc/pacman.conf
 echo 'Include = /etc/pacman.d/chaotic-mirrorlist' >> /etc/pacman.conf
 ` : ''}
 
-${extraRepositories.includes('cachy') ? `
+${safeExtraRepositories.includes('cachy') ? `
 echo "Unlocking the CachyOS high-performance caches..."
 pacman -S --noconfirm wget
 wget https://mirror.cachyos.org/cachyos-repo.tar.xz
@@ -167,7 +193,7 @@ grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB
 grub-mkconfig -o /boot/grub/grub.cfg
 
 echo "Summoning essential artifacts (packages)..."
-pacman -S --noconfirm ${packages}
+pacman -S --noconfirm ${packages}${vmPackages}
 
 echo "Erecting the halls of the Desktop Environment: ${desktopEnvironment}..."
 ${deInstallScript}
@@ -178,14 +204,16 @@ ${gpuDriver === 'amd' ? 'pacman -S --noconfirm mesa lib32-mesa vulkan-radeon lib
 ${gpuDriver === 'intel' ? 'pacman -S --noconfirm mesa lib32-mesa vulkan-intel lib32-vulkan-intel' : ''}
 
 echo "Summoning helpers from the Arch User Repository..."
-${aurHelpers.includes('yay') ? 'pacman -S --noconfirm yay' : ''}
-${aurHelpers.includes('paru') ? 'pacman -S --noconfirm paru' : ''}
+${safeAurHelpers.includes('yay') ? 'pacman -S --noconfirm yay' : ''}
+${safeAurHelpers.includes('paru') ? 'pacman -S --noconfirm paru' : ''}
 
 ${enableSnapshots && filesystem === 'btrfs' ? `
 echo "Weaving temporal safeguards (BTRFS snapshots)..."
 pacman -S --noconfirm grub-btrfs
 systemctl enable grub-btrfsd
 ` : ''}
+
+${vmServices}
 
 # -----------------------------------------------------------------------------
 # Phase 4: AI Core Configuration

@@ -1,6 +1,7 @@
 // Fix: Create type definitions for the application.
 export type Role = 'user' | 'model';
 export type LinkState = 'online' | 'offline';
+export type BuildTarget = 'bare-metal' | 'qemu' | 'virtualbox';
 
 export interface Message {
   role: Role;

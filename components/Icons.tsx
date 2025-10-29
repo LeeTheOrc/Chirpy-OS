@@ -199,3 +199,50 @@ export const DownloadIcon = ({ className }: { className?: string }) => (
         <path d="M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z" />
     </svg>
 );
+
+export const ServerIcon = ({ className }: { className?: string }) => (
+    <svg 
+        xmlns="http://www.w3.org/2000/svg" 
+        viewBox="0 0 24 24" 
+        fill="none" 
+        stroke="currentColor" 
+        strokeWidth="2" 
+        strokeLinecap="round" 
+        strokeLinejoin="round" 
+        className={className} 
+        aria-hidden="true"
+    >
+        <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
+        <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
+        <line x1="6" y1="6" x2="6.01" y2="6"></line>
+        <line x1="6" y1="18" x2="6.01" y2="18"></line>
+    </svg>
+);
+
+export const DesktopComputerIcon = ({ className }: { className?: string }) => (
+    <svg 
+        xmlns="http://www.w3.org/2000/svg" 
+        viewBox="0 0 24 24" 
+        fill="currentColor" 
+        className={className} 
+        aria-hidden="true"
+    >
+        <path d="M3 5.25a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 5.25V15a2.25 2.25 0 01-2.25 2.25H3A2.25 2.25 0 01.75 15V5.25zM12 18.75a.75.75 0 000 1.5h6a.75.75 0 000-1.5h-6z" />
+    </svg>
+);
+
+export const GearIcon = ({ className }: { className?: string }) => (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 20 20"
+      fill="currentColor"
+      className={className}
+      aria-hidden="true"
+    >
+      <path
+        fillRule="evenodd"
+        d="M11.49 3.17a.75.75 0 01.447.898l-.458 1.834a.25.25 0 00.22.285l1.833-.458a.75.75 0 01.898.447l1.229 2.457a.75.75 0 01-.448.898l-1.834.458a.25.25 0 00-.285.22l.458 1.833a.75.75 0 01-.898.447l-2.457 1.229a.75.75 0 01-.898-.448l-.458-1.834a.25.25 0 00-.22-.285l-1.833.458a.75.75 0 01-.898-.447l-1.229-2.457a.75.75 0 01.448-.898l1.834-.458a.25.25 0 00.285-.22l-.458-1.833a.75.75 0 01.898-.447l2.457-1.229zm-1.49.128a.25.25 0 00-.15-.3l-2.457-1.229a.25.25 0 00-.3.15l-1.229 2.457a.25.25 0 00.15.3l1.834.458a.75.75 0 01.66.855l-.458 1.833a.25.25 0 00.3.15l2.457 1.229a.25.25 0 00.3-.15l1.229-2.457a.25.25 0 00-.15-.3l-1.834-.458a.75.75 0 01-.66-.855l.458-1.833zM10 5.5a4.5 4.5 0 100 9 4.5 4.5 0 000-9zM10 7a3 3 0 100 6 3 3 0 000-6z"
+        clipRule="evenodd"
+      />
+    </svg>
+  );

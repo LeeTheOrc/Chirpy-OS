@@ -1,15 +1,37 @@
 import React, { useState } from 'react';
-import { CloseIcon, DownloadIcon, BlueprintIcon } from './Icons';
+import { CloseIcon, DownloadIcon, CopyIcon } from './Icons';
 
 interface IsoModalProps {
   onClose: () => void;
 }
 
-const CodeBlock: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-    <pre className="bg-slate-950/70 border border-slate-700 rounded-lg p-3 my-2 text-sm text-slate-300 overflow-x-auto font-mono">
-        <code>{children}</code>
-    </pre>
-);
+const CodeBlock: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    const [copied, setCopied] = useState(false);
+    
+    const textToCopy = React.Children.toArray(children).join('');
+
+    const handleCopy = () => {
+        if (!textToCopy) return;
+        navigator.clipboard.writeText(textToCopy);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    return (
+        <div className="relative group my-2">
+            <pre className="bg-slate-950/70 border border-slate-700 rounded-lg p-3 text-sm text-slate-300 overflow-x-auto font-mono pr-12">
+                <code>{children}</code>
+            </pre>
+            <button 
+                onClick={handleCopy} 
+                className="absolute top-2 right-2 p-1.5 bg-slate-800/80 rounded-md text-slate-400 hover:text-white transition-all opacity-0 group-hover:opacity-100 focus:opacity-100" 
+                aria-label="Copy code"
+            >
+                {copied ? <span className="text-xs font-sans">Copied!</span> : <CopyIcon className="w-4 h-4" />}
+            </button>
+        </div>
+    );
+};
 
 export const IsoModal: React.FC<IsoModalProps> = ({ onClose }) => {
     const [activeTab, setActiveTab] = useState<'easy' | 'advanced'>('easy');
@@ -60,22 +82,33 @@ export const IsoModal: React.FC<IsoModalProps> = ({ onClose }) => {
                                 <p>Use a tool like <a href="https://www.balena.io/etcher/" target="_blank" rel="noopener noreferrer" className="text-yellow-400 hover:underline">Balena Etcher</a> or <a href="https://www.ventoy.net/" target="_blank" rel="noopener noreferrer" className="text-yellow-400 hover:underline">Ventoy</a> to write the downloaded ISO to a USB drive.</p>
                             </div>
 
-                             <div>
+                            <div>
                                 <h3 className="font-semibold text-lg text-white mt-4 mb-2">Step 3: Boot and Run the Ritual</h3>
-                                <p>Boot your target computer from the USB drive. Once you're at the command prompt in the live environment, follow these steps:</p>
-                                <p className="mt-2">1. Make sure you are connected to the internet.</p>
-                                <p>2. Create the script file using a text editor:</p>
-                                <CodeBlock>vim install.sh</CodeBlock>
-                                <p>3. Paste the script you copied from the forge into the editor and save the file.</p>
+                                <p>Boot your target computer from the USB drive. Once you are at the command prompt in the live environment, ensure you are connected to the internet.</p>
+                                <p className="mt-2">After the forge finishes, it provides a <strong className="text-yellow-400">Quick Install Command</strong>. This is the most direct path to forging your realm.</p>
+                                <p>Copy the entire command block from the forge and paste it into your terminal. Press Enter to execute it.</p>
+                                <CodeBlock>
+{`# The command you copy will look like this:
+echo 'base64_encoded_script_...' | base64 -d > install.sh
+chmod +x install.sh && ./install.sh`}
+                                </CodeBlock>
+                                <p>This single command automatically creates the <strong className="font-mono text-slate-400">install.sh</strong> script, makes it executable, and begins the installation ritual.</p>
+
+                                <h4 className="font-semibold text-md text-white mt-6 mb-2">Manual Fallback</h4>
+                                <p>If you prefer to create the script manually, or if you only have the script text:</p>
+                                <p className="mt-2">1. Copy the "Full Script" text from the forge.</p>
+                                <p>2. In the live environment, open a text editor (like `nano`):</p>
+                                <CodeBlock>nano install.sh</CodeBlock>
+                                <p>3. Paste the script content, then save and exit the editor.</p>
                                 <p>4. Make the script executable:</p>
                                 <CodeBlock>chmod +x install.sh</CodeBlock>
-                                <p>5. Run the ritual. Be certain you've set the correct `targetDisk` in the blueprint!</p>
+                                <p>5. Run the ritual:</p>
                                 <CodeBlock>./install.sh</CodeBlock>
                             </div>
                         </div>
                     )}
                     {activeTab === 'advanced' && (
-                         <div className="animate-fade-in-fast space-y-4">
+                        <div className="animate-fade-in-fast space-y-4">
                             <p>This path allows you to build a completely custom Arch Linux ISO with your script and any other modifications baked in. This requires an existing Arch Linux system.</p>
                             
                             <div>
@@ -87,23 +120,53 @@ export const IsoModal: React.FC<IsoModalProps> = ({ onClose }) => {
                             <div>
                                 <h3 className="font-semibold text-lg text-white mt-4 mb-2">Step 2: Prepare the Profile</h3>
                                 <p>Create a working directory and copy the baseline `releng` profile.</p>
-                                <CodeBlock>mkdir ~/chirpy-iso && cd ~/chirpy-iso
-cp -r /usr/share/archiso/configs/releng/ .</CodeBlock>
+                                <CodeBlock>{`mkdir ~/chirpy-iso && cd ~/chirpy-iso
+cp -r /usr/share/archiso/configs/releng .`}</CodeBlock>
                             </div>
 
                             <div>
-                                <h3 className="font-semibold text-lg text-white mt-4 mb-2">Step 3: Embed Your Script</h3>
-                                <p>Place your copied script into the live filesystem. It will be available at `/root/install.sh` when you boot the custom ISO.</p>
-                                <CodeBlock># Make sure your script is saved as 'install.sh' in your current directory
-# Then, copy it into the profile:
-cp ./install.sh releng/airootfs/root/install.sh</CodeBlock>
+                                <h3 className="font-semibold text-lg text-white mt-4 mb-2">Step 3: Embed the Ritual Script</h3>
+                                <p>
+                                    After the forge generates your script, you must place it inside the ISO's filesystem. This process is broken into two parts.
+                                </p>
+
+                                <h4 className="font-semibold text-md text-white mt-4 mb-1">Part A: Create the Script</h4>
+                                <p>
+                                    In the "Great Forge" window, find the <strong className="text-yellow-400">Quick Install Command</strong>. Copy <strong className="text-red-400">only the first line</strong> of that command block. It will start with <code className="text-slate-400 bg-slate-800 p-1 rounded text-sm">echo</code>.
+                                </p>
+                                <p className="mt-1">
+                                    Paste that single line into your terminal (which should be in the `~/chirpy-iso` directory) and press Enter. This will create the `install.sh` file.
+                                </p>
+                                <div className="bg-slate-950/70 border border-dashed border-slate-600 rounded-lg p-3 text-sm text-slate-400 mt-2 font-mono">
+                                    # Your pasted command will look similar to this: <br />
+                                    echo 'IyEvYmluL2Jhc2gNCiMgQ2hpcnB5IEFJ...' | base64 -d > install.sh
+                                </div>
+
+
+                                <h4 className="font-semibold text-md text-white mt-6 mb-1">Part B: Move and Prepare the Script</h4>
+                                <p>
+                                    Now that `install.sh` has been created, run the following command block to move it into the correct ISO directory and make it executable.
+                                </p>
+                                <CodeBlock>
+{`mv install.sh releng/airootfs/root/install.sh
+chmod +x releng/airootfs/root/install.sh`}
+                                </CodeBlock>
+
+                                <h4 className="font-semibold text-md text-white mt-6 mb-2">Manual Fallback</h4>
+                                <p>If you prefer to create the script manually:</p>
+                                <p className="mt-2">1. Copy the "Full Script" text from the forge.</p>
+                                <p>2. In your `~/chirpy-iso` directory, open a text editor to create the file in the correct path:</p>
+                                <CodeBlock>nano releng/airootfs/root/install.sh</CodeBlock>
+                                <p>3. Paste the script content, then save and exit the editor.</p>
+                                <p>4. Make the script executable:</p>
+                                <CodeBlock>chmod +x releng/airootfs/root/install.sh</CodeBlock>
                             </div>
                             
                             <div>
                                 <h3 className="font-semibold text-lg text-white mt-4 mb-2">Step 4: Build the ISO</h3>
-                                <p>Run the build command. This can take some time.</p>
+                                <p>From your `~/chirpy-iso` directory, run the build command. This can take some time.</p>
                                 <CodeBlock>sudo mkarchiso -v -w /tmp/archiso-work -o . releng</CodeBlock>
-                                <p>Your custom ISO (named something like `archlinux-202X.XX.XX-x86_64.iso`) will be created in your `~/chirpy-iso` directory, ready to be flashed to a USB.</p>
+                                <p>Your custom ISO will be created in the current directory. When you boot it, you can run your embedded ritual by typing <strong className="font-mono text-slate-400">./install.sh</strong> from the `/root` directory.</p>
                             </div>
                         </div>
                     )}
