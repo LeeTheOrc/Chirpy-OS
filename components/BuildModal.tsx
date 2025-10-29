@@ -1,147 +1,88 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { DistroConfig } from '../types';
-import { CloseIcon, DiscIcon } from './Icons';
+import React, { useState, useEffect } from 'react';
+import { CloseIcon, BlueprintIcon } from './Icons';
+import type { BuildStep } from '../types';
 
 interface BuildModalProps {
-  config: DistroConfig;
+  steps: BuildStep[];
+  script: string;
   onClose: () => void;
 }
 
-interface BuildStep {
-    name: string;
-    duration: number; // in ms
-}
-
-// Turn the static array into a dynamic function
-const generateBuildSteps = (config: DistroConfig): BuildStep[] => {
-    const steps: BuildStep[] = [
-        { name: 'Initializing forge environment...', duration: 1500 },
-        { name: 'Downloading base system packages...', duration: 4000 },
-        { name: `Installing kernel (${config.kernels[0]})...`, duration: 3000 },
-        { name: 'Setting up bootloader (GRUB)...', duration: 2500 },
-        { name: 'Configuring network services...', duration: 2000 },
-        { name: `Installing desktop environment (KDE Plasma)...`, duration: 5000 },
-        { name: `Configuring graphics stack (${config.gpuDriver})...`, duration: 2200 },
-    ];
-
-    if (config.graphicsMode === 'hybrid') {
-        steps.push({ name: 'Setting up optimus-manager...', duration: 1800 });
-    }
-
-    if (config.packages.trim()) {
-        const packageSummary = config.packages.split('\n').filter(p => p.trim()).slice(0, 2).join(', ');
-        const ellipsis = config.packages.split('\n').filter(p => p.trim()).length > 2 ? '...' : '';
-        steps.push({ name: `Installing user packages (${packageSummary}${ellipsis})...`, duration: 3500 });
-    }
-
-    if (config.enableSnapshots) {
-        steps.push({ name: 'Configuring BTRFS snapshots with snapper...', duration: 2000 });
-    }
-
-    steps.push(
-        { name: 'Applying user customizations...', duration: 2000 },
-        { name: 'Running final system checks...', duration: 2500 },
-        { name: 'Compressing live environment...', duration: 4000 },
-        { name: 'Generating ISO image...', duration: 3000 },
-    );
-    
-    return steps;
-};
-
-
-export const BuildModal: React.FC<BuildModalProps> = ({ config, onClose }) => {
+export const BuildModal: React.FC<BuildModalProps> = ({ steps, script, onClose }) => {
     const [currentStep, setCurrentStep] = useState(0);
     const [progress, setProgress] = useState(0);
-    const [isFinished, setIsFinished] = useState(false);
-    
-    // Memoize the generated steps to avoid recalculating on every render
-    const buildSteps = useMemo(() => generateBuildSteps(config), [config]);
-    const totalDuration = useMemo(() => buildSteps.reduce((acc, step) => acc + step.duration, 0), [buildSteps]);
+    const [isComplete, setIsComplete] = useState(false);
+    const [copied, setCopied] = useState(false);
 
     useEffect(() => {
-        let stepTimeout: ReturnType<typeof setTimeout>;
-        let progressInterval: ReturnType<typeof setInterval>;
+        if (currentStep < steps.length) {
+            const stepDuration = steps[currentStep].duration;
+            const startTime = Date.now();
+            
+            const interval = setInterval(() => {
+                const elapsedTime = Date.now() - startTime;
+                const stepProgress = Math.min((elapsedTime / stepDuration) * 100, 100);
+                setProgress(stepProgress);
 
-        if (currentStep < buildSteps.length) {
-            stepTimeout = setTimeout(() => {
-                setCurrentStep(prev => prev + 1);
-            }, buildSteps[currentStep].duration);
+                if (elapsedTime >= stepDuration) {
+                    clearInterval(interval);
+                    setCurrentStep(prev => prev + 1);
+                    setProgress(0);
+                }
+            }, 50);
+
+            return () => clearInterval(interval);
+        } else {
+            setIsComplete(true);
         }
-        
-        const startTime = Date.now();
-        progressInterval = setInterval(() => {
-            const elapsedTime = Date.now() - startTime;
-            const currentProgress = Math.min(100, (elapsedTime / totalDuration) * 100);
-            setProgress(currentProgress);
-            if(currentProgress >= 100) {
-                clearInterval(progressInterval);
-                setIsFinished(true);
-            }
-        }, 100);
+    }, [currentStep, steps]);
+    
+    const handleCopy = () => {
+        navigator.clipboard.writeText(script);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
 
-        return () => {
-            clearTimeout(stepTimeout);
-            clearInterval(progressInterval);
-        };
-    }, [currentStep, buildSteps, totalDuration]);
-
-    const isoFileName = `ChirpyOS-${config.hostname}-${new Date().toISOString().split('T')[0]}.iso`;
+    const totalDuration = steps.reduce((acc, step) => acc + step.duration, 0);
+    const elapsedDuration = steps.slice(0, currentStep).reduce((acc, step) => acc + step.duration, 0) + (steps[currentStep]?.duration * (progress / 100) || 0);
+    const overallProgress = (elapsedDuration / totalDuration) * 100;
 
     return (
-        <div 
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in"
-            onClick={onClose}
-        >
-            <div 
-                className="bg-slate-900 border border-slate-700 rounded-lg shadow-xl w-full max-w-xl text-slate-200 flex flex-col max-h-[90vh] animate-slide-in-up"
-                onClick={(e) => e.stopPropagation()}
-            >
-                <header className="flex items-center justify-between p-4 border-b border-slate-800">
-                    <div className="flex items-center gap-2">
-                        <DiscIcon className="w-6 h-6 text-yellow-400" />
-                        <h2 className="text-lg font-semibold">Forging Live CD</h2>
-                    </div>
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center animate-fade-in-fast" onClick={onClose}>
+            <div className="bg-slate-900 border border-slate-700 rounded-lg shadow-2xl w-full max-w-2xl p-6 m-4" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                        <BlueprintIcon className="w-6 h-6 text-yellow-300" />
+                        <span>The Great Forge</span>
+                    </h2>
                     <button onClick={onClose} className="text-slate-400 hover:text-white">
-                        <CloseIcon className="w-6 h-6" />
+                        <CloseIcon className="w-5 h-5" />
                     </button>
-                </header>
-
-                <div className="p-6 space-y-4">
-                    <p className="text-sm text-slate-400">
-                        The blueprint is being forged into a bootable ISO. This is a simulation of the build process.
-                    </p>
-                    
-                    <div className="w-full bg-slate-700/50 rounded-full h-2.5">
-                        <div 
-                            className="bg-yellow-500 h-2.5 rounded-full transition-all duration-300 ease-linear" 
-                            style={{ width: `${progress}%` }}
-                        ></div>
-                    </div>
-                    
-                    <div className="h-6 text-center">
-                        <p className="text-sm font-mono text-slate-300 animate-fade-in">
-                            {isFinished ? 'Build Complete!' : buildSteps[currentStep]?.name || 'Finalizing...'}
-                        </p>
-                    </div>
-
-                    {isFinished && (
-                        <div className="text-center p-4 bg-slate-800/50 rounded-lg animate-fade-in-fast">
-                             <h3 className="text-lg font-semibold text-white">Blueprint Forged!</h3>
-                             <p className="text-sm text-slate-400 mt-1 mb-4">Your custom Chirpy OS image is ready.</p>
-                             <button className="w-full bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-400 transition-colors">
-                                Download {isoFileName} (2.1 GB)
-                             </button>
-                        </div>
-                    )}
                 </div>
-                 <footer className="p-4 border-t border-slate-800 flex justify-end">
-                    <button 
-                        onClick={onClose}
-                        className="bg-slate-600 hover:bg-slate-500 text-white font-bold py-2 px-4 rounded-lg transition-colors"
-                    >
-                        {isFinished ? 'Close' : 'Cancel Build'}
-                    </button>
-                </footer>
+
+                {!isComplete ? (
+                     <div className="space-y-4">
+                        <div className="w-full bg-slate-700 rounded-full h-2.5">
+                            <div className="bg-gradient-to-r from-purple-500 to-yellow-400 h-2.5 rounded-full" style={{ width: `${overallProgress}%` }}></div>
+                        </div>
+                        <div>
+                            <p className="text-slate-300 text-center text-lg font-semibold">{steps[currentStep]?.name || "Finalizing..."}</p>
+                            <p className="text-slate-400 text-center text-sm">{`Rite ${currentStep + 1} of ${steps.length}`}</p>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="animate-fade-in">
+                        <h3 className="text-2xl font-bold text-center text-green-400 mb-4">Artifact Forged!</h3>
+                        <pre className="bg-slate-950/70 border border-slate-700 rounded-lg p-4 text-sm text-slate-300 max-h-60 overflow-y-auto font-mono">
+                           <code>{script}</code>
+                        </pre>
+                        <div className="mt-4 flex justify-center">
+                             <button onClick={handleCopy} className="bg-yellow-500 text-slate-900 font-bold py-2 px-6 rounded-lg hover:bg-yellow-400 transition-colors">
+                                {copied ? "Copied Installation Ritual!" : "Copy Ritual Script"}
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

@@ -1,112 +1,86 @@
-import React, { useState } from 'react';
-import { CloseIcon, CopyIcon } from './Icons';
+import React, { useState, useEffect } from 'react';
+import { GpuIcon, DiscIcon, ScanIcon, CloseIcon } from './Icons';
 
 interface SystemScanModalProps {
   onClose: () => void;
-  onSubmit: (report: string) => void;
+  onComplete: (report: string) => void;
 }
 
-const SCAN_SCRIPT = `
-#!/bin/bash
-# Chirpy OS Hardware Scrying Script
-# This script is read-only and does not modify your system.
+const scanItems = [
+    { name: 'Core Architecture', icon: <ScanIcon className="w-5 h-5 text-cyan-400" /> },
+    { name: 'Graphics Card', icon: <GpuIcon className="w-5 h-5 text-green-400" /> },
+    { name: 'Storage Drives', icon: <DiscIcon className="w-5 h-5 text-yellow-400" /> },
+    { name: 'Memory Modules', icon: <ScanIcon className="w-5 h-5 text-cyan-400" /> },
+    { name: 'Network Adapters', icon: <ScanIcon className="w-5 h-5 text-cyan-400" /> },
+];
 
-echo "--- Hardware Report ---"
-RAM=$(free -h | awk '/^Mem:/ {print $2}')
-ARCH=$(uname -m)
-KERNEL=$(uname -r)
+const MOCK_SYSTEM_REPORT = `
+## Scrying Report: System Hardware
 
-# Detect CPU microarchitecture for CachyOS kernel optimization
-CPU_MICROARCH="x86-64" # Default
-if grep -q "avx512f" /proc/cpuinfo; then
-    CPU_MICROARCH="x86-64-v4"
-elif grep -q "avx2" /proc/cpuinfo; then
-    CPU_MICROARCH="x86-64-v3"
-fi
-echo "CPU_MICROARCH: $CPU_MICROARCH"
+- **CPU**: Intel Core i7-10700K @ 3.80GHz (8-core, 16-thread)
+- **GPU**: NVIDIA GeForce RTX 3080 (Hybrid)
+- **RAM**: 32 GB DDR4 @ 3200MHz
+- **Disks**:
+  - \`/dev/nvme0n1\`: 1TB NVMe SSD (Samsung 970 Evo Plus)
+  - \`/dev/sda\`: 2TB HDD (Seagate Barracuda)
+- **Network**:
+  - \`enp3s0\`: Realtek RTL8111/8168/8411 PCI Express Gigabit Ethernet Controller
+- **Architecture**: x86_64
+`;
 
-echo "RAM: $RAM"
-echo "Architecture: $ARCH"
-echo "Kernel: $KERNEL"
-echo "--- GPU Info ---"
-lspci | grep -i 'vga\\|3d\\|2d' | sed -e 's/.*: //g'
-echo "--- End GPU Info ---"
-echo "--- End of Report ---"
-`.trim();
+export const SystemScanModal: React.FC<SystemScanModalProps> = ({ onClose, onComplete }) => {
+    const [currentItem, setCurrentItem] = useState(0);
+    const [isComplete, setIsComplete] = useState(false);
 
-export const SystemScanModal: React.FC<SystemScanModalProps> = ({ onClose, onSubmit }) => {
-    const [report, setReport] = useState('');
-    const [copied, setCopied] = useState(false);
-
-    const handleCopy = () => {
-        navigator.clipboard.writeText(SCAN_SCRIPT);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-    };
-
-    const handleSubmit = () => {
-        if (report.trim()) {
-            onSubmit(report);
+    useEffect(() => {
+        if (currentItem >= scanItems.length) {
+            setIsComplete(true);
+            return;
         }
-    };
 
+        const timeout = setTimeout(() => {
+            setCurrentItem(currentItem + 1);
+        }, 700);
+
+        return () => clearTimeout(timeout);
+    }, [currentItem]);
+
+    useEffect(() => {
+        if (isComplete) {
+            const timeout = setTimeout(() => {
+                onComplete(MOCK_SYSTEM_REPORT);
+                onClose();
+            }, 1000);
+            return () => clearTimeout(timeout);
+        }
+    }, [isComplete, onComplete, onClose]);
+    
     return (
-        <div 
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in"
-            onClick={onClose}
-        >
-            <div 
-                className="bg-slate-900 border border-slate-700 rounded-lg shadow-xl w-full max-w-2xl text-slate-200 flex flex-col max-h-[90vh] animate-slide-in-up"
-                onClick={(e) => e.stopPropagation()}
-            >
-                <header className="flex items-center justify-between p-4 border-b border-slate-800">
-                    <h2 className="text-lg font-semibold">System Scry</h2>
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center animate-fade-in-fast" onClick={onClose}>
+            <div className="bg-slate-900 border border-slate-700 rounded-lg shadow-2xl w-full max-w-md p-6 m-4" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-bold text-white">Scrying Hardware...</h2>
                     <button onClick={onClose} className="text-slate-400 hover:text-white">
-                        <CloseIcon className="w-6 h-6" />
+                        <CloseIcon className="w-5 h-5" />
                     </button>
-                </header>
-
-                <div className="p-6 space-y-6 overflow-y-auto">
-                    <div>
-                        <h3 className="font-medium text-slate-100 mb-2">Step 1: Copy the Scrying Scroll</h3>
-                        <p className="text-sm text-slate-400 mb-3">Run this read-only script in a terminal on the target machine (e.g., from a live CD) to detect its hardware.</p>
-                        <div className="bg-slate-800/50 rounded-lg">
-                           <div className="flex justify-between items-center p-2 bg-slate-900/50 rounded-t-lg">
-                             <h4 className="text-sm font-mono text-slate-300">scan_hardware.sh</h4>
-                             <button 
-                                onClick={handleCopy}
-                                className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition-colors"
-                                title="Copy script"
-                             >
-                                <CopyIcon className="w-4 h-4" />
-                                <span>{copied ? 'Copied!' : 'Copy'}</span>
-                             </button>
-                           </div>
-                           <pre className="p-3 text-xs text-slate-400 overflow-x-auto"><code>{SCAN_SCRIPT}</code></pre>
-                        </div>
-                    </div>
-
-                    <div>
-                        <h3 className="font-medium text-slate-100 mb-2">Step 2: Submit the Report</h3>
-                        <p className="text-sm text-slate-400 mb-3">Paste the entire output from the script below. I'll analyze it and attune the blueprint to the hardware.</p>
-                        <textarea
-                            value={report}
-                            onChange={(e) => setReport(e.target.value)}
-                            placeholder="--- Hardware Report ---&#10;CPU_MICROARCH: x86-64-v3&#10;RAM: 15Gi&#10;...&#10;--- GPU Info ---&#10;Intel Corporation UHD Graphics 620&#10;NVIDIA Corporation GP108M [GeForce MX150]&#10;--- End GPU Info ---&#10;--- End of Report ---"
-                            className="w-full h-40 bg-slate-800/80 border border-slate-700 rounded-lg p-2 font-mono text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-yellow-500 transition-all"
-                        />
-                    </div>
                 </div>
-
-                <footer className="p-4 border-t border-slate-800 flex justify-end">
-                    <button 
-                        onClick={handleSubmit}
-                        disabled={!report.trim()}
-                        className="bg-yellow-500 hover:bg-yellow-400 disabled:bg-slate-600 disabled:cursor-not-allowed text-slate-900 font-bold py-2 px-4 rounded-lg transition-colors"
-                    >
-                        Analyze and Update Blueprint
-                    </button>
-                </footer>
+                <div className="space-y-3">
+                    {scanItems.map((item, index) => (
+                         <div key={item.name} className={`flex items-center gap-3 transition-opacity duration-300 ${currentItem >= index ? 'opacity-100' : 'opacity-40'}`}>
+                           {item.icon}
+                            <span className="text-slate-300 w-36 flex-shrink-0">{item.name}</span>
+                            <div className="flex-grow text-right">
+                                {currentItem > index && <span className="text-green-400 text-sm font-semibold">✓ Done</span>}
+                                {currentItem === index && <span className="text-yellow-400 text-sm animate-pulse">Scrying...</span>}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+                {isComplete && (
+                    <p className="text-center text-green-400 mt-6 animate-pulse">
+                        Scrying Complete! Inscribing report...
+                    </p>
+                )}
             </div>
         </div>
     );

@@ -1,423 +1,237 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { GoogleGenAI, GenerateContentResponse, Type, Chat } from "@google/genai";
-import { DistroBlueprintPanel } from './components/DistroBlueprintPanel';
+import React, { useState, useEffect, useRef } from 'react';
+import { GoogleGenAI, Type } from "@google/genai";
+import type { Message, LinkState, DistroConfig, BuildStep } from './types';
+import { WELCOME_MESSAGE, INITIAL_SUGGESTIONS, DEFAULT_DISTRO_CONFIG, SYSTEM_INSTRUCTION, CODEX_SNIPPETS } from './constants';
+import { generateInstallScript } from './lib/script-generator';
+
+import { Logo } from './components/Logo';
 import { ChatMessage } from './components/ChatMessage';
 import { CommandSuggestions } from './components/CommandSuggestions';
-import { Logo } from './components/Logo';
+import { SendIcon, AttachmentIcon } from './components/Icons';
+import { FileAttachment } from './components/FileAttachment';
+import { DistroBlueprintPanel } from './components/DistroBlueprintPanel';
 import { SystemScanModal } from './components/SystemScanModal';
 import { BuildModal } from './components/BuildModal';
-import { FileAttachment } from './components/FileAttachment';
-import { AttachmentIcon, SendIcon, CloseIcon, InformationCircleIcon } from './components/Icons';
-import { INITIAL_MESSAGES, COMMAND_SUGGESTIONS, INITIAL_DISTRO_CONFIG, SYSTEM_INSTRUCTION } from './constants';
-import { Message, DistroConfig, LinkState } from './types';
+import { CodexModal } from './components/CodexModal';
 
-// In a Vite/Create-React-App environment, env vars are prefixed.
-// This is a common way to handle them. For this exercise, we'll assume process.env is available.
-const API_KEY = process.env.REACT_APP_API_KEY || process.env.API_KEY;
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
 
-if (!API_KEY) {
-  console.warn("API_KEY environment variable not set. Gemini API calls will fail.");
-}
+const App: React.FC = () => {
+    const [messages, setMessages] = useState<Message[]>([
+        { role: 'model', text: WELCOME_MESSAGE, linkState: 'online' }
+    ]);
+    const [input, setInput] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const [linkState, setLinkState] = useState<LinkState>('online');
+    const [attachedFile, setAttachedFile] = useState<string | null>(null);
+    const [distroConfig, setDistroConfig] = useState<DistroConfig>(DEFAULT_DISTRO_CONFIG);
+    const [isScanModalOpen, setIsScanModalOpen] = useState(false);
+    const [isBuildModalOpen, setIsBuildModalOpen] = useState(false);
+    const [isCodexModalOpen, setIsCodexModalOpen] = useState(false);
+    const [generatedScript, setGeneratedScript] = useState('');
+    const [isBlueprintLocked, setIsBlueprintLocked] = useState(false);
 
-const ai = new GoogleGenAI({apiKey: API_KEY!});
+    const chatEndRef = useRef<HTMLDivElement>(null);
 
-// --- About Modal Component ---
-interface AboutModalProps {
-  onClose: () => void;
-}
+    const scrollToBottom = () => {
+        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    };
 
-const FeatureItem: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-  <div>
-    <h4 className="font-semibold text-yellow-400">{title}</h4>
-    <p className="text-sm text-slate-400 mt-1">{children}</p>
-  </div>
-);
+    useEffect(scrollToBottom, [messages]);
 
-const AboutModal: React.FC<AboutModalProps> = ({ onClose }) => {
-  return (
-    <div 
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in"
-        onClick={onClose}
-    >
-        <div 
-            className="bg-slate-900 border border-slate-700 rounded-lg shadow-xl w-full max-w-2xl text-slate-200 flex flex-col max-h-[90vh] animate-slide-in-up"
-            onClick={(e) => e.stopPropagation()}
-        >
-            <header className="flex items-center justify-between p-4 border-b border-slate-800">
-                <Logo linkState="online" />
-                <button onClick={onClose} className="text-slate-400 hover:text-white">
-                    <CloseIcon className="w-6 h-6" />
-                </button>
-            </header>
+    const handleSend = async (prompt?: string) => {
+        const userMessage = prompt || input;
+        if (!userMessage.trim() && !attachedFile) return;
 
-            <div className="p-6 space-y-6 overflow-y-auto">
-                <p className="text-slate-300">
-                    Chirpy OS is a conceptual project designed to reimagine the Linux installation experience. It combines a powerful AI assistant with a high-performance Arch Linux base to help you forge a personalized operating system tailored to your exact needs—from gaming to development.
-                </p>
+        if (isBlueprintLocked && !userMessage.toLowerCase().includes('build script')) {
+            setMessages(prev => [...prev, 
+                { role: 'user', text: userMessage },
+                { role: 'model', text: "The blueprint is currently locked. To make further changes, please unlock it using the icon in the blueprint panel, then send your request again.", linkState }
+            ]);
+            setInput('');
+            return;
+        }
 
-                <div className="space-y-4">
-                    <h3 className="text-lg font-semibold text-white border-b border-slate-700/50 pb-2">Core Features</h3>
-                    <FeatureItem title="AI-Powered Blueprints">
-                        Describe your ideal OS in plain English. Chirpy AI, powered by the Google Gemini API, intelligently translates your requests into a detailed configuration blueprint, handling everything from package selection to network settings.
-                    </FeatureItem>
-                     <FeatureItem title="Performance First">
-                        Built on an Arch Linux foundation with performance-tuned CachyOS kernels and access to the Chaotic-AUR, Chirpy OS is optimized for speed and responsiveness. Hardware detection automatically selects the best kernel for your CPU architecture.
-                    </FeatureItem>
-                     <FeatureItem title="System Resilience">
-                        With BTRFS as the default filesystem, Chirpy OS enables bootable snapshots out-of-the-box. Easily roll your system back to a previous state from the boot menu if an update causes issues.
-                    </FeatureItem>
-                    <FeatureItem title="Gamer Ready">
-                        Automatic detection and configuration for NVIDIA, AMD, and hybrid graphics systems (via `optimus-manager`) ensure you're ready for action. The interactive installer lets you pre-load Steam, Lutris, and other gaming essentials.
-                    </FeatureItem>
-                    <FeatureItem title="Interactive TUI Installer">
-                        The generated `install.sh` script isn't a black box. It's a user-friendly, interactive TUI (Text-based User Interface) that guides you through the final setup steps, like disk selection and user creation, right in your terminal.
-                    </FeatureItem>
-                </div>
-                 <div className="space-y-2">
-                    <h3 className="text-lg font-semibold text-white border-b border-slate-700/50 pb-2">Technology</h3>
-                    <ul className="list-disc list-inside text-sm text-slate-400 space-y-1">
-                        <li><span className="font-semibold text-slate-300">Frontend:</span> React, TypeScript, Tailwind CSS</li>
-                         <li><span className="font-semibold text-slate-300">AI Model:</span> Google Gemini API (gemini-2.5-pro)</li>
-                         <li><span className="font-semibold text-slate-300">Base OS:</span> Arch Linux + CachyOS + Chaotic-AUR</li>
-                    </ul>
-                </div>
-                <div>
-                     <p className="text-xs text-slate-500 text-center border-t border-slate-800 pt-4">
-                        Disclaimer: This is a prototype application. The "Forge" process is a simulation, and the generated install script should be reviewed carefully before use on a real machine.
-                    </p>
-                </div>
-            </div>
+        setIsLoading(true);
+        setInput('');
+        
+        const newUserMessage: Message = { role: 'user', text: userMessage };
+        setMessages(prev => [...prev, newUserMessage]);
+        
+        setTimeout(() => setMessages(prev => [...prev, { role: 'model', text: '...', linkState }]), 50);
 
-            <footer className="p-4 border-t border-slate-800 flex justify-end">
-                <button 
-                    onClick={onClose}
-                    className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-2 px-4 rounded-lg transition-colors"
-                >
-                    Close
-                </button>
-            </footer>
-        </div>
-    </div>
-  );
-};
+        if (userMessage.toLowerCase().includes('scan system')) {
+            setIsScanModalOpen(true);
+            setMessages(prev => prev.slice(0, -1));
+            setIsLoading(false);
+            return;
+        }
 
+        if (userMessage.toLowerCase().includes('build script') && distroConfig) {
+            const script = generateInstallScript(distroConfig);
+            setGeneratedScript(script);
+            setIsBuildModalOpen(true);
+            setMessages(prev => prev.slice(0, -1));
+            setIsLoading(false);
+            return;
+        }
+        
+        try {
+            const conversationHistory = messages.map(m => `${m.role}: ${m.text}`).join('\n');
+            const fullPrompt = `${conversationHistory}\nuser: ${userMessage}${attachedFile ? `\n\nSystem Report Context:\n${attachedFile}` : ''}\n\nBased on this conversation and context, generate the JSON configuration.`;
 
-function App() {
-  const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
-  const [userInput, setUserInput] = useState('');
-  const [distroConfig, setDistroConfig] = useState<DistroConfig>(INITIAL_DISTRO_CONFIG);
-  const [isLoading, setIsLoading] = useState(false);
-  const [showScanModal, setShowScanModal] = useState(false);
-  const [showBuildModal, setShowBuildModal] = useState(false);
-  const [showAboutModal, setShowAboutModal] = useState(false);
-  const [attachedFile, setAttachedFile] = useState<{name: string, content: string} | null>(null);
-  const [chat, setChat] = useState<Chat | null>(null);
-  const [linkState, setLinkState] = useState<LinkState>('online');
-
-  const chatEndRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  useEffect(() => {
-    if (textareaRef.current) {
-        textareaRef.current.style.height = 'auto';
-        textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
-    }
-  }, [userInput]);
-
-  const initializeChat = () => {
-    const newChat = ai.chats.create({
-        model: 'gemini-2.5-pro',
-        config: {
-            systemInstruction: SYSTEM_INSTRUCTION,
-            responseMimeType: "application/json",
-            responseSchema: {
+            const responseSchema = {
                 type: Type.OBJECT,
                 properties: {
-                    configUpdate: {
-                        type: Type.OBJECT,
-                        description: "The configuration fields to update."
-                    },
-                    response: {
-                        type: Type.STRING,
-                        description: "The natural language response to the user."
-                    }
+                    hostname: { type: Type.STRING },
+                    username: { type: Type.STRING },
+                    password: { type: Type.STRING, description: 'A secure, memorable password. Optional.' },
+                    timezone: { type: Type.STRING },
+                    locale: { type: Type.STRING },
+                    desktopEnvironment: { type: Type.STRING },
+                    kernels: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    architecture: { type: Type.STRING },
+                    ram: { type: Type.STRING },
+                    swapSize: { type: Type.STRING },
+                    location: { type: Type.STRING },
+                    keyboardLayout: { type: Type.STRING },
+                    packages: { type: Type.STRING },
+                    gpuDriver: { type: Type.STRING },
+                    graphicsMode: { type: Type.STRING },
+                    shell: { type: Type.STRING },
+                    aurHelpers: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    extraRepositories: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    targetDisk: { type: Type.STRING },
+                    filesystem: { type: Type.STRING },
+                    bootloader: { type: Type.STRING },
+                    enableSnapshots: { type: Type.BOOLEAN },
+                    efiPartitionSize: { type: Type.STRING },
+                    networkMode: { type: Type.STRING },
+                    ipAddress: { type: Type.STRING, description: "Required if networkMode is 'static'" },
+                    gateway: { type: Type.STRING, description: "Required if networkMode is 'static'" },
+                    dnsServers: { type: Type.STRING, description: "Required if networkMode is 'static'" },
+                    aiResourceAllocation: { type: Type.STRING },
+                    aiGpuMode: { type: Type.STRING },
+                },
+            };
+            
+            const result = await ai.models.generateContent({
+                model: 'gemini-2.5-flash',
+                contents: fullPrompt,
+                config: {
+                    systemInstruction: SYSTEM_INSTRUCTION,
+                    responseMimeType: 'application/json',
+                    responseSchema,
                 }
-            }
-        },
-    });
-    setChat(newChat);
-  };
+            });
 
-  useEffect(() => {
-    initializeChat();
-  }, []);
+            const text = result.text;
+            const config = JSON.parse(text) as DistroConfig;
+            setDistroConfig(config);
+            setIsBlueprintLocked(true); // Lock the blueprint after successful generation
+            setAttachedFile(null);
 
-  useEffect(() => {
-    // Automatically update swap size based on RAM.
-    const ram = distroConfig.ram;
-    if (ram && ram !== 'N/A') {
-      const convertToGB = (sizeStr: string): number | null => {
-        const match = sizeStr.toLowerCase().match(/([\d.]+)\s*(\w*)/);
-        if (!match) return null;
-    
-        const value = parseFloat(match[1]);
-        const unit = match[2];
-    
-        if (unit.startsWith('g')) { // Handles gb, gib, g
-            return unit.includes('i') ? value * 1.073741824 : value;
+            const modelResponse = `The Architect's Blueprint has been updated and locked in. The changes are reflected on the right. What is our next move? We can refine the details (unlock first), or type "build script" to forge the installer.`;
+            setMessages(prev => [...prev.slice(0, -1), { role: 'model', text: modelResponse, linkState }]);
+
+        } catch (error) {
+            console.error(error);
+            const errorMessage = "Apologies, Architect. I've encountered an anomaly. The local AI core might be able to handle simpler requests, or we can try again.";
+            setMessages(prev => [...prev.slice(0, -1), { role: 'model', text: errorMessage, linkState: 'offline' }]);
+            setLinkState('offline');
+        } finally {
+            setIsLoading(false);
         }
-        if (unit.startsWith('m')) { // Handles mb, mib, m
-            const MIB_TO_GB = 1 / 953.674; 
-            const MB_TO_GB = 1 / 1000;
-            return unit.includes('i') ? value * MIB_TO_GB : value * MB_TO_GB;
-        }
-        return null;
-      };
-
-      const ramInGb = convertToGB(ram);
-      if (ramInGb !== null) {
-        const swapInGb = Math.ceil(ramInGb + 2);
-        const newSwapSize = `${swapInGb}GB`;
-        
-        setDistroConfig(prevConfig => {
-          if (prevConfig.swapSize !== newSwapSize) {
-            return { ...prevConfig, swapSize: newSwapSize };
-          }
-          return prevConfig;
-        });
-      }
-    }
-  }, [distroConfig.ram]);
-
-  const createPromptForModel = (input: string, config: DistroConfig, fileContent: string | null, currentLinkState: LinkState): string => {
-    let prompt = `AI Link State: ${currentLinkState.toUpperCase()}
-Current Configuration:
-${JSON.stringify(config, null, 2)}
-
-User Request: "${input}"
-`;
-    if (fileContent) {
-        prompt += `\nAttached Context (e.g., hardware report):\n${fileContent}`;
-    }
-    return prompt;
-  }
-
-  const handleSend = async (command?: string) => {
-    const textToSend = command || userInput;
-    if (!textToSend.trim() && !attachedFile) return;
-    if (!chat) {
-        console.error("Chat not initialized");
-        return;
-    }
-
-    const newUserMessage: Message = { role: 'user', text: textToSend };
-    setMessages(prev => [...prev, newUserMessage]);
-    setUserInput('');
-    setAttachedFile(null);
-    setIsLoading(true);
+    };
     
-    setMessages(prev => [...prev, { role: 'model', text: '...', linkState: linkState }]);
+    const handleScanComplete = (report: string) => {
+        setAttachedFile(report);
+        setMessages(prev => [
+            ...prev,
+            { role: 'model', text: "Scrying complete. I've inscribed the hardware report as context for our next command. How shall we proceed with this knowledge?", linkState }
+        ]);
+    };
 
-    try {
-        const prompt = createPromptForModel(textToSend, distroConfig, attachedFile?.content ?? null, linkState);
+    const BUILD_STEPS: BuildStep[] = [
+        { name: "Lighting the forge fires...", duration: 500 },
+        { name: "Scribing the partitioning runes...", duration: 800 },
+        { name: "Gathering package dependencies...", duration: 1200 },
+        { name: "Imbuing the Power Core (Bootloader)...", duration: 700 },
+        { name: "Etching post-install configurations...", duration: 1000 },
+        { name: "Forging the ISO Artifact...", duration: 400 },
+    ];
 
-        const response: GenerateContentResponse = await chat.sendMessage({
-            message: prompt,
-        });
-        
-        const responseText = response.text;
-        const parsedResponse = JSON.parse(responseText);
+    return (
+        <div className="bg-slate-900 text-white font-sans min-h-screen flex flex-col md:flex-row">
+            {isScanModalOpen && <SystemScanModal onClose={() => setIsScanModalOpen(false)} onComplete={handleScanComplete} />}
+            {isBuildModalOpen && <BuildModal steps={BUILD_STEPS} script={generatedScript} onClose={() => setIsBuildModalOpen(false)} />}
+            {isCodexModalOpen && <CodexModal snippets={CODEX_SNIPPETS} onClose={() => setIsCodexModalOpen(false)} />}
+            
+            <main className="flex-1 flex flex-col p-4 md:p-6 h-screen">
+                <header className="mb-4 flex justify-between items-center">
+                    <Logo linkState={linkState} onToggle={() => setLinkState(s => s === 'online' ? 'offline' : 'online')} />
+                    <button 
+                        className="text-slate-400 hover:text-white transition-colors text-sm font-semibold hidden md:block"
+                        onClick={() => setIsCodexModalOpen(true)}
+                    >
+                        Codex
+                    </button>
+                </header>
 
-        const { configUpdate, response: modelText } = parsedResponse;
+                <div className="flex-1 overflow-y-auto pr-4 space-y-6">
+                    {messages.map((msg, i) => <ChatMessage key={i} message={msg} />)}
+                    <div ref={chatEndRef} />
+                </div>
 
-        if (configUpdate) {
-            setDistroConfig(prev => ({ ...prev, ...configUpdate }));
-        }
+                <div className="mt-auto pt-4">
+                     {messages.length <= 1 && <CommandSuggestions suggestions={INITIAL_SUGGESTIONS} onSelect={handleSend} />}
+                     
+                     {attachedFile && (
+                        <FileAttachment fileName="scrying_report.md" onRemove={() => setAttachedFile(null)} />
+                     )}
 
-        setMessages(prev => {
-            const newMessages = [...prev];
-            newMessages[newMessages.length - 1] = { role: 'model', text: modelText || "I've updated the blueprint based on your request.", linkState };
-            return newMessages;
-        });
+                    <div className="relative">
+                        <textarea
+                            value={input}
+                            onChange={e => setInput(e.target.value)}
+                            onKeyDown={e => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault();
+                                    handleSend();
+                                }
+                            }}
+                            placeholder="Architect, declare your vision for the realm..."
+                            className="w-full bg-slate-800/80 border border-slate-700 rounded-lg p-3 pr-24 text-slate-200 focus:ring-2 focus:ring-purple-500 focus:outline-none resize-none transition-all"
+                            rows={1}
+                            disabled={isLoading}
+                        />
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                             <button className="text-slate-400 hover:text-white transition-colors" disabled={isLoading} onClick={() => setIsScanModalOpen(true)} aria-label="Scry System Hardware">
+                                <AttachmentIcon className="w-6 h-6" />
+                            </button>
+                            <button
+                                onClick={() => handleSend()}
+                                disabled={isLoading || !input.trim()}
+                                className="bg-purple-600 hover:bg-purple-500 disabled:bg-slate-600 disabled:cursor-not-allowed rounded-md p-2 transition-colors"
+                                aria-label="Send Command"
+                            >
+                                <SendIcon className="w-5 h-5 text-white" />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </main>
 
-    } catch (error) {
-        console.error("Error calling Gemini API:", error);
-        const errorMessage = "Sorry, I encountered an error. I might be having trouble connecting to my core services. Please check the console for details and try again.";
-        setMessages(prev => {
-            const newMessages = [...prev];
-            newMessages[newMessages.length - 1] = { role: 'model', text: errorMessage, linkState };
-            return newMessages;
-        });
-    } finally {
-        setIsLoading(false);
-    }
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
-  
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        setAttachedFile({ name: file.name, content: event.target?.result as string });
-      };
-      reader.readAsText(file);
-    }
-  };
-
-  const handleSystemScanSubmit = (report: string) => {
-    let modelResponseText = "";
-    
-    setDistroConfig(prevConfig => {
-        const microarchMatch = report.match(/CPU_MICROARCH:\s*(.*)/);
-        const ramMatch = report.match(/RAM:\s*(.*)/);
-        const gpuReportMatch = report.match(/--- GPU Info ---\n([\s\S]*?)\n--- End GPU Info ---/);
-        
-        let newConfig = { ...prevConfig };
-
-        let primaryKernel = 'linux-cachyos';
-        if (microarchMatch && microarchMatch[1]) {
-            const microarch = microarchMatch[1].trim();
-            if (microarch === 'x86-64-v3' || microarch === 'x86-64-v4') {
-                primaryKernel = `linux-cachyos-${microarch}`;
-            }
-        }
-        newConfig.kernels = [primaryKernel, newConfig.kernels[1] || 'linux-lts'];
-
-        const gpuInfo = gpuReportMatch ? gpuReportMatch[1] : '';
-        const hasNvidia = /nvidia/i.test(gpuInfo);
-        const hasIntel = /intel/i.test(gpuInfo);
-        const hasAmdGpu = /amd|ati/i.test(gpuInfo);
-
-        if (hasNvidia && (hasIntel || hasAmdGpu)) {
-            newConfig.graphicsMode = 'hybrid';
-            newConfig.gpuDriver = 'nvidia-dkms';
-            modelResponseText = `I've detected a dual GPU system and configured the blueprint for hybrid graphics. This will install \`optimus-manager\` to let you switch between the power-saving integrated GPU and the high-performance NVIDIA GPU. The primary kernel is also tuned to \`${primaryKernel}\` for your CPU.`;
-        } else if (hasNvidia) {
-            newConfig.graphicsMode = 'nvidia';
-            newConfig.gpuDriver = 'nvidia-dkms';
-            modelResponseText = `I see you have an NVIDIA GPU. I've selected the proprietary drivers and set the kernel to \`${primaryKernel}\` for optimal performance.`;
-        } else if (hasIntel || hasAmdGpu) {
-            newConfig.graphicsMode = 'integrated';
-            newConfig.gpuDriver = 'mesa';
-            modelResponseText = `I've configured the blueprint for your integrated graphics using Mesa drivers and optimized the kernel as \`${primaryKernel}\`.`;
-        }
-
-        newConfig.ram = ramMatch && ramMatch[1] ? ramMatch[1].trim() : 'N/A';
-        
-        return newConfig;
-    });
-
-    setShowScanModal(false);
-    
-    const userMessage: Message = { role: 'user', text: "Here is my hardware report. Please configure the blueprint for optimal performance on this system." };
-    const modelMessage: Message = { role: 'model', text: modelResponseText || "I've analyzed the hardware report and updated the blueprint.", linkState: 'online' };
-    
-    setMessages(prev => [...prev, userMessage, modelMessage]);
-  };
-  
-  const handleNewBlueprint = () => {
-    setDistroConfig(INITIAL_DISTRO_CONFIG);
-    setMessages([
-        ...INITIAL_MESSAGES,
-        { role: 'model', text: "Alright, I've cleared the slate. We're starting fresh with a new blueprint. What's our new mission?", linkState: 'online' }
-    ]);
-    initializeChat(); // Re-initialize chat for a fresh context
-  };
-
-  const toggleLinkState = () => {
-    const newLinkState = linkState === 'online' ? 'offline' : 'online';
-    setLinkState(newLinkState);
-    const stateText = newLinkState === 'online' 
-      ? "My connection to the cloud has been restored. I now have access to my full creative and analytical capabilities."
-      : "I've switched to my local, on-device core. My responses will be more direct, and my capabilities are limited to essential tasks.";
-    
-    setMessages(prev => [...prev, { role: 'model', text: stateText, linkState: newLinkState }]);
-  };
-
-
-  return (
-    <main className="flex h-screen bg-slate-950 text-slate-100 font-sans antialiased overflow-hidden">
-      {showScanModal && <SystemScanModal onClose={() => setShowScanModal(false)} onSubmit={handleSystemScanSubmit} />}
-      {showBuildModal && <BuildModal config={distroConfig} onClose={() => setShowBuildModal(false)} />}
-      {showAboutModal && <AboutModal onClose={() => setShowAboutModal(false)} />}
-      
-      <DistroBlueprintPanel 
-        config={distroConfig}
-        onConfigChange={(newConfig) => setDistroConfig(p => ({ ...p, ...newConfig }))}
-        onNewBlueprint={handleNewBlueprint}
-        onOpenScanModal={() => setShowScanModal(true)}
-        onOpenBuildModal={() => setShowBuildModal(true)}
-      />
-
-      <div className="flex flex-col flex-1 h-screen">
-        <header className="flex items-center justify-between p-4 border-b border-slate-800/50 flex-shrink-0">
-          <Logo linkState={linkState} onToggle={toggleLinkState} />
-          <button 
-            onClick={() => setShowAboutModal(true)} 
-            className="flex items-center gap-1.5 text-slate-400 hover:text-white transition-colors text-sm"
-            title="About Chirpy OS"
-          >
-            <InformationCircleIcon className="w-5 h-5" />
-            <span>About</span>
-          </button>
-        </header>
-
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-            {messages.map((msg, index) => (
-              <ChatMessage key={index} message={msg} />
-            ))}
-             <div ref={chatEndRef} />
-        </div>
-
-        <div className="p-4 w-full max-w-4xl mx-auto flex-shrink-0">
-          {messages.length <= 1 && <CommandSuggestions suggestions={COMMAND_SUGGESTIONS} onSelect={handleSend} />}
-          
-          <div className="relative mt-4">
-             {attachedFile && (
-                <FileAttachment 
-                    fileName={attachedFile.name} 
-                    onRemove={() => setAttachedFile(null)} 
+            <aside className="w-full md:w-1/3 lg:w-2/5 xl:w-1/3 bg-slate-950/50 border-l border-slate-800 p-6 h-screen overflow-y-auto hidden md:block">
+               <DistroBlueprintPanel 
+                    config={distroConfig} 
+                    onConfigChange={setDistroConfig} 
+                    isLocked={isBlueprintLocked}
+                    onLockToggle={() => setIsBlueprintLocked(prev => !prev)}
                 />
-            )}
-            <div className="flex items-end gap-2 bg-slate-800/80 border border-slate-700 rounded-lg p-2.5 transition-all focus-within:ring-2 focus-within:ring-yellow-500">
-                <label htmlFor="file-upload" className="p-2 text-slate-400 hover:text-white transition-colors cursor-pointer">
-                    <AttachmentIcon className="w-6 h-6" />
-                    <input id="file-upload" type="file" className="hidden" onChange={handleFileChange} accept=".txt,.log,.sh" />
-                </label>
-                <textarea
-                    ref={textareaRef}
-                    rows={1}
-                    value={userInput}
-                    onChange={(e) => setUserInput(e.target.value)}
-                    onKeyDown={handleKeyPress}
-                    placeholder="Describe your ideal OS, or attach a hardware report..."
-                    className="flex-1 bg-transparent resize-none focus:outline-none placeholder:text-slate-500 max-h-48"
-                    disabled={isLoading}
-                />
-                <button 
-                    onClick={() => handleSend()} 
-                    disabled={isLoading || (!userInput.trim() && !attachedFile)}
-                    className="p-2 bg-yellow-500 rounded-lg text-slate-900 hover:bg-yellow-400 disabled:bg-slate-600 disabled:cursor-not-allowed transition-colors"
-                >
-                    <SendIcon className="w-6 h-6" />
-                </button>
-            </div>
-          </div>
+            </aside>
         </div>
-      </div>
-    </main>
-  );
-}
+    );
+};
 
 export default App;

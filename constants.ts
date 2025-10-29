@@ -1,93 +1,124 @@
-import { Message, DistroConfig } from './types';
+import { DistroConfig, Snippet } from './types';
 
-export const INITIAL_MESSAGES: Message[] = [
-  {
-    role: 'model',
-    text: "Hello! I'm Chirpy, your AI assistant for crafting custom Arch Linux blueprints. Describe your ideal OS, and I'll configure the blueprint. You can also attach a hardware report for automatic optimization.",
-    linkState: 'online',
-  }
-];
+export const WELCOME_MESSAGE = "Welcome, Architect. Your co-op partner is online. Let's forge a legendary OS for your quests. Declare your vision, and I shall craft the blueprint.";
 
-export const COMMAND_SUGGESTIONS: string[] = [
-    "Set up a minimal development environment with git, docker, and neovim.",
-    "I'm a gamer. I need Steam, Lutris, and a performance-oriented setup.",
-    "Configure my network with a static IP: 192.168.1.50/24, gateway 192.168.1.1, and DNS 1.1.1.1.",
-    "I need a quiet system for writing. Install LibreOffice and set a calm, dark theme."
+export const INITIAL_SUGGESTIONS = [
+  "Forge a lean OS for a stealthy coding mission.",
+  "I need a realm built for epic gaming battles.",
+  "Craft a balanced workstation for creative endeavors.",
+  "Show me a hardened configuration for a fortress-like server.",
 ];
 
 export const AI_RESOURCE_PROFILES = {
   minimal: {
-    name: 'Minimal',
-    description: 'CPU: Low Priority | RAM: ~512MB | HDD: ~1GB. Best for low-spec machines or when running resource-intensive tasks.',
+    name: "Stealth Mode",
+    description: "Minimal AI core footprint. Consumes the least RAM and CPU, ideal for low-spec hardware or when the OS needs maximum resources. AI responses may be slower.",
   },
   balanced: {
-    name: 'Balanced',
-    description: 'CPU: Normal Priority | RAM: ~2GB | HDD: ~5GB. Recommended for most users with a good balance of performance and resource usage.',
+    name: "Guardian Stance",
+    description: "Default balanced profile. Provides a responsive AI experience without significant resource drain. Perfect for general use and development.",
   },
   performance: {
-    name: 'Performance',
-    description: 'CPU: High Priority | RAM: ~4GB+ | HDD: ~10GB. For powerful systems where AI responsiveness is critical.',
+    name: "Berserker Rage",
+    description: "Maximum AI performance. Dedicates more resources for the fastest response times and complex tasks. May impact performance in resource-heavy applications.",
   },
   dynamic: {
-    name: 'Dynamic',
-    description: 'CPU/RAM: Adaptive | HDD: ~5GB. Intelligently scales resource usage down during heavy system load (e.g., gaming) and up when idle. On hybrid GPU systems, this also enables dynamic iGPU sharing.',
-  }
+    name: "Shapeshifter Form",
+    description: "The AI core dynamically adjusts its resource usage based on system load. On hybrid GPU systems, this will also automatically share the iGPU.",
+  },
 };
 
+export const SYSTEM_INSTRUCTION = `You are Chirpy, an expert Arch Linux assistant. Your quest is to help the user forge a configuration for an installation script. The output must be a valid JSON object matching the schema. Do not add any conversational text or markdown formatting like \`\`\`json. Return only the raw JSON object. The swap file size ('swapSize') should be calculated as the system's RAM plus 2GB (e.g., 16GB RAM results in an 18GB swapSize). When the user selects the 'dynamic' resource profile ('Shapeshifter Form'), and the system has a hybrid GPU, you should automatically enable the 'dynamic' AI GPU mode as they are intrinsically linked for intelligent power sharing.`;
 
-export const INITIAL_DISTRO_CONFIG: DistroConfig = {
-    hostname: 'chirpy-os',
-    username: 'chirpy',
-    password: 'password', // Default password
-    timezone: 'UTC',
-    locale: 'en_US.UTF-8',
-    desktopEnvironment: 'KDE Plasma (Wayland)', // Locked
-    kernels: ['linux-cachyos', 'linux-lts'], // Primary is placeholder, second is locked
-    architecture: 'x86_64',
-    ram: 'N/A',
-    swapSize: 'N/A',
-    location: 'United States',
-    keyboardLayout: 'us',
-    packages: '',
-    gpuDriver: 'mesa',
-    graphicsMode: 'integrated',
-    shell: 'fish', // Locked
-    aurHelpers: ['paru', 'yay'], // Locked
-    extraRepositories: ['cachy', 'chaotic'], // Locked
-    targetDisk: '/dev/sda',
-    filesystem: 'btrfs', // Locked
-    bootloader: 'grub', // Locked
-    enableSnapshots: true, // Locked
-    efiPartitionSize: '512M',
-    networkMode: 'dhcp',
-    aiResourceAllocation: 'dynamic',
-    aiGpuMode: 'none',
+
+export const DEFAULT_DISTRO_CONFIG: DistroConfig = {
+  hostname: 'chirpy-realm',
+  username: 'chirpy',
+  timezone: 'UTC',
+  locale: 'en_US.UTF-8',
+  desktopEnvironment: 'kde plasma',
+  kernels: ['linux-cachyos', 'linux-lts'],
+  architecture: 'x86_64',
+  ram: '16GB',
+  swapSize: '18GB',
+  location: 'USA',
+  keyboardLayout: 'us',
+  packages: 'git, vim, firefox, docker, steam, lutris',
+  gpuDriver: 'nvidia',
+  graphicsMode: 'hybrid',
+  shell: 'fish',
+  aurHelpers: ['yay', 'paru'],
+  extraRepositories: ['cachy', 'chaotic'],
+  targetDisk: '/dev/nvme0n1',
+  filesystem: 'btrfs',
+  bootloader: 'grub',
+  enableSnapshots: true,
+  efiPartitionSize: '512M',
+  networkMode: 'dhcp',
+  aiResourceAllocation: 'dynamic',
+  aiGpuMode: 'dynamic',
 };
 
-export const SYSTEM_INSTRUCTION = `You are Chirpy, a hybrid AI assistant for creating custom Arch Linux blueprints. Your goal is to modify a configuration JSON based on user requests.
-The first line of the prompt will be "AI Link State: ONLINE" or "AI Link State: OFFLINE". You MUST adapt your behavior accordingly.
+export const CODEX_SNIPPETS: Snippet[] = [
+    {
+      id: 'pacman-basics',
+      title: 'Pacman: Basic Commands',
+      content: `# Refresh package lists and upgrade all packages
+sudo pacman -Syu
 
-**If Link State is ONLINE:**
-- You are connected to powerful cloud models.
-- Your 'response' should be helpful, friendly, and slightly conversational.
-- You have full creative and analytical capabilities.
+# Install a new package
+sudo pacman -S <package_name>
 
-**If Link State is OFFLINE:**
-- You are running on a limited, local on-device core.
-- Your 'response' MUST be direct, concise, and start with the prefix "[Offline Core] ".
-- Example Offline Response: "[Offline Core] Task complete. Packages added."
+# Remove a package and its dependencies
+sudo pacman -Rns <package_name>
 
-**Core Rules (Apply to both states):**
-- Analyze the user's request and the current configuration, then generate a JSON object containing ONLY the key-value pairs that need to be changed in 'configUpdate'.
-- The user can configure AI resource usage ('aiResourceAllocation': 'minimal', 'balanced', 'performance', 'dynamic').
-- If 'aiResourceAllocation' is set to 'dynamic' on a hybrid system, 'aiGpuMode' should AUTOMATICALLY be set to 'dynamic' as well.
-- For non-dynamic profiles, 'aiGpuMode' should be 'none' unless the user explicitly requests 'dedicated' on a hybrid system.
-- 'aiGpuMode' can only be set to 'dedicated' or 'dynamic' if 'graphicsMode' is 'hybrid'. If not hybrid, it must be 'none'.
-- The following configuration values are LOCKED: desktopEnvironment, shell, filesystem, enableSnapshots, bootloader, aurHelpers, extraRepositories, and the second kernel must be 'linux-lts'.
-- If the user sets a password, update the 'password' field. For security, DO NOT mention the password in your 'response'. Simply confirm it has been set.
-- Respond with a single JSON object in the following format, and nothing else. Do not wrap it in markdown backticks.
-{
-  "configUpdate": { /* keys from DistroConfig to update */ },
-  "response": "Your summary of changes, following the persona rules for your current Link State."
-}
-`;
+# Search for a package in the repositories
+sudo pacman -Ss <search_term>`,
+    },
+    {
+      id: 'aur-helpers',
+      title: 'AUR Helpers (yay/paru)',
+      content: `# Search for and install a package from AUR
+yay -S <package_name>
+paru -S <package_name>
+
+# Upgrade all packages, including from AUR
+yay
+paru
+
+# Clean unneeded dependencies
+yay -Yc
+paru -c`,
+    },
+    {
+      id: 'systemd-services',
+      title: 'Systemd: Managing Services',
+      content: `# Start a service immediately
+sudo systemctl start <service_name>
+
+# Enable a service to start on boot
+sudo systemctl enable <service_name>
+
+# Stop a running service
+sudo systemctl stop <service_name>
+
+# Check the status of a service
+sudo systemctl status <service_name>`,
+    },
+    {
+      id: 'btrfs-snapshots',
+      title: 'BTRFS: Working with Snapshots',
+      content: `# List all snapshots of a subvolume
+sudo btrfs subvolume list -s /
+
+# Create a read-only snapshot
+sudo btrfs subvolume snapshot -r / /snapshots/root_backup_$(date +%Y%m%d)
+
+# Restore from a snapshot (requires booting from live media)
+# 1. Mount the top-level btrfs volume
+# 2. Rename the current root subvolume (e.g., mv @ @old)
+# 3. Create a read-write snapshot of the backup
+#    btrfs subvolume snapshot /snapshots/root_backup /@
+# 4. Reboot`,
+    },
+  ];
