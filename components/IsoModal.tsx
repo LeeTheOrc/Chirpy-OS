@@ -3,6 +3,7 @@ import { CloseIcon, DownloadIcon, CopyIcon } from './Icons';
 
 interface IsoModalProps {
   onClose: () => void;
+  generatedScript: string;
 }
 
 const CodeBlock: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -33,8 +34,28 @@ const CodeBlock: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     );
 };
 
-export const IsoModal: React.FC<IsoModalProps> = ({ onClose }) => {
-    const [activeTab, setActiveTab] = useState<'easy' | 'advanced'>('easy');
+const utf8ToBase64 = (str: string): string => {
+    if (!str) return '';
+    try {
+        return btoa(unescape(encodeURIComponent(str)));
+    } catch (e) {
+        console.error("Failed to base64 encode script:", e);
+        return btoa("Error: Could not encode script due to invalid characters.");
+    }
+}
+
+export const IsoModal: React.FC<IsoModalProps> = ({ onClose, generatedScript }) => {
+    const [activeTab, setActiveTab] = useState<'easy' | 'virtual' | 'advanced'>('easy');
+
+    const quickInstallCommand = `# Create the installation script
+echo '${utf8ToBase64(generatedScript)}' | base64 -d > install.sh
+
+# Make it executable and run the ritual
+chmod +x install.sh && ./install.sh
+`;
+
+    const createScriptCommand = `# Create the installation script on your host machine
+echo '${utf8ToBase64(generatedScript)}' | base64 -d > install.sh`;
 
     return (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center animate-fade-in-fast" onClick={onClose}>
@@ -52,7 +73,13 @@ export const IsoModal: React.FC<IsoModalProps> = ({ onClose }) => {
                             onClick={() => setActiveTab('easy')}
                             className={`whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'easy' ? 'border-yellow-400 text-yellow-400' : 'border-transparent text-slate-400 hover:text-white'}`}
                         >
-                            The Simple Path
+                            The Simple Path (Bare Metal)
+                        </button>
+                        <button
+                             onClick={() => setActiveTab('virtual')}
+                             className={`whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'virtual' ? 'border-yellow-400 text-yellow-400' : 'border-transparent text-slate-400 hover:text-white'}`}
+                        >
+                            The Virtual Path (QEMU/VM)
                         </button>
                         <button
                              onClick={() => setActiveTab('advanced')}
@@ -66,7 +93,7 @@ export const IsoModal: React.FC<IsoModalProps> = ({ onClose }) => {
                 <div className="overflow-y-auto pr-2 text-slate-300 leading-relaxed">
                     {activeTab === 'easy' && (
                         <div className="animate-fade-in-fast space-y-4">
-                            <p>This is the recommended method. You'll use the official Arch Linux live environment to execute your custom installation script.</p>
+                            <p>This is the recommended method for installing on a physical computer. You'll use the official Arch Linux live environment to execute your custom installation script.</p>
                             
                             <div>
                                 <h3 className="font-semibold text-lg text-white mt-4 mb-2">Step 1: Get the Arch Linux ISO</h3>
@@ -85,25 +112,60 @@ export const IsoModal: React.FC<IsoModalProps> = ({ onClose }) => {
                             <div>
                                 <h3 className="font-semibold text-lg text-white mt-4 mb-2">Step 3: Boot and Run the Ritual</h3>
                                 <p>Boot your target computer from the USB drive. Once you are at the command prompt in the live environment, ensure you are connected to the internet.</p>
-                                <p className="mt-2">After the forge finishes, it provides a <strong className="text-yellow-400">Quick Install Command</strong>. This is the most direct path to forging your realm.</p>
-                                <p>Copy the entire command block from the forge and paste it into your terminal. Press Enter to execute it.</p>
+                                <p className="mt-2">This <strong className="text-yellow-400">Quick Install Command</strong> is the most direct path to forging your realm.</p>
+                                <p>Copy the entire command block below and paste it into your terminal. Press Enter to execute it.</p>
                                 <CodeBlock>
-{`# The command you copy will look like this:
-echo 'base64_encoded_script_...' | base64 -d > install.sh
-chmod +x install.sh && ./install.sh`}
+                                    {quickInstallCommand}
                                 </CodeBlock>
                                 <p>This single command automatically creates the <strong className="font-mono text-slate-400">install.sh</strong> script, makes it executable, and begins the installation ritual.</p>
 
                                 <h4 className="font-semibold text-md text-white mt-6 mb-2">Manual Fallback</h4>
-                                <p>If you prefer to create the script manually, or if you only have the script text:</p>
-                                <p className="mt-2">1. Copy the "Full Script" text from the forge.</p>
-                                <p>2. In the live environment, open a text editor (like `nano`):</p>
+                                <p>If you prefer to create the script manually:</p>
+                                <p className="mt-2">1. In the live environment, open a text editor (like `nano`):</p>
                                 <CodeBlock>nano install.sh</CodeBlock>
-                                <p>3. Paste the script content, then save and exit the editor.</p>
-                                <p>4. Make the script executable:</p>
+                                <p>2. Paste the full script content (which you can get from the "Build" window), then save and exit the editor.</p>
+                                <p>3. Make the script executable:</p>
                                 <CodeBlock>chmod +x install.sh</CodeBlock>
-                                <p>5. Run the ritual:</p>
+                                <p>4. Run the ritual:</p>
                                 <CodeBlock>./install.sh</CodeBlock>
+                            </div>
+                        </div>
+                    )}
+                     {activeTab === 'virtual' && (
+                        <div className="animate-fade-in-fast space-y-4">
+                            <p>This is the recommended method for installing inside a virtual machine like QEMU or VirtualBox. It avoids copy-paste issues by serving the script from your host machine.</p>
+                            
+                            <div>
+                                <h3 className="font-semibold text-lg text-white mt-4 mb-2">Step 1: Save the Script on Your Host Machine</h3>
+                                <p>In the "Great Forge" modal, go to the "View Full Script" tab and copy the entire script.</p>
+                                <p>On your main computer (the "host"), create a new folder, and inside it, save the script into a file named <strong className="text-yellow-400">install.sh</strong>.</p>
+                            </div>
+
+                             <div>
+                                <h3 className="font-semibold text-lg text-white mt-4 mb-2">Step 2: Start a Local Web Server</h3>
+                                <p>Open a terminal on your host machine, navigate into the folder where you saved `install.sh`, and start a simple web server. If you have Python 3 installed, this is easy:</p>
+                                <CodeBlock>python -m http.server 8000</CodeBlock>
+                                <p>This will make the `install.sh` file available to other machines on your local network. Keep this terminal running.</p>
+                            </div>
+
+                            <div>
+                                <h3 className="font-semibold text-lg text-white mt-4 mb-2">Step 3: Boot the VM & Find Your Host IP</h3>
+                                <p>Boot the Arch Linux ISO in your QEMU (or other) virtual machine. Once at the command prompt, you need to find your host machine's IP address from the VM's perspective. It's usually the default gateway.</p>
+                                <p>Run this command inside the VM:</p>
+                                <CodeBlock>ip route | grep default</CodeBlock>
+                                <p>The output will be something like `default via 10.0.2.2 dev enp0s3`. The IP address you need is the one after `via` (in this case, `10.0.2.2`).</p>
+                            </div>
+
+                            <div>
+                                <h3 className="font-semibold text-lg text-white mt-4 mb-2">Step 4: Download and Run the Ritual</h3>
+                                {/* Fix: Replaced <HOST_IP> with YOUR_HOST_IP to prevent JSX parsing errors. */}
+                                <p>Now, from within the VM, use `curl` to download the script from your host's web server. Replace `YOUR_HOST_IP` with the address you found in the previous step.</p>
+                                <CodeBlock>{`# Replace YOUR_HOST_IP with your actual host IP (e.g., 10.0.2.2)
+curl http://YOUR_HOST_IP:8000/install.sh -o install.sh`}</CodeBlock>
+                                <p>Finally, make the script executable and run it:</p>
+                                <CodeBlock>{`chmod +x install.sh
+./install.sh`}</CodeBlock>
+                                <p>The interactive installation will now begin inside your VM.</p>
                             </div>
                         </div>
                     )}
@@ -127,46 +189,51 @@ cp -r /usr/share/archiso/configs/releng .`}</CodeBlock>
                             <div>
                                 <h3 className="font-semibold text-lg text-white mt-4 mb-2">Step 3: Embed the Ritual Script</h3>
                                 <p>
-                                    After the forge generates your script, you must place it inside the ISO's filesystem. This process is broken into two parts.
-                                </p>
-
-                                <h4 className="font-semibold text-md text-white mt-4 mb-1">Part A: Create the Script</h4>
-                                <p>
-                                    In the "Great Forge" window, find the <strong className="text-yellow-400">Quick Install Command</strong>. Copy <strong className="text-red-400">only the first line</strong> of that command block. It will start with <code className="text-slate-400 bg-slate-800 p-1 rounded text-sm">echo</code>.
-                                </p>
-                                <p className="mt-1">
-                                    Paste that single line into your terminal (which should be in the `~/chirpy-iso` directory) and press Enter. This will create the `install.sh` file.
-                                </p>
-                                <div className="bg-slate-950/70 border border-dashed border-slate-600 rounded-lg p-3 text-sm text-slate-400 mt-2 font-mono">
-                                    # Your pasted command will look similar to this: <br />
-                                    echo 'IyEvYmluL2Jhc2gNCiMgQ2hpcnB5IEFJ...' | base64 -d > install.sh
-                                </div>
-
-
-                                <h4 className="font-semibold text-md text-white mt-6 mb-1">Part B: Move and Prepare the Script</h4>
-                                <p>
-                                    Now that `install.sh` has been created, run the following command block to move it into the correct ISO directory and make it executable.
+                                    First, create the `install.sh` file on your host system. This command decodes the script you just forged and saves it locally. Run it from your <strong className="font-mono text-slate-400">~/chirpy-iso</strong> directory.
                                 </p>
                                 <CodeBlock>
-{`mv install.sh releng/airootfs/root/install.sh
-chmod +x releng/airootfs/root/install.sh`}
+                                    {createScriptCommand}
                                 </CodeBlock>
-
-                                <h4 className="font-semibold text-md text-white mt-6 mb-2">Manual Fallback</h4>
-                                <p>If you prefer to create the script manually:</p>
-                                <p className="mt-2">1. Copy the "Full Script" text from the forge.</p>
-                                <p>2. In your `~/chirpy-iso` directory, open a text editor to create the file in the correct path:</p>
-                                <CodeBlock>nano releng/airootfs/root/install.sh</CodeBlock>
-                                <p>3. Paste the script content, then save and exit the editor.</p>
-                                <p>4. Make the script executable:</p>
-                                <CodeBlock>chmod +x releng/airootfs/root/install.sh</CodeBlock>
+                                <p className="mt-4">
+                                    Now, move the generated script into the profile for the ISO build.
+                                </p>
+                                <CodeBlock>
+{`# Move the script into the ISO's root directory
+mv install.sh releng/airootfs/root/install.sh`}
+                                </CodeBlock>
                             </div>
                             
                             <div>
-                                <h3 className="font-semibold text-lg text-white mt-4 mb-2">Step 4: Build the ISO</h3>
-                                <p>From your `~/chirpy-iso` directory, run the build command. This can take some time.</p>
+                                <h3 className="font-semibold text-lg text-white mt-6 mb-2">Step 4: Set Final Permissions</h3>
+                                <p>To ensure the script is executable inside the final ISO, we create a customization script that `mkarchiso` will run automatically during the build process.</p>
+                                <CodeBlock>
+{`# Create the customization script
+printf '%s\\n' \\
+'#!/bin/bash' \\
+'set -e' \\
+'chmod +x /root/install.sh' > releng/customize_airootfs.sh`}
+                                </CodeBlock>
+                                <p>This creates a new script, <code className="text-slate-400 bg-slate-800 p-1 rounded text-sm">customize_airootfs.sh</code>, which contains the command to make your installer executable. This is the official ArchISO method for customizing the final image.</p>
+                            </div>
+
+                            <div>
+                                <h3 className="font-semibold text-lg text-white mt-6 mb-2">Step 5: Configure Autorun</h3>
+                                <p>To make the ritual begin automatically when the ISO boots, create a profile script that launches the installer on the main console. This command is compatible with most shells, including `bash`, `zsh`, and `fish`.</p>
+                                <CodeBlock>
+{`printf '%s\\n' \\
+'# Autostart the Chirpy OS installation ritual on TTY1' \\
+'if [ -z "$DISPLAY" ] && [ "$(fgconsole)" -eq 1 ]; then' \\
+'  /root/install.sh' \\
+'fi' > releng/airootfs/root/.bash_profile`}
+                                </CodeBlock>
+                                <p>This creates a <code className="text-slate-400 bg-slate-800 p-1 rounded text-sm">.bash_profile</code> for the root user. When the ISO boots, this script will run, starting your interactive installer.</p>
+                            </div>
+
+                            <div>
+                                <h3 className="font-semibold text-lg text-white mt-6 mb-2">Step 6: Build the ISO</h3>
+                                <p>From your <strong className="font-mono text-slate-400">~/chirpy-iso</strong> directory, run the build command. This can take some time.</p>
                                 <CodeBlock>sudo mkarchiso -v -w /tmp/archiso-work -o . releng</CodeBlock>
-                                <p>Your custom ISO will be created in the current directory. When you boot it, you can run your embedded ritual by typing <strong className="font-mono text-slate-400">./install.sh</strong> from the `/root` directory.</p>
+                                <p>Your custom ISO will be created in the current directory. When you boot it, the installation ritual will start automatically.</p>
                             </div>
                         </div>
                     )}

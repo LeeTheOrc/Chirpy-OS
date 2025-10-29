@@ -75,7 +75,7 @@ export const DistroBlueprintForm: React.FC<DistroBlueprintFormProps> = ({ config
             <DetailSelect label="Shell" name="shell" value={config.shell} onChange={handleChange} options={[{value: 'bash', label: 'Bash'}, {value: 'fish', label: 'Fish'}]} disabled={isLocked} />
 
             <SectionHeader title="The Golem's Build" />
-            <DetailInput label="Target Disk" name="targetDisk" value={config.targetDisk} onChange={handleChange} disabled={isLocked} />
+            <DetailInput label="Target Disk" name="targetDisk" value={config.targetDisk} onChange={handleChange} tooltip="Optional. Specify a disk like /dev/sda to override auto-detection. Leave blank for the script to find the primary non-removable disk automatically." disabled={isLocked} />
             <DetailSelect label="Filesystem" name="filesystem" value={config.filesystem} onChange={handleChange} options={[{value: 'btrfs', label: 'BTRFS'}, {value: 'ext4', label: 'EXT4'}]} disabled={isLocked} />
             <DetailSelect label="Bootloader" name="bootloader" value={config.bootloader} onChange={handleChange} options={[{value: 'grub', label: 'GRUB'}, {value: 'systemd-boot', label: 'systemd-boot'}]} disabled={isLocked} />
             <DetailInput label="Kernels" name="kernels" value={renderArrayAsString(config.kernels)} onChange={(e) => handleArrayChange('kernels', e.target.value)} tooltip="Comma-separated list of kernel packages (e.g., linux, linux-lts)." disabled={isLocked} />
