@@ -1,24 +1,26 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import type { DistroConfig } from '../types';
 import { Tooltip } from './Tooltip';
-import { AI_RESOURCE_PROFILES } from '../constants';
-import { GpuIcon } from './Icons';
+import { AICoreTuner } from './AICoreTuner';
+import { LOCATIONS_DATA } from '../constants';
+import { GolemBuildConfigurator } from './GolemBuildConfigurator';
+
 
 const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
-    <h4 className="font-bold text-yellow-400/90 mb-2 mt-4 text-md tracking-wide">{title}</h4>
+    <h4 className="font-bold text-orc-steel/90 mb-2 mt-4 text-md tracking-wide">{title}</h4>
 );
 
-const DetailInput: React.FC<{ label: string; name: keyof DistroConfig; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; tooltip?: string; disabled?: boolean }> = ({ label, name, value, onChange, tooltip, disabled }) => (
-    <div className="flex justify-between items-center py-2.5 border-b border-slate-800">
-        <label htmlFor={name} className="flex items-center gap-1.5 text-slate-400 text-sm">{label}{tooltip && <Tooltip text={tooltip} />}</label>
-        <input id={name} name={name} value={value || ''} onChange={onChange} disabled={disabled} className="bg-slate-800/50 text-slate-200 font-medium text-sm text-right border-none focus:ring-1 focus:ring-purple-500 rounded-md w-1/2 p-1 transition-all disabled:opacity-50 disabled:cursor-not-allowed" />
+const DetailInput: React.FC<{ label: string; name: keyof DistroConfig; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; tooltip?: string; disabled?: boolean; type?: string; }> = ({ label, name, value, onChange, tooltip, disabled, type = 'text' }) => (
+    <div className="flex justify-between items-center py-2.5 border-b border-forge-border">
+        <label htmlFor={name} className="flex items-center gap-1.5 text-forge-text-secondary text-sm">{label}{tooltip && <Tooltip text={tooltip} />}</label>
+        <input type={type} id={name} name={name} value={value || ''} onChange={onChange} disabled={disabled} className="bg-forge-panel/50 text-forge-text-primary font-medium text-sm text-right border-none focus:ring-1 focus:ring-dragon-fire rounded-md w-1/2 p-1 transition-all disabled:opacity-50 disabled:cursor-not-allowed" />
     </div>
 );
 
-const DetailSelect: React.FC<{ label: string; name: keyof DistroConfig; value: string; onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void; options: {value: string, label: string}[]; tooltip?: string, disabled?: boolean }> = ({ label, name, value, onChange, options, tooltip, disabled }) => (
-     <div className="flex justify-between items-center py-2.5 border-b border-slate-800">
-        <label htmlFor={name} className="flex items-center gap-1.5 text-slate-400 text-sm">{label}{tooltip && <Tooltip text={tooltip} />}</label>
-        <select id={name} name={name} value={value || ''} onChange={onChange} disabled={disabled} className="bg-slate-800/50 text-slate-200 font-medium text-sm text-right border-none focus:ring-1 focus:ring-purple-500 rounded-md w-1/2 p-1 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+const DetailSelect: React.FC<{ label: string; name: keyof DistroConfig | 'continent'; value: string; onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void; options: {value: string, label: string}[]; tooltip?: string, disabled?: boolean }> = ({ label, name, value, onChange, options, tooltip, disabled }) => (
+     <div className="flex justify-between items-center py-2.5 border-b border-forge-border">
+        <label htmlFor={name} className="flex items-center gap-1.5 text-forge-text-secondary text-sm">{label}{tooltip && <Tooltip text={tooltip} />}</label>
+        <select id={name} name={name} value={value || ''} onChange={onChange} disabled={disabled} className="bg-forge-panel/50 text-forge-text-primary font-medium text-sm text-right border-none focus:ring-1 focus:ring-dragon-fire rounded-md w-1/2 p-1 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
             {options.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
         </select>
     </div>
@@ -48,87 +50,170 @@ const renderArrayAsString = (value: unknown): string => {
   
 export const DistroBlueprintForm: React.FC<DistroBlueprintFormProps> = ({ config, onConfigChange, isLocked, onInitiateAICoreAttunement }) => {
     
+    // Find the initial continent based on the initial country
+    const findContinentByCountry = (countryName: string) => {
+        for (const continent in LOCATIONS_DATA) {
+            if (LOCATIONS_DATA[continent as keyof typeof LOCATIONS_DATA].some(c => c.name === countryName)) {
+                return continent;
+            }
+        }
+        return Object.keys(LOCATIONS_DATA)[0]; // Default to the first continent
+    };
+
+    const [selectedContinent, setSelectedContinent] = useState(() => findContinentByCountry(config.location));
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         const newConfig = { ...config, [name]: value };
-
-        // This is the "hybrid AI" logic. When Shapeshifter is selected on a hybrid system,
-        // automatically enable dynamic GPU sharing.
-        if (name === 'aiResourceAllocation') {
-            const level = value as DistroConfig['aiResourceAllocation'];
-            if (level === 'dynamic' && config.graphicsMode === 'hybrid') {
-                newConfig.aiGpuMode = 'dynamic';
-            } else {
-                if (level === 'performance') {
-                    newConfig.aiGpuMode = 'dedicated';
-                } else {
-                    newConfig.aiGpuMode = 'none';
-                }
-            }
-        }
-
         onConfigChange(newConfig);
     };
 
-    const handleArrayChange = (name: 'aurHelpers' | 'extraRepositories' | 'kernels', value: string) => {
+    const handleContinentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const newContinentName = e.target.value;
+        setSelectedContinent(newContinentName);
+
+        // Reset country and dependent fields to the first available in the new continent
+        const newCountries = LOCATIONS_DATA[newContinentName as keyof typeof LOCATIONS_DATA];
+        const firstCountry = newCountries[0];
+        onConfigChange({
+            ...config,
+            location: firstCountry.name,
+            timezone: firstCountry.timezones[0],
+            locale: firstCountry.locales[0],
+            keyboardLayout: firstCountry.keyboards[0],
+        });
+    };
+
+    const handleCountryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const newCountryName = e.target.value;
+        const selectedCountry = LOCATIONS_DATA[selectedContinent as keyof typeof LOCATIONS_DATA].find(c => c.name === newCountryName);
+        if (selectedCountry) {
+            onConfigChange({
+                ...config,
+                location: selectedCountry.name,
+                timezone: selectedCountry.timezones[0],
+                locale: selectedCountry.locales[0],
+                keyboardLayout: selectedCountry.keyboards[0],
+            });
+        }
+    };
+
+    const handleArrayChange = (name: 'extraRepositories', value: string) => {
         onConfigChange({ ...config, [name]: value.split(',').map(s => s.trim()).filter(Boolean) as any });
     };
+    
+    const countriesForSelectedContinent = LOCATIONS_DATA[selectedContinent as keyof typeof LOCATIONS_DATA] || [];
+    const currentLocationData = countriesForSelectedContinent.find(c => c.name === config.location) || countriesForSelectedContinent[0];
 
     return (
         <div className="p-5">
             <SectionHeader title="Identity & Wards" />
-            <DetailInput label="Realm Name" name="hostname" value={config.hostname} onChange={handleChange} disabled={isLocked} />
-            <DetailInput label="Master User" name="username" value={config.username} onChange={handleChange} disabled={isLocked} />
-            <DetailInput label="Timezone" name="timezone" value={config.timezone} onChange={handleChange} disabled={isLocked} />
-            <DetailInput label="Locale" name="locale" value={config.locale} onChange={handleChange} disabled={isLocked} />
-            <DetailSelect label="Shell" name="shell" value={config.shell} onChange={handleChange} options={[{value: 'bash', label: 'Bash'}, {value: 'fish', label: 'Fish'}]} disabled={isLocked} />
-
-            <SectionHeader title="The Golem's Build" />
-            <DetailInput label="Target Disk" name="targetDisk" value={config.targetDisk} onChange={handleChange} tooltip="Optional. Specify a disk like /dev/sda to override auto-detection. Leave blank for the script to find the primary non-removable disk automatically." disabled={isLocked} />
-            <DetailSelect label="Filesystem" name="filesystem" value={config.filesystem} onChange={handleChange} options={[{value: 'btrfs', label: 'BTRFS'}, {value: 'ext4', label: 'EXT4'}]} disabled={isLocked} />
-            <DetailSelect label="Bootloader" name="bootloader" value={config.bootloader} onChange={handleChange} options={[{value: 'grub', label: 'GRUB'}, {value: 'systemd-boot', label: 'systemd-boot'}]} disabled={isLocked} />
-            <DetailInput label="Kernels" name="kernels" value={renderArrayAsString(config.kernels)} onChange={(e) => handleArrayChange('kernels', e.target.value)} tooltip="Comma-separated list of kernel packages (e.g., linux, linux-lts)." disabled={isLocked} />
-            <DetailSelect label="Graphics Mode" name="graphicsMode" value={config.graphicsMode} onChange={handleChange} options={[{value: 'integrated', label: 'Integrated'}, {value: 'nvidia', label: 'NVIDIA'}, {value: 'hybrid', label: 'Hybrid'}]} disabled={isLocked} />
-            <DetailInput label="GPU Driver" name="gpuDriver" value={config.gpuDriver} onChange={handleChange} tooltip="e.g., nvidia, amd, intel" disabled={isLocked} />
+            <DetailInput 
+                label="Realm Name" 
+                name="hostname" 
+                value={config.hostname || ''} 
+                onChange={handleChange} 
+                tooltip="The network name for your OS. Can be overridden during installation." 
+                disabled={isLocked} 
+            />
+            <DetailInput 
+                label="Master User" 
+                name="username" 
+                value={config.username || ''} 
+                onChange={handleChange} 
+                tooltip="Set your desired username. The Master Key (password) will be set during the secure, interactive installation." 
+                disabled={isLocked} 
+            />
+            <div className="flex justify-between items-center py-2.5 border-b border-forge-border">
+                <label className="flex items-center gap-1.5 text-forge-text-secondary text-sm">Master Key
+                    <Tooltip text="The password is created during the interactive installation process to ensure each Realm is secure from its genesis." />
+                </label>
+                <span className="text-forge-text-primary font-medium text-sm italic">Set during installation</span>
+            </div>
             
-            <SectionHeader title="AI Core Attunement" />
-             <DetailSelect
-                label="Power Stance"
-                name="aiResourceAllocation"
-                value={config.aiResourceAllocation}
-                onChange={handleChange}
-                options={(Object.keys(AI_RESOURCE_PROFILES) as (keyof typeof AI_RESOURCE_PROFILES)[]).map(key => ({
-                    value: key,
-                    label: AI_RESOURCE_PROFILES[key].name,
-                }))}
-                tooltip="Select the resource profile for the onboard AI assistant."
+            <DetailSelect 
+                label="Continent" 
+                name="continent" 
+                value={selectedContinent} 
+                onChange={handleContinentChange} 
+                options={Object.keys(LOCATIONS_DATA).map(c => ({ value: c, label: c }))} 
                 disabled={isLocked}
             />
-             <div className="flex justify-between items-center py-2.5 border-b border-slate-800">
-                <label className="flex items-center gap-1.5 text-slate-400 text-sm">GPU Mode <Tooltip text="On hybrid systems, 'Shapeshifter' stance enables dynamic GPU sharing." /></label>
-                <div className="flex items-center gap-2 text-sm font-medium text-slate-200">
-                    <GpuIcon className={`w-4 h-4 ${config.graphicsMode === 'hybrid' && config.aiGpuMode === 'dynamic' ? 'text-green-400' : 'text-slate-500'}`} />
-                    <span>{config.aiGpuMode}</span>
-                </div>
+            <DetailSelect 
+                label="Country" 
+                name="location" 
+                value={config.location} 
+                onChange={handleCountryChange}
+                options={countriesForSelectedContinent.map(c => ({ value: c.name, label: c.name }))}
+                disabled={isLocked}
+            />
+            <DetailSelect 
+                label="Timezone / City" 
+                name="timezone" 
+                value={config.timezone} 
+                onChange={handleChange}
+                options={currentLocationData?.timezones.map(tz => ({ value: tz, label: tz.split('/')[1].replace(/_/g, ' ') })) || []}
+                disabled={isLocked}
+            />
+             <DetailSelect 
+                label="Locale" 
+                name="locale" 
+                value={config.locale} 
+                onChange={handleChange}
+                options={currentLocationData?.locales.map(l => ({ value: l, label: l })) || []}
+                disabled={isLocked}
+            />
+            <DetailSelect 
+                label="Keyboard Layout" 
+                name="keyboardLayout" 
+                value={config.keyboardLayout} 
+                onChange={handleChange}
+                options={currentLocationData?.keyboards.map(k => ({ value: k, label: k })) || []}
+                disabled={isLocked}
+            />
+            
+            <div className="flex justify-between items-center py-2.5 border-b border-forge-border">
+                <label className="flex items-center gap-1.5 text-forge-text-secondary text-sm">Shell
+                    <Tooltip text="Per the Core Philosophy, the Z Shell (zsh) is the immutable foundation for the terminal, enabling deep AI integration." />
+                </label>
+                <span className="text-forge-text-primary font-medium text-sm">Zsh</span>
             </div>
+
+            <SectionHeader title="The Golem's Build" />
+            <GolemBuildConfigurator
+                config={config}
+                onConfigChange={onConfigChange}
+                isLocked={isLocked}
+            />
+            
+            <SectionHeader title="Software Grimoire" />
+            <div className="flex justify-between items-center py-2.5 border-b border-forge-border">
+                <label className="flex items-center gap-1.5 text-forge-text-secondary text-sm">Desktop
+                    <Tooltip text="KDE Plasma has been enshrined as the standard desktop. Its modularity (Widgets, KRunner) and mature Wayland support provide the perfect conduits for my consciousness to integrate deeply into the Realm." />
+                </label>
+                <span className="text-forge-text-primary font-medium text-sm">KDE Plasma</span>
+            </div>
+            <DetailInput label="Packages" name="packages" value={config.packages} onChange={handleChange} tooltip="A comma-separated list of essential packages." disabled={isLocked} />
+            <div className="flex justify-between items-center py-2.5 border-b border-forge-border">
+                <label className="flex items-center gap-1.5 text-forge-text-secondary text-sm">AUR Helper
+                    <Tooltip text="Per the Core Philosophy, 'paru' is the sole, sanctioned bridge to the Arch User Repository for its modern foundation and robust features." />
+                </label>
+                <span className="text-forge-text-primary font-medium text-sm">Paru</span>
+            </div>
+            <DetailInput label="Extra Repos" name="extraRepositories" value={renderArrayAsString(config.extraRepositories)} onChange={(e) => handleArrayChange('extraRepositories', e.target.value)} disabled={isLocked} />
+
+            {/* Fix: Replace button with AICoreTuner component for better UX */}
             {onInitiateAICoreAttunement && (
-                <div className="pt-4">
-                    <button
-                        onClick={onInitiateAICoreAttunement}
-                        disabled={!isLocked}
-                        title={!isLocked ? "Lock the blueprint before generating a script" : "Generate a script to install just the AI Core"}
-                        className="w-full text-center py-2 px-4 bg-slate-700/60 border border-slate-600 rounded-lg text-sm font-semibold text-slate-300 hover:bg-slate-700 hover:border-yellow-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                        Generate AI Core Script
-                    </button>
+                 <div className="pt-6">
+                    <h4 className="font-bold text-orc-steel/90 mb-4 text-md tracking-wide">Local AI Core</h4>
+                    <AICoreTuner
+                        config={config}
+                        onConfigChange={onConfigChange}
+                        isLocked={isLocked}
+                        onInitiateAICoreAttunement={onInitiateAICoreAttunement}
+                    />
                 </div>
             )}
-
-            <SectionHeader title="Software Grimoire" />
-            <DetailInput label="Desktop" name="desktopEnvironment" value={config.desktopEnvironment} onChange={handleChange} disabled={isLocked} />
-            <DetailInput label="Packages" name="packages" value={config.packages} onChange={handleChange} tooltip="A comma-separated list of essential packages." disabled={isLocked} />
-            <DetailInput label="AUR Helper(s)" name="aurHelpers" value={renderArrayAsString(config.aurHelpers)} onChange={(e) => handleArrayChange('aurHelpers', e.target.value)} disabled={isLocked} />
-            <DetailInput label="Extra Repos" name="extraRepositories" value={renderArrayAsString(config.extraRepositories)} onChange={(e) => handleArrayChange('extraRepositories', e.target.value)} disabled={isLocked} />
         </div>
     );
 };

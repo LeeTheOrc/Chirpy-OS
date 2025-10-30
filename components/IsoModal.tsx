@@ -22,12 +22,12 @@ const CodeBlock: React.FC<{ children: React.ReactNode; lang?: string }> = ({ chi
 
     return (
         <div className="relative group my-2">
-            <pre className={`bg-slate-950/70 border border-slate-700 rounded-lg p-3 text-xs text-slate-300 font-mono pr-12 whitespace-pre-wrap break-words ${lang ? `language-${lang}` : ''}`}>
+            <pre className={`bg-forge-bg border border-forge-border rounded-lg p-3 text-xs text-forge-text-secondary font-mono pr-12 whitespace-pre-wrap break-words ${lang ? `language-${lang}` : ''}`}>
                 <code>{children}</code>
             </pre>
             <button 
                 onClick={handleCopy} 
-                className="absolute top-2 right-2 p-1.5 bg-slate-800/80 rounded-md text-slate-400 hover:text-white transition-all opacity-0 group-hover:opacity-100 focus:opacity-100" 
+                className="absolute top-2 right-2 p-1.5 bg-forge-panel/80 rounded-md text-forge-text-secondary hover:text-forge-text-primary transition-all opacity-0 group-hover:opacity-100 focus:opacity-100" 
                 aria-label="Copy code"
             >
                 {copied ? <span className="text-xs font-sans">Copied!</span> : <CopyIcon className="w-4 h-4" />}
@@ -47,10 +47,6 @@ const utf8ToBase64 = (str: string): string => {
 }
 
 export const IsoModal: React.FC<IsoModalProps> = ({ onClose, generatedScript, config }) => {
-    const [activeTab, setActiveTab] = useState<'easy' | 'virtual' | 'master'>('easy');
-
-    const base64Script = utf8ToBase64(generatedScript);
-    const quickInstallCommand = `echo "${base64Script}" | base64 -d > install.sh && chmod +x install.sh && ./install.sh`;
     
     const customizeAiRootFsScript = `#!/bin/bash
 set -euo pipefail
@@ -72,7 +68,7 @@ EOF
 # This is a simple and effective way to auto-launch the TUI.
 cat >> /root/.bash_profile <<'EOF'
 
-# Auto-launch Chirpy Installer
+# Auto-launch Kael Installer
 if [ -f /root/install.sh ]; then
     /root/install.sh
 fi
@@ -80,10 +76,10 @@ EOF
 
 # 4. Rebrand the boot menu for a seamless, friendly experience.
 if [ -f /boot/grub/grub.cfg ]; then
-    sed -i -E "s/menuentry 'Arch Linux archiso x86_64[^']*'/menuentry 'Install Chirpy OS (UEFI)'/g" /boot/grub/grub.cfg
+    sed -i -E "s/menuentry 'Arch Linux archiso x86_64[^']*'/menuentry 'Install Kael OS (UEFI)'/g" /boot/grub/grub.cfg
 fi
 if [ -f /isolinux/syslinux.cfg ]; then
-    sed -i -E "s/MENU LABEL Arch Linux archiso x86_64.*/MENU LABEL Install Chirpy OS (BIOS)/g" /isolinux/syslinux.cfg
+    sed -i -E "s/MENU LABEL Arch Linux archiso x86_64.*/MENU LABEL Install Kael OS (BIOS)/g" /isolinux/syslinux.cfg
 fi
 `;
 
@@ -131,20 +127,19 @@ fi
     const hasChaotic = Array.isArray(config.extraRepositories) && config.extraRepositories.includes('chaotic');
     const hasCachy = Array.isArray(config.extraRepositories) && config.extraRepositories.includes('cachy');
     
-    // This is the new, single, unified script for building the ISO.
     const masterBuildScript = `#!/bin/bash
-# Chirpy AI :: Master ISO Forge Script
+# Kael AI :: Master ISO Forge Script
 #
 # Run this script on an existing Arch Linux system to build a bootable
-# Chirpy OS installer ISO from your custom blueprint.
+# Kael OS installer ISO from your custom blueprint.
 # It automates dependency checks, directory setup, script embedding,
 # repository configuration, and the final ISO build.
 
 set -euo pipefail
 clear
 
-# --- SCRIPT CONFIGURATION (Injected by Chirpy AI) ---
-ISO_WORKDIR="chirpy-iso-build"
+# --- SCRIPT CONFIGURATION (Injected by Kael AI) ---
+ISO_WORKDIR="kael-iso-build"
 HAS_CACHY=${hasCachy}
 HAS_CHAOTIC=${hasChaotic}
 
@@ -249,136 +244,65 @@ warn "The build will happen in './work'. The output ISO will be in './out'."
 # The default work dir is in /tmp which can be a small ramdisk. We use a local dir to avoid space issues.
 mkarchiso -v -w work -o out releng
 
-success "ISO build complete! Your custom Chirpy OS installer is located at '~/chirpy-iso-build/out/'."
+success "ISO build complete! Your custom Kael OS installer is located at '~/kael-iso-build/out/'."
 `;
+
+    const downloadScript = () => {
+        const blob = new Blob([masterBuildScript], { type: 'text/bash' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'build-iso.sh';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    };
 
     return (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center animate-fade-in-fast" onClick={onClose}>
-            <div className="bg-slate-900 border border-slate-700 rounded-lg shadow-2xl w-full max-w-3xl p-6 m-4 flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+            <div className="bg-forge-panel border border-forge-border rounded-lg shadow-2xl w-full max-w-3xl p-6 m-4 flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-center mb-4 flex-shrink-0">
-                    <h2 className="text-xl font-bold text-white">Performing the Ritual</h2>
-                    <button onClick={onClose} className="text-slate-400 hover:text-white">
+                    <h2 className="text-xl font-bold text-forge-text-primary">The Master's Path: Forge ISO</h2>
+                    <button onClick={onClose} className="text-forge-text-secondary hover:text-forge-text-primary">
                         <CloseIcon className="w-5 h-5" />
                     </button>
                 </div>
 
-                <div className="border-b border-slate-700 mb-4 flex-shrink-0">
-                    <nav className="-mb-px flex space-x-6">
-                        <button
-                            onClick={() => setActiveTab('easy')}
-                            className={`whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'easy' ? 'border-yellow-400 text-yellow-400' : 'border-transparent text-slate-400 hover:text-white'}`}
-                        >
-                            The Simple Path (Bare Metal)
-                        </button>
-                        <button
-                             onClick={() => setActiveTab('virtual')}
-                             className={`whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'virtual' ? 'border-yellow-400 text-yellow-400' : 'border-transparent text-slate-400 hover:text-white'}`}
-                        >
-                            The Virtual Path (QEMU/VM)
-                        </button>
-                        <button
-                             onClick={() => setActiveTab('master')}
-                             className={`whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'master' ? 'border-yellow-400 text-yellow-400' : 'border-transparent text-slate-400 hover:text-white'}`}
-                        >
-                            The Master's Path (Build ISO)
-                        </button>
-                    </nav>
-                </div>
-                
-                <div className="overflow-y-auto pr-2 text-slate-300 leading-relaxed">
-                    {activeTab === 'easy' && (
-                        <div className="animate-fade-in-fast space-y-4">
-                            <p>This is the recommended method for installing on a physical computer. You'll use the official Arch Linux live environment to execute your custom installation script.</p>
-                            
-                            <div>
-                                <h3 className="font-semibold text-lg text-white mt-4 mb-2">Step 1: Get the Arch Linux ISO</h3>
-                                <p>If you don't have it already, download the latest official ISO file.</p>
-                                <a href="https://archlinux.org/download/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 px-4 rounded-lg my-2 transition-colors">
+                <div className="overflow-y-auto pr-2 text-forge-text-secondary leading-relaxed">
+                    <div className="animate-fade-in-fast space-y-4">
+                        <p>This path forges a completely custom Arch Linux ISO that boots directly into your installer. It is the ultimate method for creating a shareable, self-contained version of your OS. It requires an existing Arch Linux system (or a VM running Arch) to perform the build.</p>
+                        
+                        <div>
+                            <h3 className="font-semibold text-lg text-forge-text-primary mt-4 mb-2">Step 1: Get the Master Forge Script</h3>
+                            <p>Download the script directly, or copy the entire script below and save it as <strong className="text-dragon-fire">build-iso.sh</strong> on an Arch Linux system.</p>
+                             <div className="flex justify-center items-center gap-4 my-4">
+                                <button
+                                    onClick={downloadScript}
+                                    className="bg-magic-purple hover:bg-purple-700 text-white font-bold py-2 px-6 rounded-lg transition-colors inline-flex items-center gap-2"
+                                >
                                     <DownloadIcon className="w-5 h-5" />
-                                    Download from archlinux.org
-                                </a>
+                                    Download build-iso.sh
+                                </button>
                             </div>
-
-                             <div>
-                                <h3 className="font-semibold text-lg text-white mt-4 mb-2">Step 2: Create a Bootable USB</h3>
-                                <p>Use a tool like <a href="https://www.balena.io/etcher/" target="_blank" rel="noopener noreferrer" className="text-yellow-400 hover:underline">Balena Etcher</a> or <a href="https://www.ventoy.net/" target="_blank" rel="noopener noreferrer" className="text-yellow-400 hover:underline">Ventoy</a> to write the downloaded ISO to a USB drive.</p>
-                            </div>
-
-                            <div>
-                                <h3 className="font-semibold text-lg text-white mt-4 mb-2">Step 3: Boot and Run the Ritual</h3>
-                                <p>Boot your target computer from the USB drive. Once you are at the command prompt in the live environment, ensure you are connected to the internet.</p>
-                                <p className="mt-2">This <strong className="text-yellow-400">Quick Install Command</strong> is the most direct path to forging your realm.</p>
-                                <p>Copy the command below and paste it into your terminal. Press Enter to execute it.</p>
-                                <CodeBlock>
-                                    {quickInstallCommand}
-                                </CodeBlock>
-                                <p>This command automatically creates the <strong className="font-mono text-slate-400">install.sh</strong> script, makes it executable, and begins the installation ritual.</p>
-                            </div>
+                            <CodeBlock lang="bash">
+                                {masterBuildScript}
+                            </CodeBlock>
                         </div>
-                    )}
-                     {activeTab === 'virtual' && (
-                        <div className="animate-fade-in-fast space-y-4">
-                            <p>This is the recommended method for installing inside a virtual machine like QEMU or VirtualBox. It avoids copy-paste issues by serving the script from your host machine.</p>
-                            
-                            <div>
-                                <h3 className="font-semibold text-lg text-white mt-4 mb-2">Step 1: Save the Script on Your Host Machine</h3>
-                                <p>In the "Great Forge" modal, go to the "View Full Script" tab and copy the entire script.</p>
-                                <p>On your main computer (the "host"), create a new folder, and inside it, save the script into a file named <strong className="text-yellow-400">install.sh</strong>.</p>
-                            </div>
 
-                             <div>
-                                <h3 className="font-semibold text-lg text-white mt-4 mb-2">Step 2: Start a Local Web Server</h3>
-                                <p>Open a terminal on your host machine, navigate into the folder where you saved `install.sh`, and start a simple web server. If you have Python 3 installed, this is easy:</p>
-                                <CodeBlock>python -m http.server 8000</CodeBlock>
-                                <p>This will make the `install.sh` file available to other machines on your local network. Keep this terminal running.</p>
-                            </div>
-
-                            <div>
-                                <h3 className="font-semibold text-lg text-white mt-4 mb-2">Step 3: Boot the VM & Find Your Host IP</h3>
-                                <p>Boot the Arch Linux ISO in your QEMU (or other) virtual machine. Once at the command prompt, you need to find your host machine's IP address from the VM's perspective. It's usually the default gateway.</p>
-                                <p>Run this command inside the VM:</p>
-                                <CodeBlock>ip route | grep default</CodeBlock>
-                                <p>The output will be something like `default via 10.0.2.2 dev enp0s3`. The IP address you need is the one after `via` (in this case, `10.0.2.2`).</p>
-                            </div>
-
-                            <div>
-                                <h3 className="font-semibold text-lg text-white mt-4 mb-2">Step 4: Download and Run the Ritual</h3>
-                                <p>Now, from within the VM, use `curl` to download the script from your host's web server. Replace `YOUR_HOST_IP` with the address you found in the previous step.</p>
-                                <CodeBlock>{`# Replace YOUR_HOST_IP with your actual host IP (e.g., 10.0.2.2)
-curl http://YOUR_HOST_IP:8000/install.sh -o install.sh`}</CodeBlock>
-                                <p>Finally, make the script executable and run it:</p>
-                                <CodeBlock>{`chmod +x install.sh
-./install.sh`}</CodeBlock>
-                                <p>The interactive installation will now begin inside your VM.</p>
-                            </div>
+                        <div>
+                            <h3 className="font-semibold text-lg text-forge-text-primary mt-4 mb-2">Step 2: Make it Executable</h3>
+                            <p>Open a terminal, navigate to where you saved the script, and run:</p>
+                            <CodeBlock>chmod +x build-iso.sh</CodeBlock>
                         </div>
-                    )}
-                    {activeTab === 'master' && (
-                        <div className="animate-fade-in-fast space-y-4">
-                            <p>This path forges a completely custom Arch Linux ISO that boots directly into your installer. It's the ultimate method for creating a shareable, "noob-friendly" version of your OS. It requires an existing Arch Linux system (or a VM running Arch) to perform the build.</p>
-                            
-                            <div>
-                                <h3 className="font-semibold text-lg text-white mt-4 mb-2">Step 1: Save the Master Forge Script</h3>
-                                <p>Copy the entire script below and save it as <strong className="text-yellow-400">build-iso.sh</strong> on an Arch Linux system.</p>
-                                <CodeBlock lang="bash">
-                                    {masterBuildScript}
-                                </CodeBlock>
-                            </div>
 
-                            <div>
-                                <h3 className="font-semibold text-lg text-white mt-4 mb-2">Step 2: Make it Executable</h3>
-                                <p>Open a terminal, navigate to where you saved the script, and run:</p>
-                                <CodeBlock>chmod +x build-iso.sh</CodeBlock>
-                            </div>
-
-                            <div>
-                                <h3 className="font-semibold text-lg text-white mt-4 mb-2">Step 3: Run with Sudo</h3>
-                                <p>The script needs root permissions to install `archiso` and build the ISO. Execute it with:</p>
-                                <CodeBlock>sudo ./build-iso.sh</CodeBlock>
-                                <p className="mt-2">The script will handle everything else. Once it's finished, your custom bootable ISO will be located in the <strong className="font-mono text-slate-400">~/chirpy-iso-build/out/</strong> directory, ready to be written to a USB drive or used in a VM.</p>
-                            </div>
+                        <div>
+                            <h3 className="font-semibold text-lg text-forge-text-primary mt-4 mb-2">Step 3: Run with Sudo</h3>
+                            <p>The script needs root permissions to install `archiso` and build the ISO. Execute it with:</p>
+                            <CodeBlock>sudo ./build-iso.sh</CodeBlock>
+                            <p className="mt-2">The script will handle everything else. Once finished, your custom bootable ISO will be located in the <strong className="font-mono text-forge-text-secondary">~/kael-iso-build/out/</strong> directory, ready to be written to a USB drive or used in a VM.</p>
                         </div>
-                    )}
+                    </div>
                 </div>
             </div>
         </div>

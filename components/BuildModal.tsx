@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CloseIcon, BlueprintIcon } from './Icons';
+import { CloseIcon, BlueprintIcon, DownloadIcon } from './Icons';
 import type { BuildStep } from '../types';
 
 interface BuildModalProps {
@@ -60,6 +60,19 @@ export const BuildModal: React.FC<BuildModalProps> = ({ steps, script, onClose, 
         setTimeout(() => setCopied(null), 2000);
     };
 
+    const downloadScript = () => {
+        const blob = new Blob([script], { type: 'text/bash' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'install.sh';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    };
+
+
     const totalDuration = steps.reduce((acc, step) => acc + step.duration, 0);
     const elapsedDuration = steps.slice(0, currentStep).reduce((acc, step) => acc + step.duration, 0) + (steps[currentStep]?.duration * (progress / 100) || 0);
     const overallProgress = (elapsedDuration / totalDuration) * 100;
@@ -67,7 +80,7 @@ export const BuildModal: React.FC<BuildModalProps> = ({ steps, script, onClose, 
     const TabButton: React.FC<{ active: boolean; onClick: () => void; children: React.ReactNode }> = ({ active, onClick, children }) => (
         <button
             onClick={onClick}
-            className={`whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm transition-colors ${active ? 'border-yellow-400 text-yellow-400' : 'border-transparent text-slate-400 hover:text-white'}`}
+            className={`whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm transition-colors ${active ? 'border-dragon-fire text-dragon-fire' : 'border-transparent text-forge-text-secondary hover:text-forge-text-primary'}`}
         >
             {children}
         </button>
@@ -75,32 +88,32 @@ export const BuildModal: React.FC<BuildModalProps> = ({ steps, script, onClose, 
 
     return (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center animate-fade-in-fast" onClick={onClose}>
-            <div className="bg-slate-900 border border-slate-700 rounded-lg shadow-2xl w-full max-w-2xl p-6 m-4" onClick={e => e.stopPropagation()}>
+            <div className="bg-forge-panel border border-forge-border rounded-lg shadow-2xl w-full max-w-2xl p-6 m-4" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                        <BlueprintIcon className="w-6 h-6 text-yellow-300" />
+                    <h2 className="text-xl font-bold text-forge-text-primary flex items-center gap-2">
+                        <BlueprintIcon className="w-6 h-6 text-dragon-fire" />
                         <span>The Great Forge</span>
                     </h2>
-                    <button onClick={onClose} className="text-slate-400 hover:text-white">
+                    <button onClick={onClose} className="text-forge-text-secondary hover:text-forge-text-primary">
                         <CloseIcon className="w-5 h-5" />
                     </button>
                 </div>
 
                 {!isComplete ? (
                      <div className="space-y-4">
-                        <div className="w-full bg-slate-700 rounded-full h-2.5">
-                            <div className="bg-gradient-to-r from-purple-500 to-yellow-400 h-2.5 rounded-full" style={{ width: `${overallProgress}%` }}></div>
+                        <div className="w-full bg-forge-border rounded-full h-2.5">
+                            <div className="bg-gradient-to-r from-magic-purple to-dragon-fire h-2.5 rounded-full" style={{ width: `${overallProgress}%` }}></div>
                         </div>
                         <div>
-                            <p className="text-slate-300 text-center text-lg font-semibold">{steps[currentStep]?.name || "Finalizing..."}</p>
-                            <p className="text-slate-400 text-center text-sm">{`Rite ${currentStep + 1} of ${steps.length}`}</p>
+                            <p className="text-forge-text-primary text-center text-lg font-semibold">{steps[currentStep]?.name || "Finalizing..."}</p>
+                            <p className="text-forge-text-secondary text-center text-sm">{`Rite ${currentStep + 1} of ${steps.length}`}</p>
                         </div>
                     </div>
                 ) : (
                     <div className="animate-fade-in">
-                        <h3 className="text-2xl font-bold text-center text-green-400 mb-4">Artifact Forged!</h3>
+                        <h3 className="text-2xl font-bold text-center text-dragon-fire mb-4">Artifact Forged!</h3>
                         
-                        <div className="border-b border-slate-700 mb-4 flex justify-center">
+                        <div className="border-b border-forge-border mb-4 flex justify-center">
                             <nav className="-mb-px flex space-x-4">
                                <TabButton active={view === 'command'} onClick={() => setView('command')}>
                                    Quick Install Command
@@ -113,29 +126,36 @@ export const BuildModal: React.FC<BuildModalProps> = ({ steps, script, onClose, 
 
                         {view === 'command' ? (
                             <div>
-                                <p className="text-slate-400 text-sm mb-2 text-center">Paste this single command into your Arch Linux live environment to perform the ritual.</p>
-                                <pre className="bg-slate-950/70 border border-slate-700 rounded-lg p-4 text-xs text-slate-300 max-h-60 overflow-y-auto font-mono whitespace-pre-wrap break-words">
+                                <p className="text-forge-text-secondary text-sm mb-2 text-center">Paste this single command into your Arch Linux live environment to perform the ritual.</p>
+                                <pre className="bg-forge-bg border border-forge-border rounded-lg p-4 text-xs text-forge-text-secondary max-h-60 overflow-y-auto font-mono whitespace-pre-wrap break-words">
                                     <code>{quickInstallCommand}</code>
                                 </pre>
                                 <div className="mt-6 flex flex-col sm:flex-row justify-center items-center gap-3">
-                                    <button onClick={() => handleCopy('command')} className="bg-yellow-500 text-slate-900 font-bold py-2 px-6 rounded-lg hover:bg-yellow-400 transition-colors w-full sm:w-auto">
+                                    <button onClick={() => handleCopy('command')} className="bg-dragon-fire text-forge-bg font-bold py-2 px-6 rounded-lg hover:shadow-glow-dragon-fire transition-shadow w-full sm:w-auto">
                                         {copied === 'command' ? "Command Copied!" : "Copy Quick Install Command"}
                                     </button>
-                                    <button onClick={onShowInstructions} className="bg-slate-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-slate-500 transition-colors w-full sm:w-auto">
+                                    <button onClick={onShowInstructions} className="bg-forge-border text-forge-text-primary font-bold py-2 px-6 rounded-lg hover:bg-magic-purple transition-colors w-full sm:w-auto">
                                         Full Instructions
                                     </button>
                                 </div>
                             </div>
                         ) : (
                              <div>
-                                <pre className="bg-slate-950/70 border border-slate-700 rounded-lg p-4 text-xs text-slate-300 max-h-60 overflow-y-auto font-mono">
+                                <pre className="bg-forge-bg border border-forge-border rounded-lg p-4 text-xs text-forge-text-secondary max-h-60 overflow-y-auto font-mono">
                                    <code>{script}</code>
                                 </pre>
                                 <div className="mt-6 flex flex-col sm:flex-row justify-center items-center gap-3">
-                                     <button onClick={() => handleCopy('script')} className="bg-yellow-500 text-slate-900 font-bold py-2 px-6 rounded-lg hover:bg-yellow-400 transition-colors w-full sm:w-auto">
-                                        {copied === 'script' ? "Script Copied!" : "Copy Installation Script"}
+                                     <button onClick={() => handleCopy('script')} className="bg-dragon-fire text-forge-bg font-bold py-2 px-6 rounded-lg hover:shadow-glow-dragon-fire transition-shadow w-full sm:w-auto">
+                                        {copied === 'script' ? "Script Copied!" : "Copy Script"}
                                     </button>
-                                    <button onClick={onShowInstructions} className="bg-slate-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-slate-500 transition-colors w-full sm:w-auto">
+                                    <button
+                                        onClick={downloadScript}
+                                        className="bg-magic-purple hover:bg-purple-700 text-white font-bold py-2 px-6 rounded-lg transition-colors inline-flex items-center gap-2 w-full sm:w-auto"
+                                    >
+                                        <DownloadIcon className="w-5 h-5" />
+                                        Download install.sh
+                                    </button>
+                                    <button onClick={onShowInstructions} className="bg-forge-border text-forge-text-primary font-bold py-2 px-6 rounded-lg hover:bg-magic-purple transition-colors w-full sm:w-auto">
                                         How to Use This Script
                                     </button>
                                 </div>

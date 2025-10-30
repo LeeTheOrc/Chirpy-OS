@@ -7,11 +7,11 @@ interface SystemScanModalProps {
 }
 
 const scanItems = [
-    { name: 'Core Architecture', icon: <ScanIcon className="w-5 h-5 text-cyan-400" /> },
-    { name: 'Graphics Card', icon: <GpuIcon className="w-5 h-5 text-green-400" /> },
-    { name: 'Storage Drives', icon: <DiscIcon className="w-5 h-5 text-yellow-400" /> },
-    { name: 'Memory Modules', icon: <ScanIcon className="w-5 h-5 text-cyan-400" /> },
-    { name: 'Network Adapters', icon: <ScanIcon className="w-5 h-5 text-cyan-400" /> },
+    { name: 'Core Architecture', icon: <ScanIcon className="w-5 h-5 text-dragon-fire" /> },
+    { name: 'Graphics Card', icon: <GpuIcon className="w-5 h-5 text-dragon-fire" /> },
+    { name: 'Storage Drives', icon: <DiscIcon className="w-5 h-5 text-dragon-fire" /> },
+    { name: 'Memory Modules', icon: <ScanIcon className="w-5 h-5 text-dragon-fire" /> },
+    { name: 'Network Adapters', icon: <ScanIcon className="w-5 h-5 text-dragon-fire" /> },
 ];
 
 const MOCK_SYSTEM_REPORT = `
@@ -57,10 +57,10 @@ export const SystemScanModal: React.FC<SystemScanModalProps> = ({ onClose, onCom
     
     return (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center animate-fade-in-fast" onClick={onClose}>
-            <div className="bg-slate-900 border border-slate-700 rounded-lg shadow-2xl w-full max-w-md p-6 m-4" onClick={e => e.stopPropagation()}>
+            <div className="bg-forge-panel border border-forge-border rounded-lg shadow-2xl w-full max-w-md p-6 m-4" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold text-white">Scrying Hardware...</h2>
-                    <button onClick={onClose} className="text-slate-400 hover:text-white">
+                    <h2 className="text-xl font-bold text-forge-text-primary">Scrying Hardware...</h2>
+                    <button onClick={onClose} className="text-forge-text-secondary hover:text-forge-text-primary">
                         <CloseIcon className="w-5 h-5" />
                     </button>
                 </div>
@@ -68,16 +68,16 @@ export const SystemScanModal: React.FC<SystemScanModalProps> = ({ onClose, onCom
                     {scanItems.map((item, index) => (
                          <div key={item.name} className={`flex items-center gap-3 transition-opacity duration-300 ${currentItem >= index ? 'opacity-100' : 'opacity-40'}`}>
                            {item.icon}
-                            <span className="text-slate-300 w-36 flex-shrink-0">{item.name}</span>
+                            <span className="text-forge-text-secondary w-36 flex-shrink-0">{item.name}</span>
                             <div className="flex-grow text-right">
-                                {currentItem > index && <span className="text-green-400 text-sm font-semibold">✓ Done</span>}
-                                {currentItem === index && <span className="text-yellow-400 text-sm animate-pulse">Scrying...</span>}
+                                {currentItem > index && <span className="text-dragon-fire text-sm font-semibold">✓ Done</span>}
+                                {currentItem === index && <span className="text-magic-purple text-sm animate-pulse">Scrying...</span>}
                             </div>
                         </div>
                     ))}
                 </div>
                 {isComplete && (
-                    <p className="text-center text-green-400 mt-6 animate-pulse">
+                    <p className="text-center text-dragon-fire mt-6 animate-pulse">
                         Scrying Complete! Inscribing report...
                     </p>
                 )}

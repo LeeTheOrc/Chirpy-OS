@@ -14,11 +14,11 @@ export const CommandSuggestions: React.FC<CommandSuggestionsProps> = ({ suggesti
                 <button
                     key={index}
                     onClick={() => onSelect(suggestion)}
-                    className="text-left p-4 bg-slate-700/60 rounded-lg hover:bg-slate-700 transition-colors group"
+                    className="text-left p-4 bg-forge-panel/60 border border-forge-border rounded-lg hover:bg-forge-panel transition-colors group"
                 >
-                    <p className="text-slate-300 text-sm">{suggestion}</p>
+                    <p className="text-forge-text-secondary text-sm">{suggestion}</p>
                     <div className="flex justify-end mt-2">
-                        <SendIcon className="w-5 h-5 text-slate-500 group-hover:text-yellow-400 transition-colors" />
+                        <SendIcon className="w-5 h-5 text-forge-text-secondary/50 group-hover:text-orc-steel transition-colors" />
                     </div>
                 </button>
             ))}

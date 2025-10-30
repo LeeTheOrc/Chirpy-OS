@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useRef } from 'react';
 import type { DistroConfig } from '../types';
 import { DistroBlueprintForm } from './DistroBlueprintForm';
@@ -11,11 +12,12 @@ interface MobileBlueprintDrawerProps {
   onLockToggle: () => void;
   onClose: () => void;
   onBuild: () => void;
-  onInitiateAttunement: () => void;
+  // Fix: Add missing prop
+  onInitiateAICoreAttunement: () => void;
   isAICoreInstalled: boolean;
 }
 
-export const MobileBlueprintDrawer: React.FC<MobileBlueprintDrawerProps> = ({ config, onConfigChange, isLocked, onLockToggle, onClose, onBuild, onInitiateAttunement, isAICoreInstalled }) => {
+export const MobileBlueprintDrawer: React.FC<MobileBlueprintDrawerProps> = ({ config, onConfigChange, isLocked, onLockToggle, onClose, onBuild, onInitiateAICoreAttunement, isAICoreInstalled }) => {
   const [isActionsMenuOpen, setIsActionsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -37,65 +39,51 @@ export const MobileBlueprintDrawer: React.FC<MobileBlueprintDrawerProps> = ({ co
       onClose(); 
   };
 
-  const handleAttunementClick = () => {
-    onInitiateAttunement();
-    setIsActionsMenuOpen(false);
-    onClose();
-  };
-
   return (
     <div className="fixed inset-0 bg-black/60 z-40 md:hidden animate-fade-in-fast" onClick={onClose}>
       <div
-        className="fixed top-0 left-0 h-full w-full max-w-sm bg-slate-950 shadow-2xl flex flex-col animate-slide-in-left"
+        className="fixed top-0 left-0 h-full w-full max-w-sm bg-forge-bg shadow-2xl flex flex-col animate-slide-in-left"
         onClick={e => e.stopPropagation()}
       >
-        <div className="p-4 border-b border-slate-800 flex-shrink-0 flex items-center justify-between">
+        <div className="p-4 border-b border-forge-border flex-shrink-0 flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-bold text-yellow-300 flex items-center gap-2">
+            <h3 className="text-lg font-bold text-dragon-fire flex items-center gap-2">
               The Blueprint
             </h3>
-            <div className={`mt-1 text-xs font-semibold inline-flex items-center gap-1.5 px-2 py-1 rounded-full ${isAICoreInstalled ? 'bg-green-500/10 text-green-400' : 'bg-slate-700 text-slate-400'}`}>
-                <div className={`w-2 h-2 rounded-full ${isAICoreInstalled ? 'bg-green-400' : 'bg-slate-500'}`}></div>
+            <div className={`mt-1 text-xs font-semibold inline-flex items-center gap-1.5 px-2 py-1 rounded-full ${isAICoreInstalled ? 'bg-dragon-fire/10 text-dragon-fire' : 'bg-forge-panel text-forge-text-secondary'}`}>
+                <div className={`w-2 h-2 rounded-full ${isAICoreInstalled ? 'bg-dragon-fire' : 'bg-forge-text-secondary/50'}`}></div>
                 AI Core: {isAICoreInstalled ? 'Attuned' : 'Not Attuned'}
             </div>
           </div>
           <div className="flex items-center gap-1">
-            <button onClick={onLockToggle} className="p-2 rounded-full hover:bg-slate-700/50 transition-colors text-slate-400 hover:text-white" aria-label={isLocked ? 'Unlock Blueprint' : 'Lock Blueprint'}>
+            <button onClick={onLockToggle} className="p-2 rounded-full hover:bg-forge-panel/50 transition-colors text-forge-text-secondary hover:text-forge-text-primary" aria-label={isLocked ? 'Unlock Blueprint' : 'Lock Blueprint'}>
                 {isLocked ? <LockClosedIcon className="w-5 h-5" /> : <LockOpenIcon className="w-5 h-5" />}
             </button>
             <div className="relative" ref={menuRef}>
                 <button 
                     onClick={() => setIsActionsMenuOpen(prev => !prev)}
-                    className="p-2 rounded-full hover:bg-slate-700/50 transition-colors text-slate-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="p-2 rounded-full hover:bg-forge-panel/50 transition-colors text-forge-text-secondary hover:text-forge-text-primary disabled:opacity-50 disabled:cursor-not-allowed"
                     disabled={!isLocked}
                     aria-label="Forge Actions"
                 >
                     <GearIcon className="w-5 h-5" />
                 </button>
                 {isActionsMenuOpen && (
-                    <div className="absolute right-0 mt-2 w-64 bg-slate-800 border border-slate-700 rounded-md shadow-lg z-20 animate-fade-in-fast">
+                    <div className="absolute right-0 mt-2 w-64 bg-forge-panel border border-forge-border rounded-md shadow-lg z-20 animate-fade-in-fast">
                          <ul className="py-1">
                             <li>
                                 <button 
                                     onClick={handleBuildClick}
-                                    className="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-purple-600/50"
+                                    className="w-full text-left px-4 py-2 text-sm text-forge-text-primary hover:bg-magic-purple/50"
                                 >
                                     Build Installation Script
-                                </button>
-                            </li>
-                             <li>
-                                <button
-                                    onClick={handleAttunementClick}
-                                    className="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-purple-600/50"
-                                >
-                                    Generate Attunement Script
                                 </button>
                             </li>
                         </ul>
                     </div>
                 )}
             </div>
-            <button onClick={onClose} className="text-slate-400 hover:text-white p-2">
+            <button onClick={onClose} className="text-forge-text-secondary hover:text-forge-text-primary p-2">
               <CloseIcon className="w-6 h-6" />
             </button>
           </div>
@@ -105,6 +93,8 @@ export const MobileBlueprintDrawer: React.FC<MobileBlueprintDrawerProps> = ({ co
             config={config}
             onConfigChange={onConfigChange}
             isLocked={isLocked}
+            // Fix: Pass prop down to the form
+            onInitiateAICoreAttunement={onInitiateAICoreAttunement}
           />
         </div>
       </div>

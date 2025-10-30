@@ -22,7 +22,7 @@ export const AttachmentIcon = ({ className }: { className?: string }) => (
     >
       <path
         fillRule="evenodd"
-        d="M18.97 3.659a2.25 2.25 0 00-3.182 0l-10.5 10.5a.75.75 0 001.06 1.06l10.5-10.5a.75.75 0 011.06 0s.318.318.53.53a1.5 1.5 0 010 2.122l-7.25 7.25a3 3 0 01-4.242 0l-2.5-2.5a.75.75 0 10-1.06 1.06l2.5 2.5a4.5 4.5 0 006.364 0l7.25-7.25a3 3 0 000-4.242Z"
+        d="M18.97 3.659a2.25 2.25 0 00-3.182 0l-10.5 10.5a.75.75 0 001.06 1.06l10.5-10.5a.75.75 0 011.06 0s.318.318,.53.53a1.5 1.5 0 010 2.122l-7.25 7.25a3 3 0 01-4.242 0l-2.5-2.5a.75.75 0 10-1.06 1.06l2.5 2.5a4.5 4.5 0 006.364 0l7.25-7.25a3 3 0 000-4.242Z"
         clipRule="evenodd"
       />
     </svg>
@@ -246,7 +246,8 @@ export const GearIcon = ({ className }: { className?: string }) => (
       />
     </svg>
   );
-// Fix: Add missing icons used by AICoreTuner.
+
+// Fix: Add missing icons for AICoreTuner component
 export const FeatherIcon = ({ className }: { className?: string }) => (
     <svg 
         xmlns="http://www.w3.org/2000/svg" 
@@ -268,35 +269,231 @@ export const FeatherIcon = ({ className }: { className?: string }) => (
 export const ScaleIcon = ({ className }: { className?: string }) => (
     <svg 
         xmlns="http://www.w3.org/2000/svg" 
-        viewBox="0 0 20 20" 
-        fill="currentColor" 
+        viewBox="0 0 24 24" 
+        fill="none" 
+        stroke="currentColor" 
+        strokeWidth="2" 
+        strokeLinecap="round" 
+        strokeLinejoin="round" 
         className={className}
         aria-hidden="true"
     >
-        <path d="M5 4a1 1 0 00-2 0v7.268a2 2 0 000 3.464V16a1 1 0 102 0v-1.268a2 2 0 000-3.464V4zM11 4a1 1 0 10-2 0v1.268a2 2 0 000 3.464V16a1 1 0 102 0V8.732a2 2 0 000-3.464V4zM16 3a1 1 0 011 1v7.268a2 2 0 010 3.464V16a1 1 0 11-2 0v-1.268a2 2 0 010-3.464V4a1 1 0 011-1z" />
+        <path d="M12 2l-8 4 8 4 8-4-8-4z"></path>
+        <path d="M4 10v6a8 8 0 0016 0v-6"></path>
+        <path d="M12 22v-6"></path>
     </svg>
 );
 
 export const FlameIcon = ({ className }: { className?: string }) => (
     <svg 
         xmlns="http://www.w3.org/2000/svg" 
-        viewBox="0 0 20 20" 
-        fill="currentColor" 
+        viewBox="0 0 24 24" 
+        fill="none" 
+        stroke="currentColor" 
+        strokeWidth="2" 
+        strokeLinecap="round" 
+        strokeLinejoin="round" 
         className={className}
         aria-hidden="true"
     >
-        <path fillRule="evenodd" d="M10.802 1.905a.75.75 0 00-.893.876 5.625 5.625 0 002.59 4.718c0 4.375-3.75 8.125-3.75 8.125S5 12.373 5 8a5.625 5.625 0 002.53-4.686.75.75 0 00-.876-.893 6.875 6.875 0 00-3.049 5.608c0 5.25 4.375 9.375 4.375 9.375s4.375-4.125 4.375-9.375a6.875 6.875 0 00-3.049-5.608z" clipRule="evenodd" />
+        <path d="M14.5 4.5c3 3 1.5 7.5-1.5 10.5-3 3-7.5 4.5-10.5 1.5s-1.5-7.5 1.5-10.5c3-3 7.5-4.5 10.5-1.5z"></path>
+        <path d="M12 12c-2 0-3 2-1 4s3 2 4 0c1-2-1-4-3-4z"></path>
     </svg>
 );
 
 export const SparklesIcon = ({ className }: { className?: string }) => (
-    <svg 
-        xmlns="http://www.w3.org/2000/svg" 
-        viewBox="0 0 20 20" 
-        fill="currentColor" 
+    <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
         className={className}
         aria-hidden="true"
     >
-        <path fillRule="evenodd" d="M10 2.5a.75.75 0 01.75.75v.255a.75.75 0 01-1.5 0V3.25A.75.75 0 0110 2.5zM10 16.75a.75.75 0 01.75.75v.255a.75.75 0 01-1.5 0V17.5a.75.75 0 01.75-.75zM3.25 10a.75.75 0 01.75-.75h.255a.75.75 0 010 1.5H4a.75.75 0 01-.75-.75zM16.75 10a.75.75 0 01.75-.75h.255a.75.75 0 010 1.5H17.5a.75.75 0 01-.75-.75zM5.893 5.893a.75.75 0 011.061 0l.18.18a.75.75 0 01-1.06 1.06l-.18-.18a.75.75 0 010-1.061zM14.107 14.107a.75.75 0 011.061 0l.18.18a.75.75 0 01-1.06 1.06l-.18-.18a.75.75 0 010-1.061zM5.893 14.107a.75.75 0 010 1.061l-.18.18a.75.75 0 01-1.06-1.06l.18-.18a.75.75 0 011.06 0zM14.107 5.893a.75.75 0 010 1.061l-.18.18a.75.75 0 01-1.06-1.06l.18-.18a.75.75 0 011.06 0z" clipRule="evenodd" />
+        <path d="M12 2L9.5 9.5 2 12l7.5 2.5L12 22l2.5-7.5L22 12l-7.5-2.5L12 2z"></path>
+    </svg>
+);
+
+export const ScrollIcon = ({ className }: { className?: string }) => (
+    <svg 
+        xmlns="http://www.w3.org/2000/svg" 
+        viewBox="0 0 24 24" 
+        fill="none" 
+        stroke="currentColor" 
+        strokeWidth="2" 
+        strokeLinecap="round" 
+        strokeLinejoin="round" 
+        className={className}
+        aria-hidden="true"
+    >
+        <path d="M8 3H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h4 M8 3v18 M8 3h10a2 2 0 0 1 2 2v2 M18 21h-4 M18 21v-4a2 2 0 0 0-2-2h-4"></path>
+    </svg>
+);
+
+export const CpuChipIcon = ({ className }: { className?: string }) => (
+    <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={className}
+        aria-hidden="true"
+    >
+        <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
+        <rect x="9" y="9" width="6" height="6"></rect>
+        <line x1="9" y1="1" x2="9" y2="4"></line>
+        <line x1="15" y1="1" x2="15" y2="4"></line>
+        <line x1="9" y1="20" x2="9" y2="23"></line>
+        <line x1="15" y1="20" x2="15" y2="23"></line>
+        <line x1="20" y1="9" x2="23" y2="9"></line>
+        <line x1="20" y1="14" x2="23" y2="14"></line>
+        <line x1="1" y1="9" x2="4" y2="9"></line>
+        <line x1="1" y1="14" x2="4" y2="14"></line>
+    </svg>
+);
+
+export const HddIcon = ({ className }: { className?: string }) => (
+    <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={className}
+        aria-hidden="true"
+    >
+        <line x1="22" y1="12" x2="2" y2="12"></line>
+        <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path>
+        <line x1="6" y1="16" x2="6.01" y2="16"></line>
+        <line x1="10" y1="16" x2="10.01" y2="16"></line>
+    </svg>
+);
+
+export const SystemdBootIcon = ({ className }: { className?: string }) => (
+    <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={className}
+        aria-hidden="true"
+    >
+        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+        <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+        <line x1="12" y1="22.08" x2="12" y2="12"></line>
+    </svg>
+);
+
+export const BtrfsIcon = ({ className }: { className?: string }) => (
+    <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={className}
+        aria-hidden="true"
+    >
+        <path d="M3 3h7v7H3z"></path>
+        <path d="M14 3h7v7h-7z"></path>
+        <path d="M14 14h7v7h-7z"></path>
+        <path d="M3 14h7v7H3z"></path>
+        <path d="M10 7v3a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-3"></path>
+        <path d="M7 10h3a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-3"></path>
+    </svg>
+);
+
+export const GrubIcon = ({ className }: { className?: string }) => (
+    <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={className}
+        aria-hidden="true"
+    >
+        <path d="M4 4h16v16H4z"></path>
+        <path d="M7 7v3h3"></path>
+        <path d="M7 12h5"></path>
+        <path d="M7 17h10"></path>
+    </svg>
+);
+
+export const MemoryStickIcon = ({ className }: { className?: string }) => (
+    <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={className}
+        aria-hidden="true"
+    >
+        <path d="M2 14h20M3 5h2.5a.5.5 0 0 1 .5.5v13a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1-.5-.5v-13a.5.5 0 0 1 .5-.5H3zM8.5 5h2a.5.5 0 0 1 .5.5v13a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1-.5-.5v-13a.5.5 0 0 1 .5-.5zM14 5h2.5a.5.5 0 0 1 .5.5v13a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1-.5-.5v-13a.5.5 0 0 1 .5-.5H14zM19.5 5h2a.5.5 0 0 1 .5.5v13a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1-.5-.5v-13a.5.5 0 0 1 .5-.5z"></path>
+    </svg>
+);
+
+export const ShieldIcon = ({ className }: { className?: string }) => (
+    <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={className}
+        aria-hidden="true"
+    >
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+    </svg>
+);
+
+export const GlobeAltIcon = ({ className }: { className?: string }) => (
+    <svg 
+        xmlns="http://www.w3.org/2000/svg" 
+        viewBox="0 0 24 24" 
+        fill="none" 
+        stroke="currentColor" 
+        strokeWidth="2" 
+        strokeLinecap="round" 
+        strokeLinejoin="round" 
+        className={className}
+        aria-hidden="true"
+    >
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="2" y1="12" x2="22" y2="12"></line>
+        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+    </svg>
+);
+
+export const RocketLaunchIcon = ({ className }: { className?: string }) => (
+    <svg 
+        xmlns="http://www.w3.org/2000/svg" 
+        viewBox="0 0 24 24" 
+        fill="currentColor" 
+        className={className} 
+        aria-hidden="true"
+    >
+        <path d="M11.721 2.374c.963-.442 2.029-.442 2.992 0l7.536 3.456c1.378.632 2.029 2.25 1.516 3.738l-2.008 5.824a4.5 4.5 0 01-4.242 3.108h-2.032a3 3 0 00-2.64 1.52l-1.07 1.894a1.5 1.5 0 01-2.64 0l-1.07-1.894a3 3 0 00-2.64-1.52H6.46c-1.891 0-3.57-1.17-4.242-3.108L.21 9.568C-.303 8.08.348 6.462 1.726 5.83l7.536-3.456zM12 14.25a.75.75 0 000-1.5.75.75 0 000 1.5z" />
+        <path fillRule="evenodd" d="M12 21a.75.75 0 01.75-.75h.01a.75.75 0 01.75.75v.01a.75.75 0 01-.75.75h-.01a.75.75 0 01-.75-.75V21zm3 0a.75.75 0 01.75-.75h.01a.75.75 0 01.75.75v.01a.75.75 0 01-.75.75h-.01a.75.75 0 01-.75-.75V21zm-6 0a.75.75 0 01.75-.75h.01a.75.75 0 01.75.75v.01a.75.75 0 01-.75.75H9.75a.75.75 0 01-.75-.75V21z" clipRule="evenodd" />
     </svg>
 );

@@ -14,13 +14,30 @@ export interface BuildStep {
     duration: number; // Estimated duration in milliseconds
 }
 
+export interface FirewallRule {
+  port: string;
+  protocol: 'tcp' | 'udp' | 'any';
+  description: string;
+}
+
+// New: Interface for self-hosted services
+export interface InternalizedService {
+  id: 'code-server';
+  name: string;
+  port: number;
+  protocol: 'tcp' | 'udp';
+  enabled: boolean;
+  description: string;
+  packageName: string;
+}
+
 export interface DistroConfig {
-  hostname: string;
-  username:string;
-  password?: string; // New field for user/root password
+  hostname?: string;
+  username?: string;
+  password?: string; 
   timezone: string;
   locale: string;
-  desktopEnvironment: string;
+  desktopEnvironment: 'KDE Plasma';
   kernels: string[];
   architecture: string;
   ram: string;
@@ -30,8 +47,8 @@ export interface DistroConfig {
   packages: string;
   gpuDriver: string;
   graphicsMode: 'integrated' | 'nvidia' | 'hybrid';
-  shell: 'bash' | 'fish';
-  aurHelpers: ('paru' | 'yay')[];
+  shell: 'zsh';
+  aurHelpers: ('paru')[];
   extraRepositories: ('cachy' | 'chaotic')[];
   // New properties for detailed installation
   targetDisk: string;
@@ -44,9 +61,14 @@ export interface DistroConfig {
   ipAddress?: string; // e.g., '192.168.1.100/24'
   gateway?: string; // e.g., '192.168.1.1'
   dnsServers?: string; // e.g., '1.1.1.1,8.8.8.8'
-  // AI Core Configuration
-  aiResourceAllocation: 'minimal' | 'balanced' | 'performance' | 'dynamic';
-  aiGpuMode: 'none' | 'dedicated' | 'dynamic';
+  // Fix: Add AI Core properties for AICoreTuner component
+  aiResourceAllocation?: 'minimal' | 'balanced' | 'performance' | 'dynamic';
+  aiGpuMode?: 'none' | 'dedicated' | 'dynamic';
+  // New: Firewall configuration
+  enableFirewall: boolean;
+  firewallRules: FirewallRule[];
+  // New: Sovereign Services
+  internalizedServices: InternalizedService[];
 }
 
 export interface Snippet {

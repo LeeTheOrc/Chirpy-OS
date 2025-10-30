@@ -54,16 +54,16 @@ export const AICoreTuner: React.FC<AICoreTunerProps> = ({ config, onConfigChange
               disabled={isLocked}
               className={`p-3 rounded-lg border-2 text-left transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex flex-col justify-between items-start h-28
                 ${isSelected 
-                  ? 'bg-purple-600/20 border-purple-500 shadow-lg shadow-purple-900/50' 
-                  : 'bg-slate-800/50 border-slate-700 hover:border-slate-500'
+                  ? 'bg-dragon-fire/10 border-dragon-fire shadow-lg shadow-dragon-fire/10' 
+                  : 'bg-forge-panel/50 border-forge-border hover:border-forge-text-secondary/50'
                 }`}
             >
-              <div className={`p-1.5 rounded-md ${isSelected ? 'text-yellow-300' : 'text-slate-400'}`}>
+              <div className={`p-1.5 rounded-md ${isSelected ? 'text-dragon-fire' : 'text-forge-text-secondary'}`}>
                 {ICONS[level]}
               </div>
               <div className="min-w-0">
-                <h5 className={`font-semibold ${isSelected ? 'text-white' : 'text-slate-300'}`}>{profile.name}</h5>
-                <p className="text-xs text-slate-400">{profile.description}</p>
+                <h5 className={`font-semibold ${isSelected ? 'text-forge-text-primary' : 'text-forge-text-secondary'}`}>{profile.name}</h5>
+                <p className="text-xs text-forge-text-secondary">{profile.description}</p>
               </div>
             </button>
           );
@@ -72,15 +72,15 @@ export const AICoreTuner: React.FC<AICoreTunerProps> = ({ config, onConfigChange
 
       <div className={`p-3 rounded-lg border flex items-center gap-3 transition-all duration-300
         ${isHybridCoProcessing 
-          ? 'bg-green-500/10 border-green-400/50' 
-          : 'bg-slate-800/30 border-slate-800'
+          ? 'bg-dragon-fire/10 border-dragon-fire/50' 
+          : 'bg-forge-panel/30 border-forge-border'
         }`}>
-        <GpuIcon className={`w-6 h-6 flex-shrink-0 ${isHybridCoProcessing ? 'text-green-400' : 'text-slate-500'}`} />
+        <GpuIcon className={`w-6 h-6 flex-shrink-0 ${isHybridCoProcessing ? 'text-dragon-fire' : 'text-forge-text-secondary/50'}`} />
         <div>
-          <h6 className="font-semibold text-sm text-slate-200">
+          <h6 className="font-semibold text-sm text-forge-text-primary">
             {isHybridCoProcessing ? 'Hybrid Co-Processing Active' : 'GPU Utilization'}
           </h6>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-forge-text-secondary">
             {isHybridCoProcessing 
               ? 'AI Core will dynamically share the iGPU with the system.' 
               : `Current mode is '${config.aiGpuMode}'. Select 'Shapeshifter' on hybrid systems to enable co-processing.`
@@ -93,10 +93,10 @@ export const AICoreTuner: React.FC<AICoreTunerProps> = ({ config, onConfigChange
             <button
                 onClick={onInitiateAICoreAttunement}
                 disabled={!isLocked}
-                title={!isLocked ? "Lock the blueprint before generating a script" : "Generate a script to install just the AI Core"}
-                className="w-full text-center py-2 px-4 bg-slate-700/60 border border-slate-600 rounded-lg text-sm font-semibold text-slate-300 hover:bg-slate-700 hover:border-yellow-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title={!isLocked ? "Lock the blueprint before generating a script" : "Generate a script to apply this blueprint to an existing system"}
+                className="w-full text-center py-2 px-4 bg-forge-panel/60 border border-forge-border rounded-lg text-sm font-semibold text-forge-text-secondary hover:bg-forge-panel hover:border-dragon-fire disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-                Generate AI Core Script
+                Generate Attunement Script
             </button>
         </div>
     </div>

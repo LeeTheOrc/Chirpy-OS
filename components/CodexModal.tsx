@@ -17,15 +17,15 @@ const SnippetItem: React.FC<{ snippet: Snippet }> = ({ snippet }) => {
     };
 
     return (
-        <details className="bg-slate-800/50 rounded-lg group">
-            <summary className="p-4 cursor-pointer flex justify-between items-center font-semibold text-slate-200 group-hover:text-yellow-300 transition-colors">
+        <details className="bg-forge-panel/50 rounded-lg group border border-forge-border">
+            <summary className="p-4 cursor-pointer flex justify-between items-center font-semibold text-forge-text-primary group-hover:text-dragon-fire transition-colors">
                 {snippet.title}
-                <span className="transform transition-transform group-open:rotate-90 text-yellow-400/80">{'>'}</span>
+                <span className="transform transition-transform group-open:rotate-90 text-dragon-fire/80">{'>'}</span>
             </summary>
-            <div className="p-4 border-t border-slate-700">
-                <pre className="bg-slate-950/70 border border-slate-700 rounded-lg p-3 text-xs text-slate-300 max-h-48 overflow-y-auto font-mono relative">
+            <div className="p-4 border-t border-forge-border">
+                <pre className="bg-forge-bg border border-forge-border rounded-lg p-3 text-xs text-forge-text-secondary max-h-48 overflow-y-auto font-mono relative">
                     <code>{snippet.content}</code>
-                    <button onClick={handleCopy} className="absolute top-2 right-2 p-1 bg-slate-800 rounded-md text-slate-400 hover:text-white transition-colors" aria-label="Copy code snippet">
+                    <button onClick={handleCopy} className="absolute top-2 right-2 p-1 bg-forge-panel rounded-md text-forge-text-secondary hover:text-forge-text-primary transition-colors" aria-label="Copy code snippet">
                         {copied ? 'Copied!' : <CopyIcon className="w-4 h-4" />}
                     </button>
                 </pre>
@@ -38,10 +38,10 @@ const SnippetItem: React.FC<{ snippet: Snippet }> = ({ snippet }) => {
 export const CodexModal: React.FC<CodexModalProps> = ({ onClose, snippets }) => {
   return (
     <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center animate-fade-in-fast" onClick={onClose}>
-        <div className="bg-slate-900 border border-slate-700 rounded-lg shadow-2xl w-full max-w-2xl p-6 m-4 flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
+        <div className="bg-forge-panel border border-forge-border rounded-lg shadow-2xl w-full max-w-2xl p-6 m-4 flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-4 flex-shrink-0">
-                <h2 className="text-xl font-bold text-white">The Chirpy Codex</h2>
-                <button onClick={onClose} className="text-slate-400 hover:text-white">
+                <h2 className="text-xl font-bold text-forge-text-primary">The Kael Codex</h2>
+                <button onClick={onClose} className="text-forge-text-secondary hover:text-forge-text-primary">
                     <CloseIcon className="w-5 h-5" />
                 </button>
             </div>
