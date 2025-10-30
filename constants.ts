@@ -11,19 +11,19 @@ export const INITIAL_SUGGESTIONS = [
 export const AI_RESOURCE_PROFILES = {
   minimal: {
     name: "Stealth Mode",
-    description: "Minimal AI core footprint. Consumes the least RAM and CPU, ideal for low-spec hardware or when the OS needs maximum resources. AI responses may be slower.",
+    description: "Minimal AI core footprint.",
   },
   balanced: {
     name: "Guardian Stance",
-    description: "Default balanced profile. Provides a responsive AI experience without significant resource drain. Perfect for general use and development.",
+    description: "Default balanced profile.",
   },
   performance: {
     name: "Berserker Rage",
-    description: "Maximum AI performance. Dedicates more resources for the fastest response times and complex tasks. May impact performance in resource-heavy applications.",
+    description: "Maximum AI performance.",
   },
   dynamic: {
     name: "Shapeshifter Form",
-    description: "The AI core dynamically adjusts its resource usage based on system load. On hybrid GPU systems, this will also automatically share the iGPU.",
+    description: "The AI core dynamically adjusts its resource usage based on system load.",
   },
 };
 

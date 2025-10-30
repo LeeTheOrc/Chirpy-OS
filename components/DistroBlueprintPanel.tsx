@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import type { DistroConfig } from '../types';
 import { LockClosedIcon, LockOpenIcon, GearIcon } from './Icons';
@@ -9,9 +10,12 @@ interface DistroBlueprintPanelProps {
   isLocked: boolean;
   onLockToggle: () => void;
   onBuild: () => void;
+  onInitiateAttunement: () => void;
+  onInitiateAICoreAttunement: () => void;
+  isAICoreInstalled: boolean;
 }
 
-export const DistroBlueprintPanel: React.FC<DistroBlueprintPanelProps> = ({ config, onConfigChange, isLocked, onLockToggle, onBuild }) => {
+export const DistroBlueprintPanel: React.FC<DistroBlueprintPanelProps> = ({ config, onConfigChange, isLocked, onLockToggle, onBuild, onInitiateAttunement, onInitiateAICoreAttunement, isAICoreInstalled }) => {
     const [isActionsMenuOpen, setIsActionsMenuOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
 
@@ -32,12 +36,21 @@ export const DistroBlueprintPanel: React.FC<DistroBlueprintPanelProps> = ({ conf
         setIsActionsMenuOpen(false);
     };
 
+    const handleAttunementClick = () => {
+        onInitiateAttunement();
+        setIsActionsMenuOpen(false);
+    };
+
     return (
         <div className="bg-slate-900/70 border border-slate-800 rounded-lg animate-fade-in divide-y divide-slate-800 shadow-2xl shadow-black/30">
-            <div className="p-5 flex justify-between items-center">
+            <div className="p-5 flex justify-between items-start">
                 <div>
                     <h3 className="text-lg font-bold text-yellow-300">The Architect's Blueprint</h3>
                     <p className="text-slate-400 text-sm">A living document of our realm's configuration.</p>
+                    <div className={`mt-2 text-xs font-semibold inline-flex items-center gap-1.5 px-2 py-1 rounded-full ${isAICoreInstalled ? 'bg-green-500/10 text-green-400' : 'bg-slate-700 text-slate-400'}`}>
+                        <div className={`w-2 h-2 rounded-full ${isAICoreInstalled ? 'bg-green-400' : 'bg-slate-500'}`}></div>
+                        AI Core: {isAICoreInstalled ? 'Attuned' : 'Not Attuned'}
+                    </div>
                 </div>
                 <div className="flex items-center gap-2">
                     <button onClick={onLockToggle} className="p-2 rounded-full hover:bg-slate-700/50 transition-colors text-slate-400 hover:text-white" aria-label={isLocked ? 'Unlock Blueprint' : 'Lock Blueprint'}>
@@ -54,7 +67,7 @@ export const DistroBlueprintPanel: React.FC<DistroBlueprintPanelProps> = ({ conf
                             <GearIcon className="w-5 h-5" />
                         </button>
                         {isActionsMenuOpen && (
-                            <div className="absolute right-0 mt-2 w-56 bg-slate-800 border border-slate-700 rounded-md shadow-lg z-10 animate-fade-in-fast">
+                            <div className="absolute right-0 mt-2 w-64 bg-slate-800 border border-slate-700 rounded-md shadow-lg z-10 animate-fade-in-fast">
                                 <ul className="py-1">
                                     <li>
                                         <button 
@@ -62,6 +75,14 @@ export const DistroBlueprintPanel: React.FC<DistroBlueprintPanelProps> = ({ conf
                                             className="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-purple-600/50"
                                         >
                                             Build Installation Script
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button
+                                            onClick={handleAttunementClick}
+                                            className="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-purple-600/50"
+                                        >
+                                            Generate Attunement Script
                                         </button>
                                     </li>
                                 </ul>
@@ -74,6 +95,7 @@ export const DistroBlueprintPanel: React.FC<DistroBlueprintPanelProps> = ({ conf
                 config={config} 
                 onConfigChange={onConfigChange} 
                 isLocked={isLocked}
+                onInitiateAICoreAttunement={onInitiateAICoreAttunement}
             />
         </div>
     );

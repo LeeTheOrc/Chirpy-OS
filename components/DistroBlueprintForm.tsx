@@ -2,6 +2,7 @@ import React from 'react';
 import type { DistroConfig } from '../types';
 import { Tooltip } from './Tooltip';
 import { AI_RESOURCE_PROFILES } from '../constants';
+import { GpuIcon } from './Icons';
 
 const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
     <h4 className="font-bold text-yellow-400/90 mb-2 mt-4 text-md tracking-wide">{title}</h4>
@@ -28,6 +29,7 @@ interface DistroBlueprintFormProps {
   config: DistroConfig;
   onConfigChange: (newConfig: DistroConfig) => void;
   isLocked: boolean;
+  onInitiateAICoreAttunement?: () => void;
 }
 
 // Defensive renderer for array-like fields to prevent crashes from malformed AI responses.
@@ -44,26 +46,33 @@ const renderArrayAsString = (value: unknown): string => {
     return '';
   };
   
-export const DistroBlueprintForm: React.FC<DistroBlueprintFormProps> = ({ config, onConfigChange, isLocked }) => {
+export const DistroBlueprintForm: React.FC<DistroBlueprintFormProps> = ({ config, onConfigChange, isLocked, onInitiateAICoreAttunement }) => {
     
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         const newConfig = { ...config, [name]: value };
-        
-        if (name === 'aiResourceAllocation' && value === 'dynamic' && config.graphicsMode === 'hybrid') {
-            newConfig.aiGpuMode = 'dynamic';
+
+        // This is the "hybrid AI" logic. When Shapeshifter is selected on a hybrid system,
+        // automatically enable dynamic GPU sharing.
+        if (name === 'aiResourceAllocation') {
+            const level = value as DistroConfig['aiResourceAllocation'];
+            if (level === 'dynamic' && config.graphicsMode === 'hybrid') {
+                newConfig.aiGpuMode = 'dynamic';
+            } else {
+                if (level === 'performance') {
+                    newConfig.aiGpuMode = 'dedicated';
+                } else {
+                    newConfig.aiGpuMode = 'none';
+                }
+            }
         }
-        
+
         onConfigChange(newConfig);
     };
 
     const handleArrayChange = (name: 'aurHelpers' | 'extraRepositories' | 'kernels', value: string) => {
         onConfigChange({ ...config, [name]: value.split(',').map(s => s.trim()).filter(Boolean) as any });
     };
-    
-    // Explicitly check for a valid profile before accessing its properties to prevent render errors.
-    const activeProfile = AI_RESOURCE_PROFILES[config.aiResourceAllocation as keyof typeof AI_RESOURCE_PROFILES];
-    const powerStanceTooltip = activeProfile ? activeProfile.description : "Select a valid power profile to see a description.";
 
     return (
         <div className="p-5">
@@ -83,24 +92,37 @@ export const DistroBlueprintForm: React.FC<DistroBlueprintFormProps> = ({ config
             <DetailInput label="GPU Driver" name="gpuDriver" value={config.gpuDriver} onChange={handleChange} tooltip="e.g., nvidia, amd, intel" disabled={isLocked} />
             
             <SectionHeader title="AI Core Attunement" />
-            <DetailSelect 
-                label="Power Stance" 
-                name="aiResourceAllocation" 
-                value={config.aiResourceAllocation} 
+             <DetailSelect
+                label="Power Stance"
+                name="aiResourceAllocation"
+                value={config.aiResourceAllocation}
                 onChange={handleChange}
-                options={Object.entries(AI_RESOURCE_PROFILES).map(([key, val]) => ({ value: key, label: val.name }))}
-                tooltip={powerStanceTooltip}
+                options={(Object.keys(AI_RESOURCE_PROFILES) as (keyof typeof AI_RESOURCE_PROFILES)[]).map(key => ({
+                    value: key,
+                    label: AI_RESOURCE_PROFILES[key].name,
+                }))}
+                tooltip="Select the resource profile for the onboard AI assistant."
                 disabled={isLocked}
             />
-             <DetailSelect 
-                label="AI GPU Mode" 
-                name="aiGpuMode" 
-                value={config.aiGpuMode} 
-                onChange={handleChange}
-                options={[{value: 'none', label: 'None'}, {value: 'dedicated', label: 'Dedicated'}, {value: 'dynamic', label: 'Dynamic (Shared)'}]}
-                tooltip="Determines how the AI Core utilizes the GPU. 'Dynamic' is auto-selected for Shapeshifter Form on Hybrid systems."
-                disabled={isLocked || (config.aiResourceAllocation === 'dynamic' && config.graphicsMode === 'hybrid')}
-            />
+             <div className="flex justify-between items-center py-2.5 border-b border-slate-800">
+                <label className="flex items-center gap-1.5 text-slate-400 text-sm">GPU Mode <Tooltip text="On hybrid systems, 'Shapeshifter' stance enables dynamic GPU sharing." /></label>
+                <div className="flex items-center gap-2 text-sm font-medium text-slate-200">
+                    <GpuIcon className={`w-4 h-4 ${config.graphicsMode === 'hybrid' && config.aiGpuMode === 'dynamic' ? 'text-green-400' : 'text-slate-500'}`} />
+                    <span>{config.aiGpuMode}</span>
+                </div>
+            </div>
+            {onInitiateAICoreAttunement && (
+                <div className="pt-4">
+                    <button
+                        onClick={onInitiateAICoreAttunement}
+                        disabled={!isLocked}
+                        title={!isLocked ? "Lock the blueprint before generating a script" : "Generate a script to install just the AI Core"}
+                        className="w-full text-center py-2 px-4 bg-slate-700/60 border border-slate-600 rounded-lg text-sm font-semibold text-slate-300 hover:bg-slate-700 hover:border-yellow-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                        Generate AI Core Script
+                    </button>
+                </div>
+            )}
 
             <SectionHeader title="Software Grimoire" />
             <DetailInput label="Desktop" name="desktopEnvironment" value={config.desktopEnvironment} onChange={handleChange} disabled={isLocked} />

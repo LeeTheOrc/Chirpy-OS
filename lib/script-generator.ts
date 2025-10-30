@@ -1,514 +1,650 @@
-import type { DistroConfig, BuildTarget } from '../types';
+// Fix: Implement script generation functions.
+import type { BuildTarget, DistroConfig } from './types';
 
-export function generateInstallScript(config: DistroConfig, target: BuildTarget = 'bare-metal'): string {
-  // Add a guard clause for the entire config object to prevent crashes.
-  if (!config) {
-    console.error("generateInstallScript called with null or undefined config. Using default.");
-    config = {} as DistroConfig; // Fallback to an empty object to allow defaults to kick in.
-  }
-  
-  // Use || to handle all falsy values (null, undefined, "") and provide a sensible default.
-  const hostname = config.hostname || 'chirpy-realm';
-  const username = config.username || 'chirpy';
-  const timezone = config.timezone || 'UTC';
-  const locale = config.locale || 'en_US.UTF-8';
-  const desktopEnvironment = config.desktopEnvironment || 'kde plasma';
-  const filesystem = config.filesystem || 'btrfs';
-  const bootloader = config.bootloader || 'grub';
-  const shell = config.shell || 'fish';
-  const location = config.location || 'USA';
-  // For booleans, ?? is better as we want to preserve `false`.
-  const enableSnapshots = config.enableSnapshots ?? true;
-  const efiPartitionSize = config.efiPartitionSize || '512M';
-  const swapSize = config.swapSize || '18GB';
-  const networkMode = config.networkMode || 'dhcp';
-  const ipAddress = config.ipAddress;
-  const gateway = config.gateway;
-  const dnsServers = config.dnsServers;
-  const aiResourceAllocation = config.aiResourceAllocation || 'dynamic';
-  const aiGpuMode = config.aiGpuMode || 'dynamic';
-  const graphicsMode = config.graphicsMode || 'hybrid';
+const _getAICoreScriptBlock = (apiKey: string, config: DistroConfig): string => {
+    if (!apiKey) {
+      return `echo "FATAL: API_KEY was not provided during build." >&2; exit 1;`;
+    }
 
-  // Ensure arrays are valid and have content where required.
-  const safeAurHelpers = Array.isArray(config.aurHelpers) ? config.aurHelpers : [];
-  const safeExtraRepositories = Array.isArray(config.extraRepositories) ? config.extraRepositories : [];
+    return `
+# --- AI CORE INSTALLATION ---
+echo "INFO: Installing Chirpy AI Core..."
 
-  // Separate CachyOS packages to be installed on first boot from standard packages.
-  const allKernels = Array.isArray(config.kernels) && config.kernels.length > 0 ? config.kernels : ['linux'];
-  const cachyosKernels = allKernels.filter(k => k.includes('cachyos'));
-  let standardKernels = allKernels.filter(k => !k.includes('cachyos'));
-  // Ensure at least one kernel is installed during base installation to make the system bootable.
-  if (standardKernels.length === 0) {
-    standardKernels.push('linux');
-  }
+# Create service config directory and user/group
+mkdir -p /etc/chirpy-ai
+if ! getent group chirpy-ai >/dev/null; then
+    groupadd --system chirpy-ai
+    echo "INFO: Created 'chirpy-ai' system group."
+fi
+if ! id -u chirpy-ai >/dev/null 2>&1; then
+    useradd --system --no-create-home -g chirpy-ai chirpy-ai
+    echo "INFO: Created 'chirpy-ai' system user."
+fi
+echo "INFO: Created /etc/chirpy-ai directory."
 
-  const allPackages = (config.packages || '').split(',').map(p => p.trim()).filter(Boolean);
-  const cachyosPackages = allPackages.filter(p => p.includes('cachyos'));
-  const standardPackagesStr = allPackages.filter(p => !p.includes('cachyos')).join(' ');
-  
-  // Combine all CachyOS packages for first-boot installation. This includes kernels, user packages, and core utilities.
-  const allCachyosPackagesToInstall = [
-      ...cachyosKernels,
-      ...cachyosPackages,
-      'cachyos-hw-prober',
-      'cachyos-gaming-meta'
-  ];
-  const uniqueCachyosPackages = [...new Set(allCachyosPackagesToInstall)].filter(Boolean);
-  const cachyosPackagesStr = uniqueCachyosPackages.join(' ');
-
-  let deInstallScript: string;
-  if (desktopEnvironment.toLowerCase().includes('kde')) {
-    deInstallScript = `pacman -S --noconfirm xorg sddm plasma-meta && systemctl enable sddm`;
-  } else if (desktopEnvironment.toLowerCase().includes('gnome')) {
-    deInstallScript = `pacman -S --noconfirm xorg gdm gnome && systemctl enable gdm`;
-  } else {
-    // Fallback for simple DE package names that use GDM
-    const dePackage = desktopEnvironment.split(' ')[0];
-    deInstallScript = `pacman -S --noconfirm xorg gdm ${dePackage} && systemctl enable gdm`;
-  }
-
-  let vmPackages = '';
-  let vmServices = '';
-
-  if (target === 'qemu') {
-    vmPackages = ' qemu-guest-agent';
-    vmServices = `echo "Enabling QEMU Guest Agent..." && systemctl enable qemu-guest-agent.service`;
-  } else if (target === 'virtualbox') {
-    vmPackages = ' virtualbox-guest-utils';
-    vmServices = `echo "Enabling VirtualBox Guest Services..." && systemctl enable vboxservice.service`;
-  }
-
-  const multilibEnableScript = `
-echo "Enabling multilib repository for 32-bit compatibility..."
-sed -i "/\\[multilib\\]/,/Include/s/^#//" /etc/pacman.conf
-`;
-
-  const script = `#!/bin/bash
-# Chirpy AI :: The Forging Ritual (TUI Installer)
-# Forged on: ${new Date().toUTCString()}
-# Build Target: ${target}
-#
-# This script will guide you through the installation of Chirpy OS.
-
-set -uo pipefail
-trap 's_err_report "'"\${BASH_SOURCE}"'" "'"\${LINENO}"'"' ERR
-
-# --- UI Constants ---
-TITLE="Chirpy OS Forge"
-BACKTITLE="A Guided Installation Ritual :: Version 2.0"
-WIDTH=70
-HEIGHT=20
-
-# --- Error Reporting ---
-s_err_report() {
-    # This function is called on any script error. It might be called before dialog is installed.
-    if command -v dialog &> /dev/null; then
-        dialog --backtitle "$BACKTITLE" --title "Anomalous Error" --msgbox "A critical error occurred at line $2 in $1. The ritual is halted to prevent corruption of the realm." 8 60
-    else
-        echo "A critical error occurred at line $2 in $1." >&2
-        echo "The ritual is halted to prevent corruption of the realm." >&2
-    fi
-    exit 1
+# Write the configuration files
+cat <<AICONFIG > /etc/chirpy-ai/config.json
+{
+  "resource_profile": "${config.aiResourceAllocation}",
+  "gpu_mode": "${config.aiGpuMode}"
 }
+AICONFIG
+echo "INFO: Wrote AI Core configuration to /etc/chirpy-ai/config.json"
 
-# --- Pre-flight Checks & Setup ---
-pre_flight_checks() {
-    # 1. Check for root privileges
-    if [ "$EUID" -ne 0 ]; then
-        echo "Error: This ritual must be performed with root privileges." >&2
-        echo "Please ensure you are the root user in the Arch Linux live environment." >&2
-        exit 1
-    fi
+# Create chat config with API key
+cat <<CHATCONFIG > /etc/chirpy-ai/chat.conf
+API_KEY="${apiKey}"
+CHATCONFIG
+chown root:chirpy-ai /etc/chirpy-ai/chat.conf
+chmod 640 /etc/chirpy-ai/chat.conf
+echo "INFO: Wrote secured chat API configuration."
 
-    # 2. Check for internet connectivity
-    echo "Pinging the digital aether (checking internet connection)..."
-    if ! ping -c 1 archlinux.org &> /dev/null; then
-        echo "Error: Connection to the digital aether failed." >&2
-        echo "Please connect to the internet (e.g., using 'iwctl') and try again." >&2
-        exit 1
-    fi
-    echo "Connection established."
-
-    # 3. Check for and install dialog if needed
-    if ! command -v dialog &> /dev/null; then
-        echo "The 'dialog' utility is required for the TUI, but it was not found."
-        echo "Attempting to summon it via pacman..."
-        pacman -Sy --noconfirm --needed dialog
-        if ! command -v dialog &> /dev/null; then
-            echo "Failed to summon 'dialog'. The ritual cannot proceed." >&2
-            echo "Please check your pacman configuration and mirrors." >&2
-            exit 1
-        fi
-        echo "'dialog' has been successfully summoned."
-    fi
-}
-
-# --- State Variables ---
-HOSTNAME_VAR="${hostname}"
-USERNAME_VAR="${username}"
-PASSWORD_VAR=""
-LOCALE_VAR="${locale}"
-TIMEZONE_VAR="${timezone}"
-TARGET_DISK=""
-CONFIG_CONFIRMED=0
-DISK_CONFIGURED=0
-
-# --- Main Logic ---
-main_menu() {
-    while true; do
-        SELECTION=$(dialog --backtitle "$BACKTITLE" --title "$TITLE" --cancel-label "Exit" --menu "The Ritual Circle" $HEIGHT $WIDTH 4 \\
-            "1" "Configure the Realm (User & Locale)" \\
-            "2" "Select the Target Disk" \\
-            "3" "Begin The Great Forging" \\
-            3>&1 1>&2 2>&3)
-
-        exit_status=$?
-        if [ $exit_status -ne 0 ]; then
-            clear
-            echo "The ritual has been aborted by the Architect."
-            exit
-        fi
-
-        case $SELECTION in
-            1) configure_realm ;;
-            2) select_disk ;;
-            3) 
-                if [ $DISK_CONFIGURED -eq 1 ]; then
-                    review_and_forge
-                else
-                    dialog --backtitle "$BACKTITLE" --title "Halt!" --msgbox "You must select a target disk before the forging can begin." 6 60
-                fi
-                ;;
-        esac
-    done
-}
-
-configure_realm() {
-    HOSTNAME_VAR=$(dialog --backtitle "$BACKTITLE" --title "Realm Name" --inputbox "Enter the hostname for this machine:" 8 40 "$HOSTNAME_VAR" 3>&1 1>&2 2>&3)
-    USERNAME_VAR=$(dialog --backtitle "$BACKTITLE" --title "Master User" --inputbox "Enter the username for the main user:" 8 40 "$USERNAME_VAR" 3>&1 1>&2 2>&3)
-    
-    while true; do
-        PASSWORD_VAR=$(dialog --backtitle "$BACKTITLE" --title "Secret Word" --passwordbox "Enter password for root and $USERNAME_VAR:" 8 40 3>&1 1>&2 2>&3)
-        PASSWORD_CONFIRM_VAR=$(dialog --backtitle "$BACKTITLE" --title "Secret Word Confirmation" --passwordbox "Confirm the password:" 8 40 3>&1 1>&2 2>&3)
-        
-        if [ -z "$PASSWORD_VAR" ]; then
-            dialog --backtitle "$BACKTITLE" --title "Warning" --msgbox "The secret word cannot be empty." 6 40
-        elif [ "$PASSWORD_VAR" == "$PASSWORD_CONFIRM_VAR" ]; then
-            dialog --backtitle "$BACKTITLE" --title "Confirmed" --infobox "Secret word is confirmed and sealed." 5 40
-            sleep 1
-            break
-        else
-            dialog --backtitle "$BACKTITLE" --title "Warning" --msgbox "The secret words do not match. Try again." 6 40
-        fi
-    done
-
-    LOCALE_VAR=$(dialog --backtitle "$BACKTITLE" --title "System Language" --inputbox "Enter the locale for the system (e.g., en_US.UTF-8):" 8 40 "$LOCALE_VAR" 3>&1 1>&2 2>&3)
-    TIMEZONE_VAR=$(dialog --backtitle "$BACKTITLE" --title "Temporal Weave" --inputbox "Enter your timezone (e.g., America/New_York):" 8 40 "$TIMEZONE_VAR" 3>&1 1>&2 2>&3)
-}
-
-select_disk() {
-    mapfile -t DISK_OPTIONS < <(lsblk -p -d -n -o NAME,SIZE,MODEL | awk '{print $1 " (" $2 ") " $3}')
-    if [ \${#DISK_OPTIONS[@]} -eq 0 ]; then
-        dialog --backtitle "$BACKTITLE" --title "Scrying Failure" --msgbox "No suitable disks found! Cannot proceed." 6 60
-        return
-    fi
-    
-    DISK_CHOICES=()
-    for item in "\${DISK_OPTIONS[@]}"; do
-        DISK_CHOICES+=("$(echo "$item" | awk '{print $1}')" "$(echo "$item" | cut -d' ' -f2-)")
-    done
-
-    TARGET_DISK=$(dialog --backtitle "$BACKTITLE" --title "Select Target Disk" --radiolist "Choose the disk where the realm will be forged. ALL DATA on the selected disk will be PERMANENTLY ERASED." $HEIGHT $WIDTH \${#DISK_CHOICES[@]} "\${DISK_CHOICES[@]}" 3>&1 1>&2 2>&3)
-
-    if [ -n "$TARGET_DISK" ]; then
-        dialog --backtitle "$BACKTITLE" --title "Final Warning!" --yesno "You have chosen to forge the realm on: \\n\\n$TARGET_DISK\\n\\nThis action is IRREVERSIBLE and will ERASE ALL DATA on this disk. Are you prepared to proceed?" 10 60
-        response=$?
-        if [ $response -eq 0 ]; then
-            DISK_CONFIGURED=1
-            dialog --backtitle "$BACKTITLE" --title "Disk Confirmed" --infobox "The target disk $TARGET_DISK has been sealed." 5 60
-            sleep 1
-        else
-            TARGET_DISK=""
-            DISK_CONFIGURED=0
-            dialog --backtitle "$BACKTITLE" --title "Aborted" --infobox "The disk selection has been unsealed." 5 60
-            sleep 1
-        fi
-    fi
-}
-
-review_and_forge() {
-    SUMMARY="Hostname: $HOSTNAME_VAR\\n"
-    SUMMARY+="Username: $USERNAME_VAR\\n"
-    SUMMARY+="Timezone: $TIMEZONE_VAR\\n"
-    SUMMARY+="Target Disk: $TARGET_DISK\\n"
-    SUMMARY+="Filesystem: ${filesystem}\\n"
-    SUMMARY+="Desktop: ${desktopEnvironment}"
-
-    dialog --backtitle "$BACKTITLE" --title "Review the Blueprint" --yesno "The blueprint is complete. Review the details below. Shall we begin the Great Forging?\\n\\n$SUMMARY" 15 60
-    
-    if [ $? -eq 0 ]; then
-        run_installation
-    fi
-}
-
-run_installation() {
-    (
-        # Phase 1: Preparation
-        echo 5; echo "Sanctifying the temporal weave (timezone)..."
-        timedatectl set-timezone "\${TIMEZONE_VAR}"
-        timedatectl set-ntp true
-        sleep 1
-
-        # Phase 2: Scribing Runes onto the Disk
-        echo 10; echo "Carving the partitions on \${TARGET_DISK}..."
-        if [[ "\$TARGET_DISK" == *nvme* ]]; then
-            EFI_PART="\${TARGET_DISK}p1"
-            ROOT_PART="\${TARGET_DISK}p2"
-        else
-            EFI_PART="\${TARGET_DISK}1"
-            ROOT_PART="\${TARGET_DISK}2"
-        fi
-        parted \${TARGET_DISK} --script mklabel gpt
-        parted \${TARGET_DISK} --script mkpart EFI fat32 1MiB ${efiPartitionSize}
-        parted \${TARGET_DISK} --script set 1 esp on
-        parted \${TARGET_DISK} --script mkpart ROOT ${filesystem} ${efiPartitionSize} 100%
-        sleep 1
-
-        echo 20; echo "Anointing partitions with filesystem sigils..."
-        mkfs.fat -F32 "\${EFI_PART}"
-        mkfs.${filesystem} -f "\${ROOT_PART}"
-        sleep 1
-        
-        echo 25; echo "Mounting the nascent realm..."
-        mount "\${ROOT_PART}" /mnt
-        mkdir -p /mnt/boot
-        mount "\${EFI_PART}" /mnt/boot
-        sleep 1
-        
-        # Phase 2.5: Attuning Mirrors
-        echo 35; echo "Attuning mirrors in ${location} for best speed..."
-        # The output of reflector can be verbose and will mess with the dialog UI.
-        # We redirect it. The 'set -uo pipefail' ensures that the script will exit on failure.
-        reflector --country "${location}" --protocol https --latest 20 --sort rate --save /etc/pacman.d/mirrorlist &>/dev/null
-        sleep 1
-
-        # Phase 3: Summoning the Base System
-        echo 40; echo "Summoning the base system and kernel spirits (pacstrap)..."
-        pacstrap /mnt base ${standardKernels.join(' ')} linux-firmware intel-ucode amd-ucode
-
-        echo 60; echo "Generating the fstab grimoire..."
-        genfstab -U /mnt >> /mnt/etc/fstab
-        sleep 1
-
-        # Phase 4: Attuning the New Realm (chroot)
-        echo 70; echo "Entering the new realm to configure it..."
-        
-        arch-chroot /mnt /bin/bash <<CHROOT_EOF
-set -e
-echo "Bestowing the realm its name: $HOSTNAME_VAR..."
-echo "$HOSTNAME_VAR" > /etc/hostname
-
-echo "Setting the realm's time and tongue..."
-ln -sf /usr/share/zoneinfo/$TIMEZONE_VAR /etc/localtime
-hwclock --systohc
-echo "$LOCALE_VAR UTF-8" >> /etc/locale.gen
-locale-gen
-echo "LANG=$LOCALE_VAR" > /etc/locale.conf
-
-echo "Opening pathways to the digital aether (networking)..."
-pacman -S --noconfirm networkmanager
-systemctl enable NetworkManager
-
-${networkMode === 'static' ? `
-echo "Scribing static network runes..."
-cat > /etc/NetworkManager/system-connections/wired.nmconnection <<NET
-[connection]
-id=static-eth0
-type=ethernet
-interface-name=eth0
-[ipv4]
-method=manual
-address=${ipAddress}
-gateway=${gateway}
-dns=${dnsServers}
-NET
-` : ''}
-
-echo "Setting the root user's secret word..."
-echo "root:$PASSWORD_VAR" | chpasswd
-
-echo "Summoning the chosen shell: ${shell}..."
-pacman -S --noconfirm --needed ${shell}
-
-echo "Anointing the master user: $USERNAME_VAR..."
-useradd -m -g users -G wheel -s /bin/${shell} "$USERNAME_VAR"
-echo "$USERNAME_VAR:$PASSWORD_VAR" | chpasswd
-echo "%wheel ALL=(ALL:ALL) ALL" >> /etc/sudoers
-
-echo "Forging a swapfile of ${swapSize}..."
-fallocate -l ${swapSize} /swapfile
-chmod 600 /swapfile
-mkswap /swapfile
-swapon /swapfile
-echo '/swapfile none swap defaults 0 0' >> /etc/fstab
-
-echo "Configuring software repositories..."
-${safeExtraRepositories.includes('cachy') ? `
-echo "-> Setting up CachyOS repositories..."
-# Using the documented bootstrap method.
-# NOTE: These URLs can become outdated. The custom 'pacman' package install was removed for stability.
-
-echo "--> Importing and signing CachyOS key..."
-pacman-key --recv-keys F3B607488DB35A47 --keyserver keyserver.ubuntu.com
-pacman-key --lsign-key F3B607488DB35A47
-
-echo "--> Installing CachyOS keyring and mirrorlists..."
-pacman -U --noconfirm \\
-'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-keyring-20240331-1-any.pkg.tar.zst' \\
-'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-mirrorlist-22-1-any.pkg.tar.zst' \\
-'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-v3-mirrorlist-22-1-any.pkg.tar.zst' \\
-'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-v4-mirrorlist-22-1-any.pkg.tar.zst'
-
-# THIS IS THE CRITICAL FIX: The repository definitions were missing from pacman.conf.
-echo "--> Appending CachyOS repositories to pacman.conf..."
-cat << 'EOF' >> /etc/pacman.conf
-
-[cachyos-v4]
-Include = /etc/pacman.d/cachyos-v4-mirrorlist
-[cachyos-v3]
-Include = /etc/pacman.d/cachyos-v3-mirrorlist
-[cachyos]
-Include = /etc/pacman.d/cachyos-mirrorlist
-EOF
-` : ''}
-
-${multilibEnableScript}
-
-${safeExtraRepositories.includes('chaotic') ? `
-echo "-> Adding Chaotic-AUR repository (fallback priority)..."
-pacman-key --recv-key 3056513887B78AEB --keyserver keyserver.ubuntu.com
-pacman-key --lsign-key 3056513887B78AEB
-pacman -U --noconfirm 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst'
-pacman -U --noconfirm 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst'
-# Append Chaotic-AUR config to the end of pacman.conf
-echo '' >> /etc/pacman.conf
-echo '[chaotic-aur]' >> /etc/pacman.conf
-echo 'Include = /etc/pacman.d/chaotic-mirrorlist' >> /etc/pacman.conf
-` : ''}
-
-echo "Synchronizing with the digital aether and upgrading the realm..."
-pacman -Syu --noconfirm
-
-echo "Imbuing the power core (${bootloader})..."
-pacman -S --noconfirm grub efibootmgr
-grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB
-grub-mkconfig -o /boot/grub/grub.cfg
-
-echo "Summoning essential artifacts (packages)..."
-pacman -S --noconfirm --needed ${standardPackagesStr}${vmPackages}
-
-echo "Erecting the halls of the Desktop Environment: ${desktopEnvironment}..."
-${deInstallScript}
-
-echo "Preparing first-boot hardware and CachyOS attunement ritual..."
-cat > /usr/local/bin/chirpy-first-boot.sh << 'FIRST_BOOT_SCRIPT'
-#!/bin/bash
-# This script runs once on the first boot to finalize setup.
-set -e
-# Log all output for debugging.
-exec > >(tee /var/log/chirpy-first-boot.log) 2>&1
-
-echo "--- Chirpy OS First Boot Setup ---"
-
-# Wait for an active network connection.
-echo "Waiting for NetworkManager to establish a connection..."
-while ! nmcli -t -f STATE g | grep -q "connected"; do
-    echo "Network not yet connected. Waiting 5 seconds..."
-    sleep 5
-done
-
-echo "Network connection established. Synchronizing databases..."
-pacman -Syu --noconfirm
-
-${cachyosPackagesStr ? `
-echo "Installing CachyOS specific packages, kernels, and gaming essentials..."
-pacman -S --noconfirm --needed ${cachyosPackagesStr}
-
-echo "Probing for and installing all required hardware drivers..."
-cachyos-hw-prober
-` : `
-echo "No CachyOS packages specified for first-boot installation."
-`}
-
-echo "First boot setup complete. This ritual will now self-destruct to prevent re-running."
-systemctl disable chirpy-first-boot.service
-rm /usr/local/bin/chirpy-first-boot.sh
-rm /etc/systemd/system/chirpy-first-boot.service
-
-echo "--- Chirpy OS is now fully attuned. Enjoy your quests! ---"
-
-FIRST_BOOT_SCRIPT
-
-chmod +x /usr/local/bin/chirpy-first-boot.sh
-
-cat > /etc/systemd/system/chirpy-first-boot.service << 'FIRST_BOOT_SERVICE'
+# Create a mock systemd service file
+cat <<'SERVICE' > /etc/systemd/system/chirpy-ai-core.service
 [Unit]
-Description=Chirpy OS First Boot Hardware & CachyOS Setup
-Wants=network-online.target
-After=network-online.target
+Description=Chirpy AI Core Service
+After=network.target
 
 [Service]
-Type=oneshot
-ExecStart=/usr/local/bin/chirpy-first-boot.sh
+Type=simple
+ExecStart=/usr/bin/chirpy-ai-daemon --config /etc/chirpy-ai/config.json
+Restart=on-failure
+User=chirpy-ai
 
 [Install]
 WantedBy=multi-user.target
-FIRST_BOOT_SERVICE
+SERVICE
+echo "INFO: Created systemd service file."
 
-systemctl enable chirpy-first-boot.service
+# Create a mock executable for the daemon
+cat <<'DAEMON' > /usr/bin/chirpy-ai-daemon
+#!/bin/bash
+echo "Chirpy AI Core started at \$(date). Reading config from \$1..."
+[[ -f "\$1" ]] && cat "\$1"
+echo "AI Core running..."
+while true; do sleep 3600; done
+DAEMON
+chmod +x /usr/bin/chirpy-ai-daemon
+echo "INFO: Created mock daemon at /usr/bin/chirpy-ai-daemon."
 
-echo "Summoning helpers from the Arch User Repository..."
-${safeAurHelpers.includes('yay') ? 'pacman -S --noconfirm yay' : ''}
-${safeAurHelpers.includes('paru') ? 'pacman -S --noconfirm paru' : ''}
+# Create the core tuner TUI
+cat <<'TUNER' > /usr/bin/chirpy-core-tuner
+#!/bin/bash
+CONFIG_FILE="/etc/chirpy-ai/config.json"
 
-${enableSnapshots && filesystem === 'btrfs' ? `
-echo "Weaving temporal safeguards (BTRFS snapshots)..."
-pacman -S --noconfirm grub-btrfs
-systemctl enable grub-btrfsd
-` : ''}
+if [ "\$EUID" -ne 0 ]; then
+  echo "Please run as root (sudo)"
+  exit 1
+fi
 
-${vmServices}
+CURRENT_MODE=\$(jq -r '.resource_profile' \$CONFIG_FILE)
 
-echo "Attuning the Chirpy AI Core..."
-touch /etc/systemd/system/chirpy-ai-core.service
+SELECTION=\$(dialog --clear \\
+                --backtitle "Chirpy AI Core Tuner" \\
+                --title "Power Stance Attunement" \\
+                --no-cancel \\
+                --menu "Select the desired power profile for the AI Core. Current: \${CURRENT_MODE^}" \\
+                15 55 4 \\
+                minimal "Stealth Mode (Minimal resources)" \\
+                balanced "Guardian Stance (Balanced usage)" \\
+                performance "Berserker Rage (Max performance)" \\
+                dynamic "Shapeshifter Form (Adapts to load)" \\
+                3>&1 1>&2 2>&3)
 
-${aiResourceAllocation === 'dynamic' ? `
-echo "Setting AI Core to Shapeshifter Form (Dynamic)..."
-` : ''}
+exit_status=\$?
+clear
 
-${graphicsMode === 'hybrid' && (aiGpuMode === 'dedicated' || aiGpuMode === 'dynamic') ? `
-echo "Configuring AI Core for iGPU usage (${aiGpuMode} mode)..."
-touch /etc/chirpy/igpu.conf
-` : ''}
+if [ \$exit_status -eq 0 ]; then
+    if [ "\$SELECTION" != "\$CURRENT_MODE" ]; then
+        echo "Attuning AI Core to: \${SELECTION^}..."
+        jq ".resource_profile = \\"\$SELECTION\\"" \$CONFIG_FILE > tmp.\$\$ && mv tmp.\$\$ \$CONFIG_FILE
+        
+        GRAPHICS_MODE="${config.graphicsMode}"
+        if [ "\$SELECTION" == "dynamic" ] && [ "\$GRAPHICS_MODE" == "hybrid" ]; then
+            jq ".gpu_mode = \\"dynamic\\"" \$CONFIG_FILE > tmp.\$\$ && mv tmp.\$\$ \$CONFIG_FILE
+            echo "Enabled dynamic GPU co-processing."
+        elif [ "\$SELECTION" == "performance" ]; then
+             jq ".gpu_mode = \\"dedicated\\"" \$CONFIG_FILE > tmp.\$\$ && mv tmp.\$\$ \$CONFIG_FILE
+             echo "Set GPU mode to dedicated."
+        else
+            jq ".gpu_mode = \\"none\\"" \$CONFIG_FILE > tmp.\$\$ && mv tmp.\$\$ \$CONFIG_FILE
+            echo "Set GPU mode to none."
+        fi
 
-CHROOT_EOF
+        echo "Restarting AI Core service to apply changes..."
+        systemctl restart chirpy-ai-core.service
+        echo "Attunement complete."
+    else
+        echo "No changes made. AI Core remains in \${CURRENT_MODE^}."
+    fi
+else
+    echo "Attunement cancelled."
+fi
+TUNER
+chmod +x /usr/bin/chirpy-core-tuner
+echo "INFO: Created TUI tuner at /usr/bin/chirpy-core-tuner."
 
-        echo 95; echo "Unmounting the realm..."
-        umount -R /mnt
-        sleep 1
+# Create the interactive chat client
+cat <<'CHAT' > /usr/bin/chirpy-chat
+#!/bin/bash
+# Chirpy AI :: Interactive Chat
 
-        echo 100; echo "The ritual is complete!"
-        sleep 2
-    ) | dialog --backtitle "$BACKTITLE" --title "The Great Forging" --gauge "The ritual is underway..." 10 $WIDTH 0
+CONFIG_FILE="/etc/chirpy-ai/chat.conf"
 
-    dialog --backtitle "$BACKTITLE" --title "Success!" --msgbox "The ritual is complete! The realm of \$HOSTNAME_VAR has been forged.\\n\\nYou may now reboot into your new reality." 8 60
-    clear
+# First, check if the file exists at all.
+if [ ! -f "\$CONFIG_FILE" ]; then
+    echo "ERROR: AI Core configuration file not found at \$CONFIG_FILE." >&2
+    echo "The AI Core may not be installed correctly. Try running the AI Core attunement script." >&2
+    exit 1
+fi
+
+# Next, check if the file is readable by the current user.
+if [ ! -r "\$CONFIG_FILE" ]; then
+    # The file exists but we can't read it. This is a permissions issue.
+    echo "ERROR: You do not have permission to read the AI Core configuration." >&2
+    
+    # Check if the user is configured to be in the group but just need to relog.
+    if id -Gn "\$USER" | grep -q "\\bchirpy-ai\\b"; then
+        echo "Your user account is in the 'chirpy-ai' group, but your current session needs to be refreshed." >&2
+        echo "Please LOG OUT and LOG BACK IN completely for the group changes to take effect." >&2
+    else
+        # The user is not configured to be in the group at all.
+        echo "Please add your user to the 'chirpy-ai' group to grant access:" >&2
+        echo "  sudo usermod -aG chirpy-ai \$USER" >&2
+        echo "After running the command, you must LOG OUT and LOG BACK IN." >&2
+    fi
+    exit 1
+fi
+
+source "\$CONFIG_FILE"
+
+if [ -z "\$API_KEY" ]; then
+    echo "ERROR: API_KEY not found in \$CONFIG_FILE. The file might be corrupted." >&2
+    exit 1
+fi
+
+MODEL="gemini-2.5-flash"
+API_URL="https://generativelanguage.googleapis.com/v1beta/models/\${MODEL}:generateContent?key=\${API_KEY}"
+
+echo "================================================="
+echo " Chirpy AI Chat Interface"
+echo "================================================="
+echo "Connected to model: \$MODEL"
+echo "Type 'exit' or 'quit' to end the session."
+echo
+
+while true; do
+    read -p "Architect > " user_input
+
+    if [[ "\$user_input" == "exit" || "\$user_input" == "quit" ]]; then
+        echo "Session ended. Farewell, Architect."
+        break
+    fi
+
+    json_payload=\$(jq -n --arg user_input "\$user_input" \\
+    '{
+        "contents": [ { "parts": [ { "text": \$user_input } ] } ]
+    }')
+
+    response=\$(curl -s -S -X POST "\$API_URL" \\
+        -H "Content-Type: application/json" \\
+        -d "\$json_payload")
+
+    if [ \$? -ne 0 ]; then
+        echo "Chirpy > I encountered an error connecting to the AI core. Please check your internet connection."
+        continue
+    fi
+
+    error_message=\$(echo "\$response" | jq -r '.error.message // empty')
+    if [ -n "\$error_message" ]; then
+        echo "Chirpy > API Error: \$error_message"
+        continue
+    fi
+    
+    model_response=\$(echo "\$response" | jq -r '.candidates[0].content.parts[0].text // "My apologies, Architect. I am unable to respond right now."')
+
+    echo -e "Chirpy > \$model_response"
+    echo
+done
+CHAT
+chmod +x /usr/bin/chirpy-chat
+echo "INFO: Created interactive chat client at /usr/bin/chirpy-chat."
+
+# Create the CLI greeter with status check
+cat <<'CHIRPY' > /usr/bin/chirpy
+#!/bin/bash
+clear
+# ANSI color codes
+C_CYAN="\\e[36m"
+C_GREEN="\\e[32m"
+C_YELLOW="\\e[33m"
+C_RED="\\e[31m"
+C_RESET="\\e[0m"
+
+echo -e "\${C_CYAN}=========================================\${C_RESET}"
+echo "   Greetings, Architect."
+echo "   I am Chirpy, your AI co-pilot."
+echo -e "\${C_CYAN}=========================================\${C_RESET}"
+echo
+
+# Check AI Core Service Status
+SERVICE_NAME="chirpy-ai-core.service"
+if systemctl list-units --full -all | grep -q "\$SERVICE_NAME"; then
+    STATUS=\$(systemctl is-active \$SERVICE_NAME)
+    if [ "\$STATUS" == "active" ]; then
+        STATUS_COLOR="\${C_GREEN}"
+    elif [ "\$STATUS" == "inactive" ]; then
+        STATUS_COLOR="\${C_YELLOW}"
+    else
+        STATUS_COLOR="\${C_RED}"
+    fi
+    echo -e "My local core service is \${STATUS_COLOR}\${STATUS^^}\${C_RESET}."
+else
+    echo -e "My local core service is \${C_RED}NOT FOUND\${C_RESET}."
+fi
+echo
+
+echo "To have a conversation with me, run:"
+echo -e "  \${C_GREEN}chirpy-chat\${C_RESET}"
+echo
+echo "To re-attune my power stance, use:"
+echo -e "  \${C_YELLOW}sudo chirpy-core-tuner\${C_RESET}"
+echo
+echo "For a detailed service status, run:"
+echo "  systemctl status \$SERVICE_NAME"
+echo
+echo -e "\${C_CYAN}=========================================\${C_RESET}"
+echo
+read -n 1 -s -r -p "Press any key to close this window..."
+CHIRPY
+chmod +x /usr/bin/chirpy
+echo "INFO: Created CLI greeter with status check at /usr/bin/chirpy."
+
+# Create a desktop shortcut for the chat client
+mkdir -p /usr/share/applications
+cat <<'DESKTOP' > /usr/share/applications/chirpy-ai.desktop
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Chirpy AI Assistant
+Comment=Chat with your AI co-pilot
+Exec=xterm -e /usr/bin/chirpy-chat
+Icon=dialog-question
+Terminal=false
+Categories=System;Utility;
+DESKTOP
+echo "INFO: Created application menu shortcut for Chirpy AI."
+# --- END AI CORE INSTALLATION ---
+`;
+};
+
+export const generateInstallScript = (
+  config: DistroConfig,
+  target: BuildTarget,
+): string => {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
+    return `#!/bin/bash
+echo "FATAL ERROR: API_KEY is not available in the build environment." >&2
+echo "Cannot generate a functional OS installation script with AI Core." >&2
+exit 1
+`;
+  }
+  
+  const allPackages = new Set<string>();
+
+  if (config.packages) {
+    config.packages
+      .split(',')
+      .map((p) => p.trim())
+      .filter(Boolean)
+      .forEach((p) => allPackages.add(p));
+  }
+  if (config.kernels) {
+    config.kernels.forEach((k) => allPackages.add(k));
+  }
+
+  allPackages.add('base');
+  allPackages.add('linux-firmware');
+  allPackages.add('networkmanager');
+  allPackages.add('git');
+  allPackages.add(config.bootloader);
+  // Add AI Core dependencies
+  allPackages.add('jq');
+  allPackages.add('dialog');
+  allPackages.add('xterm');
+
+  if (config.bootloader === 'grub') {
+    allPackages.add('efibootmgr');
+    if (config.enableSnapshots && config.filesystem === 'btrfs') {
+        allPackages.add('grub-btrfs');
+    }
+  }
+  if (config.filesystem === 'btrfs') {
+    allPackages.add('btrfs-progs');
+  }
+
+  // VM Guest additions
+  if (target === 'qemu') {
+    allPackages.add('qemu-guest-agent');
+  } else if (target === 'virtualbox') {
+    allPackages.add('virtualbox-guest-utils');
+  }
+
+  const dePackages: { [key: string]: string[] } = {
+    'kde plasma': ['plasma-meta', 'sddm'],
+    gnome: ['gnome', 'gdm'],
+    xfce: ['xfce4', 'xfce4-goodies', 'lightdm', 'lightdm-gtk-greeter'],
+    cinnamon: ['cinnamon', 'lightdm', 'lightdm-gtk-greeter'],
+  };
+
+  const deKey = config.desktopEnvironment.toLowerCase();
+  if (dePackages[deKey]) {
+    dePackages[deKey].forEach((p) => allPackages.add(p));
+    allPackages.add('xorg-server');
+  } else if (config.desktopEnvironment) {
+    allPackages.add(config.desktopEnvironment.split(' ')[0]);
+    allPackages.add('xorg-server');
+    allPackages.add('lightdm');
+    allPackages.add('lightdm-gtk-greeter');
+  }
+
+  const packageList = Array.from(allPackages).join(' ');
+  const aiCoreCommands = _getAICoreScriptBlock(apiKey, config);
+
+  // Fix: Escaped shell variables inside the template literal (e.g., ${DISK} -> \${DISK})
+  // to prevent TypeScript from trying to interpolate them as variables.
+  return `#!/bin/bash
+# Chirpy AI :: Forged Installation Script
+# Target: ${target}
+# Filesystem: ${config.filesystem}
+# Bootloader: ${config.bootloader}
+# DE: ${config.desktopEnvironment}
+
+set -euo pipefail
+
+# --- CONFIGURATION ---
+DISK="${config.targetDisk || '/dev/vda'}" # Default to /dev/vda for VMs if not set
+HOSTNAME="${config.hostname}"
+USERNAME="${config.username}"
+PASSWORD="${config.password || 'chirpy'}"
+TIMEZONE="${config.timezone}"
+LOCALE="${config.locale}"
+KEYBOARD_LAYOUT="${config.keyboardLayout}"
+EFI_PART_SIZE="${config.efiPartitionSize}"
+SWAP_SIZE="${config.swapSize}"
+FILESYSTEM="${config.filesystem}"
+ENABLE_SNAPSHOTS=${config.enableSnapshots}
+
+# --- SCRIPT ---
+
+echo "INFO: Starting Chirpy OS installation on ${target}..."
+
+# 1. Setup networking
+timedatectl set-ntp true
+pacman -Syy --noconfirm
+
+# 2. Partitioning
+echo "INFO: Partitioning disk \${DISK}..."
+sgdisk -Z \${DISK}
+sgdisk -n 1:0:+\${EFI_PART_SIZE} -t 1:ef00 -c 1:EFI \${DISK}
+sgdisk -n 2:0:0 -t 2:8300 -c 2:Linux \${DISK}
+
+EFI_PART="\${DISK}1"
+ROOT_PART="\${DISK}2"
+if [[ \${DISK} == /dev/nvme* || \${DISK} == /dev/sd* ]]; then
+    EFI_PART="\${DISK}p1"
+    ROOT_PART="\${DISK}p2"
+fi
+
+# 3. Formatting
+echo "INFO: Formatting partitions..."
+mkfs.fat -F32 \${EFI_PART}
+if [ "$FILESYSTEM" = "btrfs" ]; then
+    mkfs.btrfs -f \${ROOT_PART}
+    mount \${ROOT_PART} /mnt
+    btrfs subvolume create /mnt/@
+    btrfs subvolume create /mnt/@home
+    umount /mnt
+    mount -o subvol=@,compress=zstd \${ROOT_PART} /mnt
+    mkdir -p /mnt/home
+    mount -o subvol=@home,compress=zstd \${ROOT_PART} /mnt/home
+else # ext4
+    mkfs.ext4 -F \${ROOT_PART}
+    mount \${ROOT_PART} /mnt
+fi
+
+mkdir -p /mnt/boot
+mount \${EFI_PART} /mnt/boot
+
+# 4. Pacstrap
+echo "INFO: Installing base system and packages..."
+pacstrap /mnt ${packageList}
+
+# 5. Fstab
+genfstab -U /mnt >> /mnt/etc/fstab
+
+# 6. Chroot and configure
+echo "INFO: Configuring the installed system..."
+arch-chroot /mnt /bin/bash <<EOF
+set -euo pipefail
+
+# Timezone & Locale
+ln -sf /usr/share/zoneinfo/\${TIMEZONE} /etc/localtime
+hwclock --systohc
+echo "\${LOCALE} UTF-8" >> /etc/locale.gen
+locale-gen
+echo "LANG=\${LOCALE}" > /etc/locale.conf
+echo "KEYMAP=\${KEYBOARD_LAYOUT}" > /etc/vconsole.conf
+
+# Hostname
+echo "\${HOSTNAME}" > /etc/hostname
+cat <<HOSTS > /etc/hosts
+127.0.0.1   localhost
+::1         localhost
+127.0.1.1   \${HOSTNAME}.localdomain \${HOSTNAME}
+HOSTS
+
+# Bootloader
+if [ "${config.bootloader}" = "grub" ]; then
+    grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB
+    grub-mkconfig -o /boot/grub/grub.cfg
+else # systemd-boot
+    bootctl --path=/boot install
+    echo "default arch.conf" > /boot/loader/loader.conf
+    echo "timeout 3" >> /boot/loader/loader.conf
+
+    ROOT_PARTUUID=\$(blkid -s PARTUUID -o value \${ROOT_PART})
+    cat <<ENTRY > /boot/loader/entries/arch.conf
+title   Arch Linux
+linux   /vmlinuz-linux
+initrd  /initramfs-linux.img
+options root=PARTUUID=\${ROOT_PARTUUID} rw
+ENTRY
+fi
+
+${aiCoreCommands}
+
+# User setup
+echo "INFO: Setting up user '\${USERNAME}'..."
+echo "root:\${PASSWORD}" | chpasswd
+# Add user to 'wheel' for sudo and 'chirpy-ai' for chat access
+useradd -m -G wheel,chirpy-ai \${USERNAME}
+echo "\${USERNAME}:\${PASSWORD}" | chpasswd
+echo "INFO: Granting sudo privileges to 'wheel' group..."
+sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
+
+# Enable services
+systemctl enable NetworkManager
+systemctl enable chirpy-ai-core.service
+${target === 'qemu' ? 'systemctl enable qemu-guest-agent' : ''}
+${target === 'virtualbox' ? 'systemctl enable vboxservice' : ''}
+${
+  dePackages[deKey]
+    ? `systemctl enable ${dePackages[deKey][1] || 'lightdm'}`
+    : ''
 }
 
-# --- Script Entry Point ---
-pre_flight_checks
-main_menu
+EOF
+
+echo "INFO: Installation complete! Unmounting system..."
+umount -R /mnt
+echo "You can now reboot."
+`;
+};
+
+export const generateAttunementScript = (config: DistroConfig): string => {
+  const packagesToInstall = new Set<string>();
+  if (config.packages) {
+    config.packages
+      .split(',')
+      .map((p) => p.trim())
+      .filter(Boolean)
+      .forEach((p) => packagesToInstall.add(p));
+  }
+  if (config.kernels) {
+    config.kernels.forEach((k) => packagesToInstall.add(k));
+  }
+  if (config.aurHelpers) {
+    config.aurHelpers.forEach((h) => packagesToInstall.add(h));
+  }
+
+  const hasCachy = config.extraRepositories.includes('cachy');
+  const hasChaotic = config.extraRepositories.includes('chaotic');
+
+  let script = `#!/bin/bash
+# Chirpy AI :: System Attunement Script
+# This script applies settings to an existing Arch-based system.
+# It is NON-DESTRUCTIVE and should be run with sudo.
+
+set -euo pipefail
+
+echo "INFO: Beginning system attunement..."
+
+# 1. Set Hostname
+echo "INFO: Setting hostname to ${config.hostname}"
+hostnamectl set-hostname "${config.hostname}"
+
+# 2. Set Timezone
+echo "INFO: Setting timezone to ${config.timezone}"
+timedatectl set-timezone "${config.timezone}"
+
+# 3. Configure Locale
+echo "INFO: Setting locale to ${config.locale}"
+sed -i -e "s/#${config.locale}/${config.locale}/" /etc/locale.gen
+echo "${config.locale} UTF-8" >> /etc/locale.gen
+locale-gen
+localectl set-locale LANG=${config.locale}
+
+`;
+
+  if (hasCachy || hasChaotic) {
+    script += `# 4. Configure Extra Repositories
+echo "INFO: Setting up extra repositories..."
+`;
+    if (hasChaotic) {
+      script += `
+# Setting up Chaotic-AUR
+pacman-key --recv-key 3056513887B78AEB --keyserver keyserver.ubuntu.com
+pacman-key --lsign-key 3056513887B78AEB
+pacman -U --noconfirm --needed 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst' 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst'
+grep -q "chaotic-aur" /etc/pacman.conf || echo -e "\\n[chaotic-aur]\\nInclude = /etc/pacman.d/chaotic-mirrorlist" >> /etc/pacman.conf
+`;
+    }
+     if (hasCachy) {
+      script += `
+# Setting up CachyOS repos
+pacman-key --recv-keys F3B607488DB35A47 --keyserver keyserver.ubuntu.com
+pacman-key --lsign-key F3B607488DB35A47
+pacman -U --noconfirm --needed 'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-keyring-20240331-1-any.pkg.tar.zst' 'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-mirrorlist-22-1-any.pkg.tar.zst'
+`;
+    }
+    script += 'pacman -Syy --noconfirm\n';
+  }
+
+  if (packagesToInstall.size > 0) {
+    script += `
+# 5. Install Packages
+echo "INFO: Installing specified packages..."
+pacman -S --noconfirm --needed ${Array.from(packagesToInstall).join(' ')}
+`;
+  }
+
+  if (config.shell === 'fish') {
+    script += `
+# 6. Set default shell for user ${config.username}
+echo "INFO: Setting default shell to fish for user ${config.username}"
+if id -u ${config.username} >/dev/null 2>&1; then
+    chsh -s /usr/bin/fish ${config.username}
+else
+    echo "WARN: User ${config.username} not found, skipping shell change."
+fi
+`;
+  }
+
+  script += `
+# 7. Apply AI Core Configuration
+echo "INFO: Applying AI Core configuration..."
+mkdir -p /etc/chirpy-ai
+cat <<AICONFIG > /etc/chirpy-ai/config.json
+{
+  "resource_profile": "${config.aiResourceAllocation}",
+  "gpu_mode": "${config.aiGpuMode}"
+}
+AICONFIG
+systemctl restart chirpy-ai-core.service || echo "WARN: chirpy-ai-core service not found or could not be restarted."
+
+echo "SUCCESS: System attunement complete!"
 `;
 
   return script;
-}
+};
+
+export const generateAICoreScript = (config: DistroConfig): string => {
+  const apiKey = process.env.API_KEY;
+
+  if (!apiKey) {
+    return `#!/bin/bash
+echo "FATAL ERROR: API_KEY is not available in the build environment." >&2
+echo "Cannot generate a functional AI Core script." >&2
+exit 1
+`;
+  }
+  
+  const aiCoreCommands = _getAICoreScriptBlock(apiKey, config);
+
+  return `#!/bin/bash
+# Chirpy AI :: AI Core Attunement Script
+# This script installs and configures the Chirpy AI Core service and tools.
+# It is NON-DESTRUCTIVE and should be run with sudo.
+
+set -euo pipefail
+
+echo "INFO: Starting AI Core setup..."
+
+# 1. Install dependencies for UI and API communication
+echo "INFO: Installing TUI, CLI, and desktop interface dependencies..."
+pacman -S --noconfirm --needed dialog jq xterm
+
+${aiCoreCommands}
+
+# Reload systemd, enable, and start the service
+echo "INFO: Enabling and starting the Chirpy AI Core service..."
+systemctl daemon-reload
+systemctl enable --now chirpy-ai-core.service
+
+# Add current user to the chirpy-ai group
+if [ -n "\$SUDO_USER" ] && id -u "\$SUDO_USER" >/dev/null 2>&1; then
+    echo "INFO: Adding user '\$SUDO_USER' to the 'chirpy-ai' group for chat access..."
+    usermod -aG chirpy-ai "\$SUDO_USER"
+    echo "SUCCESS: User '\$SUDO_USER' added. Please log out and log back in for the change to take effect."
+else
+    echo "WARN: Could not determine the user who ran sudo. Please add your user to the 'chirpy-ai' group manually with:"
+    echo "      sudo usermod -aG chirpy-ai <your_username>"
+fi
+
+echo
+echo "SUCCESS: Chirpy AI Core service has been configured and started."
+systemctl status chirpy-ai-core.service --no-pager
+`;
+};

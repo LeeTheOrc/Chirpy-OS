@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { GoogleGenAI, Type } from "@google/genai";
 import type { Message, LinkState, DistroConfig, BuildStep, BuildTarget } from './types';
 import { WELCOME_MESSAGE, INITIAL_SUGGESTIONS, DEFAULT_DISTRO_CONFIG, SYSTEM_INSTRUCTION, CODEX_SNIPPETS } from './constants';
-import { generateInstallScript } from './lib/script-generator';
+import { generateInstallScript, generateAttunementScript, generateAICoreScript } from './lib/script-generator';
 
 import { Logo } from './components/Logo';
 import { ChatMessage } from './components/ChatMessage';
@@ -16,6 +17,8 @@ import { CodexModal } from './components/CodexModal';
 import { IsoModal } from './components/IsoModal';
 import { MobileBlueprintDrawer } from './components/MobileBlueprintDrawer';
 import { TargetSelectionModal } from './components/TargetSelectionModal';
+import { AttunementModal } from './components/AttunementModal';
+import { AICoreModal } from './components/AICoreModal';
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
 
@@ -36,6 +39,11 @@ const App: React.FC = () => {
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const [generatedScript, setGeneratedScript] = useState('');
     const [isBlueprintLocked, setIsBlueprintLocked] = useState(false);
+    const [isAttunementModalOpen, setIsAttunementModalOpen] = useState(false);
+    const [generatedAttunementScript, setGeneratedAttunementScript] = useState('');
+    const [isAICoreModalOpen, setIsAICoreModalOpen] = useState(false);
+    const [generatedAICoreScript, setGeneratedAICoreScript] = useState('');
+    const [isAICoreInstalled, setIsAICoreInstalled] = useState(false);
 
     const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -191,6 +199,20 @@ const App: React.FC = () => {
         setGeneratedScript(script);
         setIsTargetModalOpen(false);
         setIsBuildModalOpen(true);
+        setIsAICoreInstalled(true);
+    };
+
+    const handleInitiateAttunement = () => {
+        const script = generateAttunementScript(distroConfig);
+        setGeneratedAttunementScript(script);
+        setIsAttunementModalOpen(true);
+    };
+
+    const handleInitiateAICoreAttunement = () => {
+        const script = generateAICoreScript(distroConfig);
+        setGeneratedAICoreScript(script);
+        setIsAICoreModalOpen(true);
+        setIsAICoreInstalled(true);
     };
 
     const BUILD_STEPS: BuildStep[] = [
@@ -200,6 +222,14 @@ const App: React.FC = () => {
         { name: "Imbuing the Power Core (Bootloader)...", duration: 700 },
         { name: "Etching post-install configurations...", duration: 1000 },
         { name: "Forging the ISO Artifact...", duration: 400 },
+    ];
+
+    const AI_CORE_BUILD_STEPS: BuildStep[] = [
+        { name: "Scribing AI Core configuration...", duration: 600 },
+        { name: "Verifying dependencies (jq, dialog)...", duration: 800 },
+        { name: "Forging command-line interfaces...", duration: 1000 },
+        { name: "Registering systemd service...", duration: 500 },
+        { name: "Attuning user permissions...", duration: 400 },
     ];
 
     return (
@@ -215,6 +245,15 @@ const App: React.FC = () => {
                     setIsIsoModalOpen(true);
                 }}
             />}
+            {isAttunementModalOpen && <AttunementModal 
+                script={generatedAttunementScript} 
+                onClose={() => setIsAttunementModalOpen(false)} 
+            />}
+            {isAICoreModalOpen && <AICoreModal
+                steps={AI_CORE_BUILD_STEPS}
+                script={generatedAICoreScript}
+                onClose={() => setIsAICoreModalOpen(false)}
+            />}
             {isCodexModalOpen && <CodexModal snippets={CODEX_SNIPPETS} onClose={() => setIsCodexModalOpen(false)} />}
             {isIsoModalOpen && <IsoModal generatedScript={generatedScript} onClose={() => setIsIsoModalOpen(false)} config={distroConfig} />}
             {isDrawerOpen && <MobileBlueprintDrawer
@@ -224,6 +263,8 @@ const App: React.FC = () => {
                 onLockToggle={() => setIsBlueprintLocked(prev => !prev)}
                 onClose={() => setIsDrawerOpen(false)}
                 onBuild={handleInitiateBuild}
+                onInitiateAttunement={handleInitiateAttunement}
+                isAICoreInstalled={isAICoreInstalled}
             />}
             
             <aside className="w-full md:w-1/3 lg:w-2/5 xl:w-1/3 bg-slate-950/50 border-r border-slate-800 p-6 h-screen overflow-y-auto hidden md:block">
@@ -233,6 +274,9 @@ const App: React.FC = () => {
                     isLocked={isBlueprintLocked}
                     onLockToggle={() => setIsBlueprintLocked(prev => !prev)}
                     onBuild={handleInitiateBuild}
+                    onInitiateAttunement={handleInitiateAttunement}
+                    onInitiateAICoreAttunement={handleInitiateAICoreAttunement}
+                    isAICoreInstalled={isAICoreInstalled}
                 />
             </aside>
             

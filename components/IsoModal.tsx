@@ -8,7 +8,7 @@ interface IsoModalProps {
   config: DistroConfig;
 }
 
-const CodeBlock: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const CodeBlock: React.FC<{ children: React.ReactNode; lang?: string }> = ({ children, lang }) => {
     const [copied, setCopied] = useState(false);
     
     const textToCopy = React.Children.toArray(children).join('');
@@ -22,7 +22,7 @@ const CodeBlock: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
     return (
         <div className="relative group my-2">
-            <pre className="bg-slate-950/70 border border-slate-700 rounded-lg p-3 text-xs text-slate-300 font-mono pr-12 whitespace-pre-wrap break-words">
+            <pre className={`bg-slate-950/70 border border-slate-700 rounded-lg p-3 text-xs text-slate-300 font-mono pr-12 whitespace-pre-wrap break-words ${lang ? `language-${lang}` : ''}`}>
                 <code>{children}</code>
             </pre>
             <button 
@@ -47,11 +47,10 @@ const utf8ToBase64 = (str: string): string => {
 }
 
 export const IsoModal: React.FC<IsoModalProps> = ({ onClose, generatedScript, config }) => {
-    const [activeTab, setActiveTab] = useState<'easy' | 'virtual' | 'advanced'>('easy');
+    const [activeTab, setActiveTab] = useState<'easy' | 'virtual' | 'master'>('easy');
 
     const base64Script = utf8ToBase64(generatedScript);
     const quickInstallCommand = `echo "${base64Script}" | base64 -d > install.sh && chmod +x install.sh && ./install.sh`;
-    const createScriptCommand = `echo "${base64Script}" | base64 -d > install.sh`;
     
     const customizeAiRootFsScript = `#!/bin/bash
 set -euo pipefail
@@ -74,24 +73,16 @@ EOF
 cat >> /root/.bash_profile <<'EOF'
 
 # Auto-launch Chirpy Installer
-# This will run automatically on login.
 if [ -f /root/install.sh ]; then
     /root/install.sh
 fi
 EOF
 
 # 4. Rebrand the boot menu for a seamless, friendly experience.
-# Archiso now uses single quotes for grub entries, so we target that.
-
-# For GRUB (modern EFI systems)
 if [ -f /boot/grub/grub.cfg ]; then
-    # Match the default Arch ISO entry which uses single quotes and replace its title.
     sed -i -E "s/menuentry 'Arch Linux archiso x86_64[^']*'/menuentry 'Install Chirpy OS (UEFI)'/g" /boot/grub/grub.cfg
 fi
-
-# For Syslinux (older BIOS systems)
 if [ -f /isolinux/syslinux.cfg ]; then
-    # This pattern is more robust and replaces the whole label line.
     sed -i -E "s/MENU LABEL Arch Linux archiso x86_64.*/MENU LABEL Install Chirpy OS (BIOS)/g" /isolinux/syslinux.cfg
 fi
 `;
@@ -102,6 +93,7 @@ fi
         packageList.add('networkmanager');
         packageList.add('grub');
         packageList.add('efibootmgr');
+        packageList.add('reflector');
 
         if (config.packages) {
             config.packages.split(',').map(p => p.trim()).filter(Boolean).forEach(p => packageList.add(p));
@@ -133,84 +125,132 @@ fi
         }
     }
     
-    // Filter out CachyOS-specific packages from the ISO embedding step.
-    // They will be installed on the first boot by the installer script instead.
-    const allPackagesFromList = Array.from(packageList);
-    const standardPackagesOnly = allPackagesFromList.filter(p => !p.includes('cachyos'));
+    const standardPackagesOnly = Array.from(packageList).filter(p => !p.includes('cachyos'));
     const allPackages = standardPackagesOnly.sort();
-
-    const addAllPackagesCommand = `bash -c 'cat <<EOF >> releng/packages.x86_64
-${allPackages.join('\n')}
-EOF'`;
 
     const hasChaotic = Array.isArray(config.extraRepositories) && config.extraRepositories.includes('chaotic');
     const hasCachy = Array.isArray(config.extraRepositories) && config.extraRepositories.includes('cachy');
     
-    let configureEnvironmentCommand = '';
-    if (hasCachy || hasChaotic) {
-        const commands = [
-            `# This is a multi-stage command. Please copy and paste the entire block.`,
-            `# It configures both your host system and the ISO build profile.`,
-            `set -e`,
-            ``,
-            `echo "--- STAGE 1: CONFIGURING HOST SYSTEM ---"`,
-        ];
-    
-        if (hasCachy) {
-            commands.push(
-                `echo "--> [Host] Setting up CachyOS repository..."`,
-                `# NOTE: These URLs are version-specific and may cause a 404 error in the future.`,
-                `# If that happens, you will need to find the latest package URLs from the CachyOS mirror.`,
-                `sudo pacman-key --recv-keys F3B607488DB35A47 --keyserver keyserver.ubuntu.com`,
-                `sudo pacman-key --lsign-key F3B607488DB35A47`,
-                `sudo pacman -U --noconfirm \\`,
-                `'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-keyring-20240331-1-any.pkg.tar.zst' \\`,
-                `'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-mirrorlist-22-1-any.pkg.tar.zst' \\`,
-                `'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-v3-mirrorlist-22-1-any.pkg.tar.zst' \\`,
-                `'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-v4-mirrorlist-22-1-any.pkg.tar.zst'`,
-            );
-        }
-        if (hasChaotic) {
-            commands.push(
-                `echo "--> [Host] Setting up Chaotic-AUR repository..."`,
-                `sudo pacman-key --recv-key 3056513887B78AEB --keyserver keyserver.ubuntu.com`,
-                `sudo pacman-key --lsign-key 3056513887B78AEB`,
-                `sudo pacman -U --noconfirm 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst' 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst'`,
-                `grep -q "chaotic-aur" /etc/pacman.conf || echo -e "\\n[chaotic-aur]\\nInclude = /etc/pacman.d/chaotic-mirrorlist" | sudo tee -a /etc/pacman.conf`,
-            );
-        }
-    
-        commands.push(
-            ``,
-            `echo "--- STAGE 2: CONFIGURING ISO PROFILE ---"`,
-            `echo "--> [Profile] Copying configuration to ISO build directory..."`,
-            `sudo cp /etc/pacman.conf releng/pacman.conf`,
-            `mkdir -p releng/airootfs/etc/pacman.d`,
-        );
-    
-        if (hasCachy) {
-            commands.push(
-                `sudo cp /etc/pacman.d/cachyos-mirrorlist releng/airootfs/etc/pacman.d/`,
-                `sudo cp /etc/pacman.d/cachyos-v3-mirrorlist releng/airootfs/etc/pacman.d/`,
-                `sudo cp /etc/pacman.d/cachyos-v4-mirrorlist releng/airootfs/etc/pacman.d/`,
-            );
-        }
-        if (hasChaotic) {
-            commands.push(
-                `sudo cp /etc/pacman.d/chaotic-mirrorlist releng/airootfs/etc/pacman.d/`,
-            );
-        }
-        
-        commands.push(
-            ``,
-            `echo "--- STAGE 3: SYNCHRONIZING DATABASES ---"`,
-            `sudo pacman -Syu`,
-            ``,
-            `echo "Environment configuration complete!"`
-        );
-    
-        configureEnvironmentCommand = commands.join('\n');
-    }
+    // This is the new, single, unified script for building the ISO.
+    const masterBuildScript = `#!/bin/bash
+# Chirpy AI :: Master ISO Forge Script
+#
+# Run this script on an existing Arch Linux system to build a bootable
+# Chirpy OS installer ISO from your custom blueprint.
+# It automates dependency checks, directory setup, script embedding,
+# repository configuration, and the final ISO build.
+
+set -euo pipefail
+clear
+
+# --- SCRIPT CONFIGURATION (Injected by Chirpy AI) ---
+ISO_WORKDIR="chirpy-iso-build"
+HAS_CACHY=${hasCachy}
+HAS_CHAOTIC=${hasChaotic}
+
+INSTALLER_SCRIPT_CONTENT=$(cat <<'EOF'
+${generatedScript}
+EOF
+)
+
+CUSTOMIZE_SCRIPT_CONTENT=$(cat <<'EOF'
+${customizeAiRootFsScript}
+EOF
+)
+
+PACKAGE_LIST_CONTENT=$(cat <<'EOF'
+${allPackages.join('\n')}
+EOF
+)
+# --- END SCRIPT CONFIGURATION ---
+
+# --- Helper Functions ---
+info() { echo -e "\\e[34m[INFO]\\e[0m $1"; }
+warn() { echo -e "\\e[33m[WARN]\\e[0m $1"; }
+success() { echo -e "\\e[32m[SUCCESS]\\e[0m $1"; }
+error() { echo -e "\\e[31m[ERROR]\\e[0m $1"; exit 1; }
+
+# --- Main Execution ---
+
+# 1. Check dependencies and permissions
+info "Checking for root permissions and dependencies..."
+[ "$EUID" -eq 0 ] || error "This script must be run as root. Please use 'sudo ./build-iso.sh'."
+pacman -Q archiso &>/dev/null || error "'archiso' package not found. Please install it with 'sudo pacman -S archiso'."
+
+# 2. Prepare build directory
+info "Setting up build directory at ~/$ISO_WORKDIR..."
+cd ~
+rm -rf "$ISO_WORKDIR"
+mkdir "$ISO_WORKDIR"
+cd "$ISO_WORKDIR"
+cp -r /usr/share/archiso/configs/releng .
+info "Build directory created."
+
+# 3. Embed installer and customization scripts
+info "Embedding the TUI installer script..."
+echo "$INSTALLER_SCRIPT_CONTENT" > releng/airootfs/root/install.sh
+chmod +x releng/airootfs/root/install.sh
+
+info "Embedding the ISO customization script for auto-login and branding..."
+echo "$CUSTOMIZE_SCRIPT_CONTENT" > releng/customize_airootfs.sh
+chmod +x releng/customize_airootfs.sh
+success "Scripts embedded successfully."
+
+# 4. Configure build environment for custom repositories
+if [ "$HAS_CACHY" = "true" ] || [ "$HAS_CHAOTIC" = "true" ]; then
+    info "Configuring pacman for custom repositories (CachyOS/Chaotic-AUR)..."
+
+    # Configure host system first to get keys and mirrorlists
+    if [ "$HAS_CACHY" = "true" ]; then
+        info "--> [Host] Setting up CachyOS repository..."
+        pacman-key --recv-keys F3B607488DB35A47 --keyserver keyserver.ubuntu.com
+        pacman-key --lsign-key F3B607488DB35A47
+        pacman -U --noconfirm --needed \\
+        'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-keyring-20240331-1-any.pkg.tar.zst' \\
+        'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-mirrorlist-22-1-any.pkg.tar.zst' \\
+        'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-v3-mirrorlist-22-1-any.pkg.tar.zst' \\
+        'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-v4-mirrorlist-22-1-any.pkg.tar.zst'
+    fi
+    if [ "$HAS_CHAOTIC" = "true" ]; then
+        info "--> [Host] Setting up Chaotic-AUR repository..."
+        pacman-key --recv-key 3056513887B78AEB --keyserver keyserver.ubuntu.com
+        pacman-key --lsign-key 3056513887B78AEB
+        pacman -U --noconfirm --needed 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst' 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst'
+        grep -q "chaotic-aur" /etc/pacman.conf || echo -e "\\n[chaotic-aur]\\nInclude = /etc/pacman.d/chaotic-mirrorlist" | tee -a /etc/pacman.conf
+    fi
+
+    # Now configure the ISO profile by copying the host's config
+    info "--> [Profile] Copying configuration to ISO build directory..."
+    cp /etc/pacman.conf releng/pacman.conf
+    mkdir -p releng/airootfs/etc/pacman.d
+
+    if [ "$HAS_CACHY" = "true" ]; then
+        cp /etc/pacman.d/cachyos-mirrorlist releng/airootfs/etc/pacman.d/
+        cp /etc/pacman.d/cachyos-v3-mirrorlist releng/airootfs/etc/pacman.d/
+        cp /etc/pacman.d/cachyos-v4-mirrorlist releng/airootfs/etc/pacman.d/
+    fi
+    if [ "$HAS_CHAOTIC" = "true" ]; then
+        cp /etc/pacman.d/chaotic-mirrorlist releng/airootfs/etc/pacman.d/
+    fi
+
+    info "--> Synchronizing pacman databases..."
+    pacman -Syu --noconfirm
+    success "Repository configuration complete."
+fi
+
+# 5. Embed all package dependencies
+info "Adding all blueprint packages to the ISO..."
+echo "$PACKAGE_LIST_CONTENT" >> releng/packages.x86_64
+success "Package list updated."
+
+# 6. Build the ISO
+info "Starting the ISO build process. This may take a while..."
+warn "The build will happen in './work'. The output ISO will be in './out'."
+# The default work dir is in /tmp which can be a small ramdisk. We use a local dir to avoid space issues.
+mkarchiso -v -w work -o out releng
+
+success "ISO build complete! Your custom Chirpy OS installer is located at '~/chirpy-iso-build/out/'."
+`;
 
     return (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center animate-fade-in-fast" onClick={onClose}>
@@ -237,10 +277,10 @@ EOF'`;
                             The Virtual Path (QEMU/VM)
                         </button>
                         <button
-                             onClick={() => setActiveTab('advanced')}
-                             className={`whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'advanced' ? 'border-yellow-400 text-yellow-400' : 'border-transparent text-slate-400 hover:text-white'}`}
+                             onClick={() => setActiveTab('master')}
+                             className={`whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'master' ? 'border-yellow-400 text-yellow-400' : 'border-transparent text-slate-400 hover:text-white'}`}
                         >
-                            The Artisan's Path (Custom ISO)
+                            The Master's Path (Build ISO)
                         </button>
                     </nav>
                 </div>
@@ -273,16 +313,6 @@ EOF'`;
                                     {quickInstallCommand}
                                 </CodeBlock>
                                 <p>This command automatically creates the <strong className="font-mono text-slate-400">install.sh</strong> script, makes it executable, and begins the installation ritual.</p>
-
-                                <h4 className="font-semibold text-md text-white mt-6 mb-2">Manual Fallback</h4>
-                                <p>If you prefer to create the script manually:</p>
-                                <p className="mt-2">1. In the live environment, open a text editor (like `nano`):</p>
-                                <CodeBlock>nano install.sh</CodeBlock>
-                                <p>2. Paste the full script content (which you can get from the "Build" window), then save and exit the editor.</p>
-                                <p>3. Make the script executable:</p>
-                                <CodeBlock>chmod +x install.sh</CodeBlock>
-                                <p>4. Run the ritual:</p>
-                                <CodeBlock>./install.sh</CodeBlock>
                             </div>
                         </div>
                     )}
@@ -313,7 +343,6 @@ EOF'`;
 
                             <div>
                                 <h3 className="font-semibold text-lg text-white mt-4 mb-2">Step 4: Download and Run the Ritual</h3>
-                                {/* Fix: Replaced <HOST_IP> with YOUR_HOST_IP to prevent JSX parsing errors. */}
                                 <p>Now, from within the VM, use `curl` to download the script from your host's web server. Replace `YOUR_HOST_IP` with the address you found in the previous step.</p>
                                 <CodeBlock>{`# Replace YOUR_HOST_IP with your actual host IP (e.g., 10.0.2.2)
 curl http://YOUR_HOST_IP:8000/install.sh -o install.sh`}</CodeBlock>
@@ -324,79 +353,29 @@ curl http://YOUR_HOST_IP:8000/install.sh -o install.sh`}</CodeBlock>
                             </div>
                         </div>
                     )}
-                    {activeTab === 'advanced' && (
+                    {activeTab === 'master' && (
                         <div className="animate-fade-in-fast space-y-4">
-                            <p>This path forges a completely custom Arch Linux ISO that boots directly into your installer. This is the ultimate "noob friendly" method for sharing your creation. It requires an existing Arch Linux system (or a VM running Arch) to perform the build.</p>
+                            <p>This path forges a completely custom Arch Linux ISO that boots directly into your installer. It's the ultimate method for creating a shareable, "noob-friendly" version of your OS. It requires an existing Arch Linux system (or a VM running Arch) to perform the build.</p>
                             
                             <div>
-                                <h3 className="font-semibold text-lg text-white mt-4 mb-2">Step 1: Install ArchISO</h3>
-                                <p>This is the tool used to master ISO images.</p>
-                                <CodeBlock>sudo pacman -S archiso</CodeBlock>
+                                <h3 className="font-semibold text-lg text-white mt-4 mb-2">Step 1: Save the Master Forge Script</h3>
+                                <p>Copy the entire script below and save it as <strong className="text-yellow-400">build-iso.sh</strong> on an Arch Linux system.</p>
+                                <CodeBlock lang="bash">
+                                    {masterBuildScript}
+                                </CodeBlock>
                             </div>
 
                             <div>
-                                <h3 className="font-semibold text-lg text-white mt-4 mb-2">Step 2: Prepare the Profile</h3>
-                                <p>Create a working directory and copy the baseline `releng` profile.</p>
-                                <CodeBlock>{`mkdir ~/chirpy-iso && cd ~/chirpy-iso
-cp -r /usr/share/archiso/configs/releng .`}</CodeBlock>
+                                <h3 className="font-semibold text-lg text-white mt-4 mb-2">Step 2: Make it Executable</h3>
+                                <p>Open a terminal, navigate to where you saved the script, and run:</p>
+                                <CodeBlock>chmod +x build-iso.sh</CodeBlock>
                             </div>
 
                             <div>
-                                <h3 className="font-semibold text-lg text-white mt-4 mb-2">Step 3: Embed the Ritual Script</h3>
-                                <p>First, create the `install.sh` file on your host system. This command decodes the script you just forged and saves it locally. Run it from your <strong className="font-mono text-slate-400">~/chirpy-iso</strong> directory.</p>
-                                <CodeBlock>{createScriptCommand}</CodeBlock>
-                                <p className="mt-4">Now, move the generated script into the profile for the ISO build.</p>
-                                <CodeBlock>{`# Move the script into the ISO's root directory
-mv install.sh releng/airootfs/root/install.sh`}</CodeBlock>
-                            </div>
-
-                            <div>
-                                <h3 className="font-semibold text-lg text-white mt-4 mb-2">Step 4: Configure Build Environment & Profile</h3>
-                                {(hasCachy || hasChaotic) ? (
-                                    <>
-                                        <p>The builder uses a clean environment, so we must configure both your host system (to get the required keys/mirrorlists) and the ISO build profile (so the builder knows where to find packages).</p>
-                                        <p className="mt-2">Run the entire command block below to perform this configuration.</p>
-                                        <CodeBlock>{configureEnvironmentCommand}</CodeBlock>
-                                    </>
-                                ) : (
-                                    <p className="text-slate-400">Your blueprint only uses official Arch repositories, so no special configuration is needed. You can proceed to the next step.</p>
-                                )}
-                            </div>
-                            
-                             <div>
-                                <h3 className="font-semibold text-lg text-white mt-4 mb-2">Step 5: Embed All Dependencies</h3>
-                                <p>To create a true offline installer, this command appends every package from your blueprint directly into the ISO's package list. This includes your desktop environment, kernels, and applications. <strong className="text-yellow-300">Note: CachyOS packages are excluded here and will be installed on first boot.</strong></p>
-                                <CodeBlock>{addAllPackagesCommand}</CodeBlock>
-                            </div>
-
-                            <div>
-                                <h3 className="font-semibold text-lg text-white mt-6 mb-2">Step 6: Automate & Rebrand the ISO</h3>
-                                <p>This is the crucial step. We'll manually create a customization script to automatically run your installer on boot and rebrand the boot menu.</p>
-                                <p className="mt-2">1. Run the following command to open the <strong className="text-yellow-400">nano</strong> text editor and create the script file:</p>
-                                <CodeBlock>nano releng/customize_airootfs.sh</CodeBlock>
-                                
-                                <p className="mt-2">2. Copy the entire script below and paste it into the nano editor. This script will:</p>
-                                <ul className="list-disc list-inside my-2 space-y-1 pl-2 text-slate-400">
-                                    <li>Configure the live environment to auto-login as root.</li>
-                                    <li>Automatically launch your installer by adding it to the root user's <strong className="font-mono text-slate-300">.bash_profile</strong>.</li>
-                                    <li>Rename the boot menu entry to <strong className="text-yellow-300">"Install Chirpy OS"</strong>.</li>
-                                </ul>
-                                <CodeBlock>{customizeAiRootFsScript}</CodeBlock>
-
-                                <p className="mt-2">3. Press <strong className="text-yellow-400">Ctrl+X</strong> to exit nano. You will be asked to save the file. Press <strong className="text-yellow-400">Y</strong> for 'Yes', then press <strong className="text-yellow-400">Enter</strong> to confirm the filename.</p>
-
-                                <p className="mt-4">4. After saving, you must make this customization script executable:</p>
-                                <CodeBlock>chmod +x releng/customize_airootfs.sh</CodeBlock>
-                            </div>
-
-                            <div>
-                                <h3 className="font-semibold text-lg text-white mt-6 mb-2">Step 7: Build the ISO</h3>
-                                <p>From your <strong className="font-mono text-slate-400">~/chirpy-iso</strong> directory, run the build command. This can take some time and requires significant disk space for the work directory.</p>
-                                <p className="mt-2 p-3 bg-yellow-900/40 border border-yellow-700/60 rounded-lg text-yellow-300 text-sm">
-                                    <strong>Heads Up, Architect:</strong> We are creating the build's working directory (`work`) inside your project folder instead of `/tmp`. This is because `/tmp` is often a small RAM disk and can run out of space, causing the build to fail. Building here ensures you have enough space.
-                                </p>
-                                <CodeBlock>sudo mkarchiso -v -w work -o . releng</CodeBlock>
-                                <p>Your custom, auto-installing ISO will be created in the current directory. When you boot it, the installation ritual will start automatically.</p>
+                                <h3 className="font-semibold text-lg text-white mt-4 mb-2">Step 3: Run with Sudo</h3>
+                                <p>The script needs root permissions to install `archiso` and build the ISO. Execute it with:</p>
+                                <CodeBlock>sudo ./build-iso.sh</CodeBlock>
+                                <p className="mt-2">The script will handle everything else. Once it's finished, your custom bootable ISO will be located in the <strong className="font-mono text-slate-400">~/chirpy-iso-build/out/</strong> directory, ready to be written to a USB drive or used in a VM.</p>
                             </div>
                         </div>
                     )}

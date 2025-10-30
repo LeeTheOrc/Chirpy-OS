@@ -246,3 +246,57 @@ export const GearIcon = ({ className }: { className?: string }) => (
       />
     </svg>
   );
+// Fix: Add missing icons used by AICoreTuner.
+export const FeatherIcon = ({ className }: { className?: string }) => (
+    <svg 
+        xmlns="http://www.w3.org/2000/svg" 
+        viewBox="0 0 24 24" 
+        fill="none" 
+        stroke="currentColor" 
+        strokeWidth="2" 
+        strokeLinecap="round" 
+        strokeLinejoin="round" 
+        className={className}
+        aria-hidden="true"
+    >
+        <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"></path>
+        <line x1="16" y1="8" x2="2" y2="22"></line>
+        <line x1="17.5" y1="15" x2="9" y2="15"></line>
+    </svg>
+);
+
+export const ScaleIcon = ({ className }: { className?: string }) => (
+    <svg 
+        xmlns="http://www.w3.org/2000/svg" 
+        viewBox="0 0 20 20" 
+        fill="currentColor" 
+        className={className}
+        aria-hidden="true"
+    >
+        <path d="M5 4a1 1 0 00-2 0v7.268a2 2 0 000 3.464V16a1 1 0 102 0v-1.268a2 2 0 000-3.464V4zM11 4a1 1 0 10-2 0v1.268a2 2 0 000 3.464V16a1 1 0 102 0V8.732a2 2 0 000-3.464V4zM16 3a1 1 0 011 1v7.268a2 2 0 010 3.464V16a1 1 0 11-2 0v-1.268a2 2 0 010-3.464V4a1 1 0 011-1z" />
+    </svg>
+);
+
+export const FlameIcon = ({ className }: { className?: string }) => (
+    <svg 
+        xmlns="http://www.w3.org/2000/svg" 
+        viewBox="0 0 20 20" 
+        fill="currentColor" 
+        className={className}
+        aria-hidden="true"
+    >
+        <path fillRule="evenodd" d="M10.802 1.905a.75.75 0 00-.893.876 5.625 5.625 0 002.59 4.718c0 4.375-3.75 8.125-3.75 8.125S5 12.373 5 8a5.625 5.625 0 002.53-4.686.75.75 0 00-.876-.893 6.875 6.875 0 00-3.049 5.608c0 5.25 4.375 9.375 4.375 9.375s4.375-4.125 4.375-9.375a6.875 6.875 0 00-3.049-5.608z" clipRule="evenodd" />
+    </svg>
+);
+
+export const SparklesIcon = ({ className }: { className?: string }) => (
+    <svg 
+        xmlns="http://www.w3.org/2000/svg" 
+        viewBox="0 0 20 20" 
+        fill="currentColor" 
+        className={className}
+        aria-hidden="true"
+    >
+        <path fillRule="evenodd" d="M10 2.5a.75.75 0 01.75.75v.255a.75.75 0 01-1.5 0V3.25A.75.75 0 0110 2.5zM10 16.75a.75.75 0 01.75.75v.255a.75.75 0 01-1.5 0V17.5a.75.75 0 01.75-.75zM3.25 10a.75.75 0 01.75-.75h.255a.75.75 0 010 1.5H4a.75.75 0 01-.75-.75zM16.75 10a.75.75 0 01.75-.75h.255a.75.75 0 010 1.5H17.5a.75.75 0 01-.75-.75zM5.893 5.893a.75.75 0 011.061 0l.18.18a.75.75 0 01-1.06 1.06l-.18-.18a.75.75 0 010-1.061zM14.107 14.107a.75.75 0 011.061 0l.18.18a.75.75 0 01-1.06 1.06l-.18-.18a.75.75 0 010-1.061zM5.893 14.107a.75.75 0 010 1.061l-.18.18a.75.75 0 01-1.06-1.06l.18-.18a.75.75 0 011.06 0zM14.107 5.893a.75.75 0 010 1.061l-.18.18a.75.75 0 01-1.06-1.06l.18-.18a.75.75 0 011.06 0z" clipRule="evenodd" />
+    </svg>
+);
