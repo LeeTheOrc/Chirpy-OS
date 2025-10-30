@@ -88,9 +88,9 @@ export const BuildModal: React.FC<BuildModalProps> = ({ steps, script, onClose, 
 
     return (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center animate-fade-in-fast" onClick={onClose}>
-            <div className="bg-forge-panel border border-forge-border rounded-lg shadow-2xl w-full max-w-2xl p-6 m-4" onClick={e => e.stopPropagation()}>
+            <div className="bg-forge-panel border-2 border-forge-border rounded-lg shadow-2xl w-full max-w-2xl p-6 m-4" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold text-forge-text-primary flex items-center gap-2">
+                    <h2 className="text-xl font-bold text-forge-text-primary flex items-center gap-3 font-display tracking-wider">
                         <BlueprintIcon className="w-6 h-6 text-dragon-fire" />
                         <span>The Great Forge</span>
                     </h2>
@@ -111,7 +111,7 @@ export const BuildModal: React.FC<BuildModalProps> = ({ steps, script, onClose, 
                     </div>
                 ) : (
                     <div className="animate-fade-in">
-                        <h3 className="text-2xl font-bold text-center text-dragon-fire mb-4">Artifact Forged!</h3>
+                        <h3 className="text-2xl font-bold text-center text-dragon-fire mb-4 font-display">Artifact Forged!</h3>
                         
                         <div className="border-b border-forge-border mb-4 flex justify-center">
                             <nav className="-mb-px flex space-x-4">

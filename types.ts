@@ -2,6 +2,7 @@
 export type Role = 'user' | 'model';
 export type LinkState = 'online' | 'offline';
 export type BuildTarget = 'bare-metal' | 'qemu' | 'virtualbox';
+export type LocalLLM = 'llama3:8b' | 'phi3:mini';
 
 export interface Message {
   role: Role;
@@ -34,7 +35,6 @@ export interface InternalizedService {
 export interface DistroConfig {
   hostname?: string;
   username?: string;
-  password?: string; 
   timezone: string;
   locale: string;
   desktopEnvironment: 'KDE Plasma';
@@ -68,6 +68,8 @@ export interface DistroConfig {
   firewallRules: FirewallRule[];
   // New: Sovereign Services
   internalizedServices: InternalizedService[];
+  // New: Local LLM selection
+  localLLM: LocalLLM;
 }
 
 export interface Snippet {

@@ -1,7 +1,8 @@
 import React from 'react';
-import type { DistroConfig } from '../types';
-import { AI_RESOURCE_PROFILES } from '../constants';
+import type { DistroConfig, LocalLLM } from '../types';
+import { AI_RESOURCE_PROFILES, LOCAL_LLM_PROFILES } from '../constants';
 import { FeatherIcon, ScaleIcon, FlameIcon, SparklesIcon, GpuIcon } from './Icons';
+import { SegmentedControl } from './SegmentedControl';
 
 const ICONS = {
   minimal: <FeatherIcon className="w-6 h-6" />,
@@ -39,36 +40,59 @@ export const AICoreTuner: React.FC<AICoreTunerProps> = ({ config, onConfigChange
     onConfigChange(newConfig);
   };
 
+  const handleLlmSelection = (model: LocalLLM) => {
+    if (isLocked) return;
+    onConfigChange({ ...config, localLLM: model });
+  };
+
   const isHybridCoProcessing = config.graphicsMode === 'hybrid' && config.aiGpuMode === 'dynamic';
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3">
-        {(Object.keys(AI_RESOURCE_PROFILES) as AllocationLevel[]).map((level) => {
-          const profile = AI_RESOURCE_PROFILES[level];
-          const isSelected = config.aiResourceAllocation === level;
-          return (
-            <button
-              key={level}
-              onClick={() => handleSelection(level)}
-              disabled={isLocked}
-              className={`p-3 rounded-lg border-2 text-left transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex flex-col justify-between items-start h-28
-                ${isSelected 
-                  ? 'bg-dragon-fire/10 border-dragon-fire shadow-lg shadow-dragon-fire/10' 
-                  : 'bg-forge-panel/50 border-forge-border hover:border-forge-text-secondary/50'
-                }`}
-            >
-              <div className={`p-1.5 rounded-md ${isSelected ? 'text-dragon-fire' : 'text-forge-text-secondary'}`}>
-                {ICONS[level]}
-              </div>
-              <div className="min-w-0">
-                <h5 className={`font-semibold ${isSelected ? 'text-forge-text-primary' : 'text-forge-text-secondary'}`}>{profile.name}</h5>
-                <p className="text-xs text-forge-text-secondary">{profile.description}</p>
-              </div>
-            </button>
-          );
-        })}
+      <div>
+        <label className="text-forge-text-secondary text-sm font-semibold mb-2 block">Resource Profile</label>
+        <div className="grid grid-cols-2 gap-3">
+          {(Object.keys(AI_RESOURCE_PROFILES) as AllocationLevel[]).map((level) => {
+            const profile = AI_RESOURCE_PROFILES[level];
+            const isSelected = config.aiResourceAllocation === level;
+            return (
+              <button
+                key={level}
+                onClick={() => handleSelection(level)}
+                disabled={isLocked}
+                className={`p-3 rounded-lg border-2 text-left transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex flex-col justify-between items-start h-28
+                  ${isSelected 
+                    ? 'bg-dragon-fire/10 border-dragon-fire shadow-lg shadow-dragon-fire/10' 
+                    : 'bg-forge-panel/50 border-forge-border hover:border-forge-text-secondary/50'
+                  }`}
+              >
+                <div className={`p-1.5 rounded-md ${isSelected ? 'text-dragon-fire' : 'text-forge-text-secondary'}`}>
+                  {ICONS[level]}
+                </div>
+                <div className="min-w-0">
+                  <h5 className={`font-semibold ${isSelected ? 'text-forge-text-primary' : 'text-forge-text-secondary'}`}>{profile.name}</h5>
+                  <p className="text-xs text-forge-text-secondary">{profile.description}</p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
       </div>
+      
+      <div>
+        <label className="text-forge-text-secondary text-sm font-semibold mb-2 block">Local Consciousness Model</label>
+         <SegmentedControl
+            value={config.localLLM}
+            onChange={(value) => handleLlmSelection(value as LocalLLM)}
+            disabled={isLocked}
+            options={[
+                { value: 'llama3:8b', label: 'Inferno (Llama 3)' },
+                { value: 'phi3:mini', label: 'Featherlight (Phi-3)' },
+            ]}
+        />
+        <p className="text-xs text-forge-text-secondary mt-2">{LOCAL_LLM_PROFILES[config.localLLM].description}</p>
+      </div>
+
 
       <div className={`p-3 rounded-lg border flex items-center gap-3 transition-all duration-300
         ${isHybridCoProcessing 

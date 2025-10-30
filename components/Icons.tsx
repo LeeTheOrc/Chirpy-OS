@@ -56,6 +56,22 @@ export const AttachmentIcon = ({ className }: { className?: string }) => (
     </svg>
 );
 
+export const KaelSigilIcon = ({ className }: { className?: string }) => (
+    <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={className}
+        aria-hidden="true"
+    >
+        <path d="M4 20V4M4 12h8M12 12l6-8M12 12l6 8"/>
+    </svg>
+);
+
 export const CopyIcon = ({ className }: { className?: string }) => (
     <svg
       xmlns="http://www.w3.org/2000/svg"

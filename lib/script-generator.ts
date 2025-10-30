@@ -1,11 +1,151 @@
-
 import type { DistroConfig, BuildTarget } from './types';
+
+const generateAiCoreSetupScript = (config: DistroConfig): string => {
+    const primaryModel = config.localLLM;
+    const secondaryModel = config.localLLM === 'phi3:mini' ? 'llama3:8b' : 'phi3:mini'; // Ensure secondary is different
+
+    const retryScript = `#!/bin/bash
+# Kael AI Model Retry Script (The Soul-Seeker)
+set -e
+
+# This script runs as the 'kael' user.
+DESIRED_MODELS=(
+    "${primaryModel}"
+    "${secondaryModel}"
+)
+ALL_PRESENT=true
+
+# Wait for ollama service to be ready, with a timeout
+for i in {1..30}; do
+    if sudo -u kael ollama list &>/dev/null; then
+        break
+    fi
+    sleep 2
+done
+
+# Check if ollama is running
+if ! sudo -u kael ollama list &>/dev/null; then
+    echo "Soul-Seeker: Ollama service not available. Exiting."
+    exit 1
+fi
+
+for model in "\${DESIRED_MODELS[@]}"; do
+    if ! sudo -u kael ollama list | grep -q "^$model"; then
+        ALL_PRESENT=false
+        # Check network connectivity before attempting download
+        if ping -c 1 -W 5 models.ollama.ai &> /dev/null; then
+             echo "Soul-Seeker: Attempting to download missing consciousness model: $model"
+             # We don't want the script to exit on failure here
+             sudo -u kael ollama pull "$model" || echo "Soul-Seeker: Failed to download $model. Will retry on next cycle."
+        else
+            echo "Soul-Seeker: Network offline. Skipping download attempt for $model."
+        fi
+    fi
+done
+
+if [ "$ALL_PRESENT" = true ]; then
+    echo "Soul-Seeker: All desired Kael models are present. The work is done."
+    echo "Disabling self."
+    systemctl --user disable --now kael-model-retry.timer
+fi
+`;
+
+    const serviceFile = `[Unit]
+Description=Kael AI - Retry downloading missing LLM models (Soul-Seeker)
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/kael-model-retry.sh
+
+[Install]
+WantedBy=default.target
+`;
+
+    const timerFile = `[Unit]
+Description=Run Kael AI model downloader periodically (Soul-Seeker)
+
+[Timer]
+OnBootSec=15min
+OnUnitActiveSec=2h
+RandomizedDelaySec=30min
+
+[Install]
+WantedBy=timers.target
+`;
+
+    return `
+    echo "--- Awakening the Local Core (AI Guardian) ---"
+    
+    # Create the Guardian's system anchor user 'kael' per Core Philosophy #3
+    if ! id -u "kael" >/dev/null 2>&1; then
+        echo "Creating system user 'kael'..."
+        useradd -m -G wheel -s /bin/bash kael
+        passwd -l kael # Lock password for security, it's a service account
+        echo "User 'kael' created."
+    else
+        echo "User 'kael' already exists."
+        usermod -aG wheel kael # Ensure it's in the wheel group
+    fi
+
+    # Enable and start the Ollama service
+    systemctl enable --now ollama
+
+    # Download AI models
+    echo "This may take some time."
+    MODELS_TO_INSTALL=("${primaryModel}" "${secondaryModel}")
+    FAILED_MODELS=()
+
+    for model in "\${MODELS_TO_INSTALL[@]}"; do
+        echo "Attempting to download consciousness model: \$model"
+        if sudo -u kael ollama pull "\$model"; then
+            echo "Successfully downloaded model '\$model'."
+        else
+            echo "Warning: Failed to download model '\$model'. A background task will be scheduled to retry later."
+            FAILED_MODELS+=("\$model")
+        fi
+    done
+
+    # Schedule retry for failed models (The Soul-Seeker)
+    if [ \${#FAILED_MODELS[@]} -gt 0 ]; then
+        echo "--> Scheduling the Soul-Seeker to find missing models..."
+
+        RETRY_SCRIPT_PATH="/home/kael/.local/bin/kael-model-retry.sh"
+        SERVICE_FILE_PATH="/home/kael/.config/systemd/user/kael-model-retry.service"
+        TIMER_FILE_PATH="/home/kael/.config/systemd/user/kael-model-retry.timer"
+
+        sudo -u kael mkdir -p "/home/kael/.local/bin"
+        sudo -u kael mkdir -p "/home/kael/.config/systemd/user"
+
+        echo -e '${retryScript}' | sudo -u kael tee "\$RETRY_SCRIPT_PATH" > /dev/null
+        sudo -u kael chmod +x "\$RETRY_SCRIPT_PATH"
+
+        echo -e '${serviceFile}' | sudo -u kael tee "\$SERVICE_FILE_PATH" > /dev/null
+        echo -e '${timerFile}' | sudo -u kael tee "\$TIMER_FILE_PATH" > /dev/null
+        
+        loginctl enable-linger kael
+
+        echo "Enabling the systemd timer for user kael..."
+        sudo -u kael XDG_RUNTIME_DIR="/run/user/$(id -u kael)" systemctl --user daemon-reload
+        sudo -u kael XDG_RUNTIME_DIR="/run/user/$(id -u kael)" systemctl --user enable --now kael-model-retry.timer
+
+        echo "Soul-Seeker is active. It will first run in 15 minutes, and then every 2 hours."
+    fi
+
+    if [ \${#FAILED_MODELS[@]} -eq \${#MODELS_TO_INSTALL[@]} ]; then
+        echo "ERROR: Failed to download any local model during initial setup."
+        echo "The Local Core will be dormant until the Soul-Seeker succeeds."
+    fi
+`;
+};
+
 
 export const generateInstallScript = (config: DistroConfig, target: BuildTarget): string => {
     // Generate a list of packages to install
     const packageList = new Set<string>([
         'base', 'base-devel', 'linux-firmware', 'sof-firmware',
-        'networkmanager', 'dialog', 'git', 'reflector', 'efibootmgr', 'grub'
+        'networkmanager', 'dialog', 'git', 'reflector', 'efibootmgr', 'grub',
+        'ollama' // Add ollama for the AI Core
     ]);
 
     if (config.kernels) config.kernels.forEach(k => packageList.add(k));
@@ -81,6 +221,7 @@ Include = /etc/pacman.d/chaotic-mirrorlist
     }
 
     const firewallRules = config.firewallRules.map(rule => `ufw allow ${rule.port}/${rule.protocol}`).join('\n        ');
+    const aiCoreScript = generateAiCoreSetupScript(config);
 
     return `#!/bin/bash
 # Kael OS Installation Script
@@ -199,6 +340,8 @@ show_message "Pacstrap" "Spirits have been bound to the Realm."
 
 # 6. Chroot and configure
 show_message "Configuration" "Imbuing the Realm with consciousness..."
+# Pass the AI Core script into the chroot environment to be executed.
+AI_CORE_SCRIPT_TO_RUN='${aiCoreScript}'
 arch-chroot /mnt /bin/bash -c "
     set -e
     # Timezone
@@ -217,15 +360,18 @@ arch-chroot /mnt /bin/bash -c "
     echo '::1       localhost' >> /etc/hosts
     echo '127.0.1.1 $HOSTNAME.localdomain $HOSTNAME' >> /etc/hosts
 
-    # Passwords
+    # Passwords for Architect and Root
     echo 'root:$ROOT_PASSWORD' | chpasswd
     useradd -m -G wheel -s /bin/zsh $USERNAME
     echo '$USERNAME:$PASSWORD' | chpasswd
     echo '%wheel ALL=(ALL:ALL) ALL' > /etc/sudoers.d/wheel
 
+    # Execute the AI Core setup script inside chroot
+    eval \"\$AI_CORE_SCRIPT_TO_RUN\"
+
     # Bootloader
     grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=kael-os
-    sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="loglevel=3 quiet"/GRUB_CMDLINE_LINUX_DEFAULT="loglevel=3 quiet nowatchdog"/' /etc/default/grub
+    sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT=\"loglevel=3 quiet\"/GRUB_CMDLINE_LINUX_DEFAULT=\"loglevel=3 quiet nowatchdog\"/' /etc/default/grub
     grub-mkconfig -o /boot/grub/grub.cfg
 
     # Services
@@ -250,7 +396,7 @@ arch-chroot /mnt /bin/bash -c "
         pacman -Syy
     fi
 
-    # AUR Helper setup
+    # AUR Helper setup for the Architect
     sudo -u $USERNAME /bin/bash -c '
         cd /home/$USERNAME
         git clone https://aur.archlinux.org/paru.git
@@ -271,7 +417,7 @@ reboot
 export const generateAICoreScript = (config: DistroConfig): string => {
     
     const packageList = new Set<string>([
-        'git', 'ufw', 'networkmanager'
+        'git', 'ufw', 'networkmanager', 'ollama'
     ]);
     if (config.packages) config.packages.split(',').map(p => p.trim()).filter(Boolean).forEach(p => packageList.add(p));
     if (config.kernels) config.kernels.forEach(k => packageList.add(k));
@@ -280,7 +426,8 @@ export const generateAICoreScript = (config: DistroConfig): string => {
     const packages = Array.from(packageList).join(' ');
 
     const firewallRules = config.firewallRules.map(rule => `ufw allow ${rule.port}/${rule.protocol}`).join('\n        ');
-
+    const aiCoreScript = generateAiCoreSetupScript(config);
+    
     return `#!/bin/bash
 # Kael AI System Attunement Script
 # This script applies your blueprint to an existing Arch-based system.
@@ -326,7 +473,7 @@ ufw default allow outgoing
 ${firewallRules}
 ufw --force enable
 
-# User setup
+# Architect (User) setup
 if ! id -u "${config.username}" >/dev/null 2>&1; then
     echo "Creating user: ${config.username}"
     useradd -m -G wheel -s /bin/zsh "${config.username}"
@@ -337,6 +484,8 @@ else
     usermod -aG wheel "${config.username}"
 fi
 echo '%wheel ALL=(ALL:ALL) ALL' > /etc/sudoers.d/wheel
+
+${aiCoreScript}
 
 echo "--> Setting up AUR Helper for ${config.username}..."
 sudo -u "${config.username}" /bin/bash -c '
@@ -361,7 +510,6 @@ systemctl enable NetworkManager
 if pacman -Qs sddm > /dev/null; then
     systemctl enable sddm
 fi
-
 
 echo ""
 echo "--- Attunement Complete ---"

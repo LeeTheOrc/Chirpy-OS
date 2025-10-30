@@ -4,11 +4,18 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Kael OS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
 <script>
   tailwind.config = {
     theme: {
       extend: {
+        fontFamily: {
+          sans: ['Inter', 'sans-serif'],
+          display: ['Cinzel', 'serif'],
+        },
         colors: {
           'forge-bg': '#120e1a',
           'forge-panel': '#221c33',
@@ -21,11 +28,13 @@
         },
         boxShadow: {
             'glow-dragon-fire': '0 0 5px #ffcc00, 0 0 10px #ffcc00, 0 0 15px #ffcc00',
+            'glow-magic-purple': '0 0 5px #e040fb, 0 0 10px #e040fb',
         },
         animation: {
           'breathing': 'breathing 8s ease-in-out infinite',
           'pulse-glow': 'pulse-glow 4s ease-in-out infinite',
           'pulse-glow-small': 'pulse-glow-small 3s ease-in-out infinite',
+          'fade-in': 'fade-in 0.5s ease-out forwards',
         },
         keyframes: {
           breathing: {
@@ -48,6 +57,10 @@
                 boxShadow: '0 0 4px #ffcc00, 0 0 8px #ffcc00',
             },
           },
+          'fade-in': {
+            'from': { opacity: 0, transform: 'translateY(10px)' },
+            'to': { opacity: 1, transform: 'translateY(0)' },
+          }
         }
       }
     }
@@ -89,11 +102,29 @@
     animation: slide-in-left 0.3s ease-out forwards;
   }
    body {
+        font-family: 'Inter', sans-serif;
         background-color: #120e1a; /* forge-bg */
         background-image:
-            radial-gradient(ellipse at center, rgba(255, 204, 0, 0.1) 0%, transparent 70%),
+            radial-gradient(ellipse at center, rgba(122, 7, 239, 0.15) 0%, transparent 60%),
             url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"%3E%3Cpath fill="%231a1626" d="M0 0h80v80H0z"/%3E%3Cpath fill-opacity="0.2" fill="%23221c33" d="M68 68H12V12h56zM56 24H24v32h32z"/%3E%3C/svg%3E');
         background-attachment: fixed;
+    }
+    .animate-fade-in {
+        animation: fade-in 0.5s ease-out forwards;
+    }
+    /* Custom Scrollbar Styling */
+    ::-webkit-scrollbar {
+        width: 8px;
+    }
+    ::-webkit-scrollbar-track {
+        background: #221c33; /* forge-panel */
+    }
+    ::-webkit-scrollbar-thumb {
+        background: #3f345e; /* forge-border */
+        border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+        background: #ffcc00; /* dragon-fire */
     }
 </style>
 </head>

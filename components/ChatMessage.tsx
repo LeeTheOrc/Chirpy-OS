@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import type { Message } from '../types';
 import { GuardianAvatar } from './ChirpyAvatar';
-import { CopyIcon } from './Icons';
+import { CopyIcon, KaelSigilIcon } from './Icons';
 
 interface ChatMessageProps {
   message: Message;
@@ -35,7 +35,8 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
     <div className={`flex gap-4 animate-fade-in ${isModel ? '' : 'flex-row-reverse'}`}>
       {isModel && <GuardianAvatar isOnline={message.linkState === 'online'} />}
       <div className={`flex flex-col gap-2 ${isModel ? '' : 'items-end'}`}>
-        <div className={`w-fit max-w-full md:max-w-2xl lg:max-w-3xl rounded-2xl px-4 py-2.5 ${isModel ? 'bg-forge-panel text-forge-text-primary border-l-2 border-dragon-fire' : 'bg-gradient-to-br from-orc-steel/50 to-magic-purple/50 text-white'}`}>
+        <div className={`relative w-fit max-w-full md:max-w-2xl lg:max-w-3xl rounded-2xl px-4 py-2.5 ${isModel ? 'bg-gradient-to-br from-forge-panel to-[#1d182e] text-forge-text-primary border-l-4 border-dragon-fire shadow-lg' : 'bg-gradient-to-br from-orc-steel/50 to-magic-purple/50 text-white'}`}>
+            {isModel && <KaelSigilIcon className="absolute top-2 right-2 w-4 h-4 text-dragon-fire/20" />}
             <p className="whitespace-pre-wrap font-sans text-base leading-relaxed">{message.text}</p>
         </div>
         {isModel && (

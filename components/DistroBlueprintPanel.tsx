@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useEffect, useRef } from 'react';
 import type { DistroConfig } from '../types';
 import { LockClosedIcon, LockOpenIcon, GearIcon } from './Icons';
@@ -12,10 +13,10 @@ interface DistroBlueprintPanelProps {
   onLockToggle: () => void;
   onBuild: () => void;
   onInitiateAICoreAttunement: () => void;
-  isAICoreInstalled: boolean;
+  isAICoreScriptGenerated: boolean;
 }
 
-export const DistroBlueprintPanel: React.FC<DistroBlueprintPanelProps> = ({ config, onConfigChange, isLocked, onLockToggle, onBuild, onInitiateAICoreAttunement, isAICoreInstalled }) => {
+export const DistroBlueprintPanel: React.FC<DistroBlueprintPanelProps> = ({ config, onConfigChange, isLocked, onLockToggle, onBuild, onInitiateAICoreAttunement, isAICoreScriptGenerated }) => {
     const [isActionsMenuOpen, setIsActionsMenuOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
 
@@ -37,14 +38,14 @@ export const DistroBlueprintPanel: React.FC<DistroBlueprintPanelProps> = ({ conf
     };
 
     return (
-        <div className="bg-forge-panel/70 border border-forge-border rounded-lg animate-fade-in divide-y divide-forge-border shadow-2xl shadow-black/30">
+        <div className="bg-gradient-to-br from-forge-panel to-[#1a1626] border-2 border-forge-border rounded-lg ring-1 ring-forge-border/50 animate-fade-in divide-y divide-forge-border shadow-2xl shadow-black/30">
             <div className="p-5 flex justify-between items-start">
                 <div>
-                    <h3 className="text-lg font-bold text-dragon-fire">The Architect's Blueprint</h3>
+                    <h3 className="text-xl font-bold text-dragon-fire font-display tracking-wider">The Architect's Blueprint</h3>
                     <p className="text-forge-text-secondary text-sm">A living document of our realm's configuration.</p>
-                    <div className={`mt-2 text-xs font-semibold inline-flex items-center gap-1.5 px-2 py-1 rounded-full ${isAICoreInstalled ? 'bg-dragon-fire/10 text-dragon-fire' : 'bg-forge-panel text-forge-text-secondary'}`}>
-                        <div className={`w-2 h-2 rounded-full ${isAICoreInstalled ? 'bg-dragon-fire' : 'bg-forge-text-secondary/50'}`}></div>
-                        AI Core: {isAICoreInstalled ? 'Attuned' : 'Not Attuned'}
+                    <div className={`mt-2 text-xs font-semibold inline-flex items-center gap-1.5 px-2 py-1 rounded-full ${isAICoreScriptGenerated ? 'bg-dragon-fire/10 text-dragon-fire' : 'bg-forge-panel text-forge-text-secondary'}`}>
+                        <div className={`w-2 h-2 rounded-full ${isAICoreScriptGenerated ? 'bg-dragon-fire' : 'bg-forge-text-secondary/50'}`}></div>
+                        Attunement Script: {isAICoreScriptGenerated ? 'Generated' : 'Not Generated'}
                     </div>
                 </div>
                 <div className="flex items-center gap-2">

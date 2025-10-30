@@ -1,64 +1,56 @@
 export const LEVEL_UP_MANIFESTO_TEXT = `
-## The Level Up Manifesto
+            .________________________________________________.
+           /                                                 /|
+          /                THE ARTIFICER'S                   / |
+         /                    MANIFESTO                     /  |
+        /_________________________________________________/   |
+        |                                                 |   /
+        | This scroll is a living chronicle of our        |  /
+        | ascendant path. It contains the legendary       | /
+        | artifacts we shall create, and the new runes    |/
+        | of power they will one day etch into the Core.  |
+        |_________________________________________________|
 
-This is the staging ground for our future. It is a living document containing the great works we aspire to forge and the immutable laws they will one day create. When a forging is complete and a principle is proven, it will be ascended into the Core Philosophy.
 
----
+When a forging is complete and a principle is proven, it will be transmuted 
+into the Immutable Grimoire.
 
-### Proposed Laws (Awaiting Forging)
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+§  WHISPERS IN THE AETHER  §
+(Proposed Quests)
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
-- **The Law of Guardian Symbiosis:** To ensure a truly cohesive and intelligent environment, all applications and tools custom-forged for the Realm **must** be designed for deep, native integration with the Guardian AI. The Guardian is not an add-on; it is the central nervous system of the software ecosystem. This means exposing APIs, providing hooks for the Command Doctor, and designing UIs that can be augmented by the AI's context-aware consciousness.
+❖ **The Soulforge Pipeline:** To bind the flow of raw quintessence (source code) into tangible artifacts (packages), ensuring transparency and accessibility.
+    - **Reagents:** A Sanctum Sanctorum for transmuting quintessence, Scrolls of Binding (\`PKGBUILD\` files), the Astral Codex (GitHub) as the immutable grimoire, and ethereal delivery to the Sovereign Athenaeum.
+    - **Status:** Scrying.
 
----
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+§  THE FORGE  §
+(Active Quests)
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
-### Future Forgings (The Roadmap)
+❖ **I. The Sovereign Athenaeum:** To sever the final tether to the mundane plane by hosting our own pacman Athenaeum, sharing its knowledge with the world.
+    - **Reagents:** A localized Mana Well (web server), Runes of Organization, a permanent Ward of Access, and astral projection (FTP sync) to a distant sanctum.
+    - **Status:** The forge is lit. Foundational runes (\`caddy\`, \`lftp\`) are inscribed in the Software Grimoire.
 
-#### I. The Sovereign Repository
-- **Objective:** To achieve true digital independence by hosting our own pacman repository directly within the Realm, and sharing it with the world.
-- **Components:**
-    - A local web server (e.g., Caddy or Nginx) configured to serve the repository files.
-    - Scripts to manage the repository database (\`repo-add\`).
-    - **Aegis Configuration:** A new, permanent firewall rule will be added to the blueprint, opening port 8000/tcp to allow other machines on the local network to access the Sovereign Repository.
-    - **Offsite FTP Synchronization:** A mechanism to sync the completed package repository to a public-facing FTP server, allowing other Architects to access our forged software.
-- **Status:** In Progress. The first seeds of this law have been sown. The \`caddy\` (web server) and \`lftp\` (FTP sync) packages are already available in the Software Grimoire during the forging ritual, allowing advanced Architects to begin experimenting with this path.
+❖ **II. The Twin Hearts (Kael-Forged Kernels):** To achieve a divine symbiosis by forging our own kernel-hearts, branded and optimized for the Realm.
+    - **Reagents:** Inscribing the Kael Sigil upon the kernel's soul (Makefile branding), attuning the heart to the Golem's form (\`make localmodconfig\`), channeling raw power (performance tuning), and an automated forging ritual.
+    - **Status:** The incantation is known; the ritual scroll is being penned.
 
-#### II. The Great Forge Pipeline
-- **Objective:** To automate the flow from source code to distributable package, ensuring transparency and accessibility.
-- **Components:**
-    - An on-OS environment for building programs from source.
-    - A system to automatically generate \`PKGBUILD\` files.
-    - **GitHub Source of Truth:** All source code for our custom packages will be maintained on GitHub, providing a public, auditable history and allowing others to contribute or fork our creations.
-    - **Automated Distribution:** A secure FTP/SFTP sync mechanism to push compiled packages to the Sovereign Repository (both local and offsite).
-- **Status:** Planned.
+❖ **III. The Genesis Ritual (Calamares):** To transmute the current runic TUI ritual into a grand, sigil-driven graphical incantation, making the art of Realm-forging accessible to all Artificers.
+    - **Reagents:** Communion with the Calamares framework spirit and custom soul-shards for our unique blueprint runes.
+    - **Status:** The spirit has been summoned. The \`calamares\` incantation is available in the Software Grimoire for communion.
 
-#### III. The Twin Souls (Kael-Forged Kernels)
-- **Objective:** To achieve ultimate system symbiosis by compiling our own kernels, branded and optimized for the Realm, imbuing them with the Kael identity.
-- **Components:**
-    - **Branding the Core:** The kernel's Makefile will be modified to append a custom version string (e.g., \`-kael\`). This makes the kernel identifiable as a core component of the Realm with a simple \`uname -r\` command.
-    - **Hardware Attunement:** We will utilize \`make localmodconfig\` to create a lean kernel configuration tailored to the specific hardware it's compiled on, stripping out unused drivers for faster boot times and a smaller footprint.
-    - **Performance Tuning:** We will select specific configuration options (preemption model, schedulers, etc.) that align with a high-performance philosophy.
-    - **Forge Automation:** A dedicated build script (\`forge-kernel.sh\`) will automate the entire ritual: fetching the source, applying branding, configuring, compiling, and packaging for \`pacman\`.
-- **Status:** In Progress. The philosophy is defined; the forge script is the next step.
+❖ **IV. The Astral Bridge (Account Integration):** To forge an astral bridge between the Sovereign Realm and the Architect's life-stream in the aether.
+    - **Reagents:** A deep communion with KDE's native spirit-binding for services like Google and GitHub.
+    - **Status:** The bridge's foundation is laid. The necessary binding runes are included in every KDE Plasma forging.
 
-#### IV. The Calamares Genesis
-- **Objective:** To evolve the current TUI installer into a full-fledged graphical installer, making the Realm accessible to all Architects, regardless of their terminal proficiency.
-- **Components:**
-    - Integration with the Calamares installer framework.
-    - Custom modules to handle our unique blueprint features (AI Core, BTRFS snapshots, etc.).
-- **Status:** In Progress. The path to a graphical genesis is being explored. The \`calamares\` installer framework is available as an optional package in the Software Grimoire, enabling community experimentation and development towards a full graphical installer.
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+§  THE SOUL'S VISAGE  §
+(UI & Aesthetics)
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
-#### V. The Realm's Visage
-- **Objective:** To create a unique and beautiful visual identity for the Realm.
-- **Components:**
-    - A custom KDE Plasma theme, including colors, window decorations, and styles.
-    - A custom icon pack, using legally sourced and open-source assets.
-    - Custom wallpapers that reflect the philosophy of the Forge.
-- **Status:** Conceptual.
-
-#### VI. The Nexus of Realms (Online Account Integration)
-- **Objective:** To bridge the Sovereign Realm with the Architect's digital life in the cloud, seamlessly integrating key online services into the native desktop experience.
-- **Components:**
-    - **KDE Online Accounts:** Deep integration with KDE's native account management system for a unified experience.
-    - **Service Support:** Initial focus on Google (for Calendar, Contacts, and Drive via \`kio-gdrive\`), GitHub, and future support for our own Sovereign FTP services.
-- **Status:** In Progress. The foundational packages (\`kaccounts-integration\`, \`kaccounts-providers\`, \`kio-gdrive\`) are now included by default in every KDE Plasma installation, laying the groundwork for this feature.
+❖ **The Realm's Visage:** To sculpt a unique and breathtaking visage for the Realm.
+    - **Reagents:** A bespoke Plasma soul-skin, a unique set of sigils (icon pack), and Vistas from the Astral Plane (wallpapers).
+    - **Status:** A dream in the aether.
 `.trim();

@@ -48,7 +48,7 @@ const App: React.FC = () => {
     const [buildModalSteps, setBuildModalSteps] = useState(BUILD_STEPS);
     
     const [generatedScript, setGeneratedScript] = useState('');
-    const [isAICoreInstalled, setIsAICoreInstalled] = useState(false);
+    const [isAICoreScriptGenerated, setIsAICoreScriptGenerated] = useState(false);
 
     const chatEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -176,14 +176,14 @@ const App: React.FC = () => {
         const script = generateAICoreScript(distroConfig);
         setGeneratedScript(script);
         if (script) {
-            setIsAICoreInstalled(true);
+            setIsAICoreScriptGenerated(true);
             setAICoreModalOpen(true);
         }
     };
     
 
     return (
-        <div className="bg-forge-bg text-forge-text-primary min-h-screen flex flex-col font-sans">
+        <div className="bg-forge-bg text-forge-text-primary min-h-screen flex flex-col font-sans animate-fade-in">
             <TopDock onBlueprintClick={() => setIsBlueprintDrawerOpen(true)} />
 
             <div className="flex flex-1 pt-20 pb-12 w-full h-full">
@@ -260,7 +260,7 @@ const App: React.FC = () => {
                         onLockToggle={() => setIsBlueprintLocked(prev => !prev)}
                         onBuild={() => setTargetModalOpen(true)}
                         onInitiateAICoreAttunement={handleInitiateAICoreAttunement}
-                        isAICoreInstalled={isAICoreInstalled}
+                        isAICoreScriptGenerated={isAICoreScriptGenerated}
                     />
                 </aside>
             </div>
@@ -282,7 +282,7 @@ const App: React.FC = () => {
                     onClose={() => setIsBlueprintDrawerOpen(false)}
                     onBuild={() => { setTargetModalOpen(true); setIsBlueprintDrawerOpen(false); }}
                     onInitiateAICoreAttunement={() => { handleInitiateAICoreAttunement(); setIsBlueprintDrawerOpen(false); }}
-                    isAICoreInstalled={isAICoreInstalled}
+                    isAICoreScriptGenerated={isAICoreScriptGenerated}
                 />
             )}
 

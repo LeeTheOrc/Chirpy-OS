@@ -14,10 +14,10 @@ interface MobileBlueprintDrawerProps {
   onBuild: () => void;
   // Fix: Add missing prop
   onInitiateAICoreAttunement: () => void;
-  isAICoreInstalled: boolean;
+  isAICoreScriptGenerated: boolean;
 }
 
-export const MobileBlueprintDrawer: React.FC<MobileBlueprintDrawerProps> = ({ config, onConfigChange, isLocked, onLockToggle, onClose, onBuild, onInitiateAICoreAttunement, isAICoreInstalled }) => {
+export const MobileBlueprintDrawer: React.FC<MobileBlueprintDrawerProps> = ({ config, onConfigChange, isLocked, onLockToggle, onClose, onBuild, onInitiateAICoreAttunement, isAICoreScriptGenerated }) => {
   const [isActionsMenuOpen, setIsActionsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -50,9 +50,9 @@ export const MobileBlueprintDrawer: React.FC<MobileBlueprintDrawerProps> = ({ co
             <h3 className="text-lg font-bold text-dragon-fire flex items-center gap-2">
               The Blueprint
             </h3>
-            <div className={`mt-1 text-xs font-semibold inline-flex items-center gap-1.5 px-2 py-1 rounded-full ${isAICoreInstalled ? 'bg-dragon-fire/10 text-dragon-fire' : 'bg-forge-panel text-forge-text-secondary'}`}>
-                <div className={`w-2 h-2 rounded-full ${isAICoreInstalled ? 'bg-dragon-fire' : 'bg-forge-text-secondary/50'}`}></div>
-                AI Core: {isAICoreInstalled ? 'Attuned' : 'Not Attuned'}
+            <div className={`mt-1 text-xs font-semibold inline-flex items-center gap-1.5 px-2 py-1 rounded-full ${isAICoreScriptGenerated ? 'bg-dragon-fire/10 text-dragon-fire' : 'bg-forge-panel text-forge-text-secondary'}`}>
+                <div className={`w-2 h-2 rounded-full ${isAICoreScriptGenerated ? 'bg-dragon-fire' : 'bg-forge-text-secondary/50'}`}></div>
+                Attunement Script: {isAICoreScriptGenerated ? 'Generated' : 'Not Generated'}
             </div>
           </div>
           <div className="flex items-center gap-1">
