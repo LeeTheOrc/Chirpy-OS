@@ -19,8 +19,9 @@ import { LevelUpModal } from './components/LevelUpModal';
 import { INITIAL_DISTRO_CONFIG, COMMAND_SUGGESTIONS, BUILD_STEPS, CODEX_SNIPPETS, WELCOME_MESSAGE, CLOUD_AI_SYSTEM_PROMPT, AI_CORE_BUILD_STEPS } from './constants';
 import { generateInstallScript, generateAICoreScript } from './lib/script-generator';
 
-// FIX: Initialize Gemini AI Client.
-// Per guidelines, the API key is sourced from environment variables.
+// Initialize the Google Gemini AI Client (the "Cloud Core").
+// The API key, which you might refer to as your "Studio Key" from Google AI Studio,
+// is securely accessed from environment variables and is not related to the OS branding.
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const App: React.FC = () => {

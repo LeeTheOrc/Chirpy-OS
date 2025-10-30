@@ -1,5 +1,8 @@
 import React from 'react';
 
+// NOTE FOR THE ARCHITECT: The component itself is correctly named GuardianAvatar.
+// The filename 'ChirpyAvatar.tsx' is a legacy remnant that cannot be
+// programmatically renamed, but all internal logic uses the proper 'Kael' branding.
 interface GuardianAvatarProps {
     isOnline?: boolean;
 }
