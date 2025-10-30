@@ -69,45 +69,30 @@ ExecStart=
 ExecStart=-/usr/bin/agetty --autologin root --noclear %I $TERM
 EOF
 
-# 3. Create and enable a systemd service to run our installer script automatically after login.
-# This is much more reliable than hijacking shell profiles.
-cat > /etc/systemd/system/chirpy-installer.service <<'EOF'
-[Unit]
-Description=Chirpy OS Installer Service
-# We want this to run after the user session is set up on the TTY
-After=systemd-user-sessions.service getty@tty1.service
+# 3. Configure the shell to run the installer script automatically on login.
+# This is a simple and effective way to auto-launch the TUI.
+cat >> /root/.bash_profile <<'EOF'
 
-[Service]
-Type=simple
-# The installer script needs to run on the TTY where the user is logged in
-ExecStart=/root/install.sh
-StandardInput=tty
-StandardOutput=tty
-StandardError=tty
-TTYPath=/dev/tty1
-
-[Install]
-# Hook into the default target to run on boot
-WantedBy=default.target
+# Auto-launch Chirpy Installer
+# This will run automatically on login.
+if [ -f /root/install.sh ]; then
+    /root/install.sh
+fi
 EOF
 
-# Enable our new service so it starts on boot
-systemctl enable chirpy-installer.service
-
 # 4. Rebrand the boot menu for a seamless, friendly experience.
-# These sed commands use more robust patterns to match the default archiso menu entries
-# regardless of the specific version date in the label.
+# Archiso now uses single quotes for grub entries, so we target that.
 
-# For GRUB (modern EFI systems), which uses double quotes.
+# For GRUB (modern EFI systems)
 if [ -f /boot/grub/grub.cfg ]; then
-    # Match the default Arch ISO entry and replace it.
-    sed -i -E "s/menuentry \\"Arch Linux archiso x86_64[^\\"]*\\"/menuentry \\"Install Chirpy OS\\"/g" /boot/grub/grub.cfg
+    # Match the default Arch ISO entry which uses single quotes and replace its title.
+    sed -i -E "s/menuentry 'Arch Linux archiso x86_64[^']*'/menuentry 'Install Chirpy OS (UEFI)'/g" /boot/grub/grub.cfg
 fi
 
-# For Syslinux (older BIOS systems), which uses a simpler label.
+# For Syslinux (older BIOS systems)
 if [ -f /isolinux/syslinux.cfg ]; then
-    # Match the default Arch ISO label and replace it.
-    sed -i -E "s/MENU LABEL Arch Linux archiso x86_64.*/MENU LABEL Install Chirpy OS/g" /isolinux/syslinux.cfg
+    # This pattern is more robust and replaces the whole label line.
+    sed -i -E "s/MENU LABEL Arch Linux archiso x86_64.*/MENU LABEL Install Chirpy OS (BIOS)/g" /isolinux/syslinux.cfg
 fi
 `;
 
@@ -117,7 +102,6 @@ fi
         packageList.add('networkmanager');
         packageList.add('grub');
         packageList.add('efibootmgr');
-        packageList.add('cachyos-hw-prober');
 
         if (config.packages) {
             config.packages.split(',').map(p => p.trim()).filter(Boolean).forEach(p => packageList.add(p));
@@ -148,7 +132,13 @@ fi
             });
         }
     }
-    const allPackages = Array.from(packageList).sort();
+    
+    // Filter out CachyOS-specific packages from the ISO embedding step.
+    // They will be installed on the first boot by the installer script instead.
+    const allPackagesFromList = Array.from(packageList);
+    const standardPackagesOnly = allPackagesFromList.filter(p => !p.includes('cachyos'));
+    const allPackages = standardPackagesOnly.sort();
+
     const addAllPackagesCommand = `bash -c 'cat <<EOF >> releng/packages.x86_64
 ${allPackages.join('\n')}
 EOF'`;
@@ -375,7 +365,7 @@ mv install.sh releng/airootfs/root/install.sh`}</CodeBlock>
                             
                              <div>
                                 <h3 className="font-semibold text-lg text-white mt-4 mb-2">Step 5: Embed All Dependencies</h3>
-                                <p>To create a true offline installer, this command appends every package from your blueprint directly into the ISO's package list. This includes your desktop environment, kernels, and applications.</p>
+                                <p>To create a true offline installer, this command appends every package from your blueprint directly into the ISO's package list. This includes your desktop environment, kernels, and applications. <strong className="text-yellow-300">Note: CachyOS packages are excluded here and will be installed on first boot.</strong></p>
                                 <CodeBlock>{addAllPackagesCommand}</CodeBlock>
                             </div>
 
@@ -388,7 +378,7 @@ mv install.sh releng/airootfs/root/install.sh`}</CodeBlock>
                                 <p className="mt-2">2. Copy the entire script below and paste it into the nano editor. This script will:</p>
                                 <ul className="list-disc list-inside my-2 space-y-1 pl-2 text-slate-400">
                                     <li>Configure the live environment to auto-login as root.</li>
-                                    <li>Create and enable a <strong className="font-mono text-slate-300">systemd service</strong> to reliably run your installer.</li>
+                                    <li>Automatically launch your installer by adding it to the root user's <strong className="font-mono text-slate-300">.bash_profile</strong>.</li>
                                     <li>Rename the boot menu entry to <strong className="text-yellow-300">"Install Chirpy OS"</strong>.</li>
                                 </ul>
                                 <CodeBlock>{customizeAiRootFsScript}</CodeBlock>
@@ -401,8 +391,11 @@ mv install.sh releng/airootfs/root/install.sh`}</CodeBlock>
 
                             <div>
                                 <h3 className="font-semibold text-lg text-white mt-6 mb-2">Step 7: Build the ISO</h3>
-                                <p>From your <strong className="font-mono text-slate-400">~/chirpy-iso</strong> directory, run the build command. This can take some time.</p>
-                                <CodeBlock>sudo mkarchiso -v -w /tmp/archiso-work -o . releng</CodeBlock>
+                                <p>From your <strong className="font-mono text-slate-400">~/chirpy-iso</strong> directory, run the build command. This can take some time and requires significant disk space for the work directory.</p>
+                                <p className="mt-2 p-3 bg-yellow-900/40 border border-yellow-700/60 rounded-lg text-yellow-300 text-sm">
+                                    <strong>Heads Up, Architect:</strong> We are creating the build's working directory (`work`) inside your project folder instead of `/tmp`. This is because `/tmp` is often a small RAM disk and can run out of space, causing the build to fail. Building here ensures you have enough space.
+                                </p>
+                                <CodeBlock>sudo mkarchiso -v -w work -o . releng</CodeBlock>
                                 <p>Your custom, auto-installing ISO will be created in the current directory. When you boot it, the installation ritual will start automatically.</p>
                             </div>
                         </div>

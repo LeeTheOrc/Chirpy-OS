@@ -42,7 +42,7 @@ export const DEFAULT_DISTRO_CONFIG: DistroConfig = {
   swapSize: '18GB',
   location: 'USA',
   keyboardLayout: 'us',
-  packages: 'git, vim, firefox, docker, steam-native, lutris, heroic-games-launcher, proton-cachyos, discord',
+  packages: 'git, vim, firefox, docker, proton-cachyos, discord',
   gpuDriver: 'nvidia',
   graphicsMode: 'hybrid',
   shell: 'fish',

@@ -15,7 +15,6 @@ export function generateInstallScript(config: DistroConfig, target: BuildTarget 
   const desktopEnvironment = config.desktopEnvironment || 'kde plasma';
   const filesystem = config.filesystem || 'btrfs';
   const bootloader = config.bootloader || 'grub';
-  const packages = config.packages || 'git, vim, firefox, docker, steam, lutris';
   const shell = config.shell || 'fish';
   const location = config.location || 'USA';
   // For booleans, ?? is better as we want to preserve `false`.
@@ -31,9 +30,31 @@ export function generateInstallScript(config: DistroConfig, target: BuildTarget 
   const graphicsMode = config.graphicsMode || 'hybrid';
 
   // Ensure arrays are valid and have content where required.
-  const safeKernels = Array.isArray(config.kernels) && config.kernels.length > 0 ? config.kernels : ['linux'];
   const safeAurHelpers = Array.isArray(config.aurHelpers) ? config.aurHelpers : [];
   const safeExtraRepositories = Array.isArray(config.extraRepositories) ? config.extraRepositories : [];
+
+  // Separate CachyOS packages to be installed on first boot from standard packages.
+  const allKernels = Array.isArray(config.kernels) && config.kernels.length > 0 ? config.kernels : ['linux'];
+  const cachyosKernels = allKernels.filter(k => k.includes('cachyos'));
+  let standardKernels = allKernels.filter(k => !k.includes('cachyos'));
+  // Ensure at least one kernel is installed during base installation to make the system bootable.
+  if (standardKernels.length === 0) {
+    standardKernels.push('linux');
+  }
+
+  const allPackages = (config.packages || '').split(',').map(p => p.trim()).filter(Boolean);
+  const cachyosPackages = allPackages.filter(p => p.includes('cachyos'));
+  const standardPackagesStr = allPackages.filter(p => !p.includes('cachyos')).join(' ');
+  
+  // Combine all CachyOS packages for first-boot installation. This includes kernels, user packages, and core utilities.
+  const allCachyosPackagesToInstall = [
+      ...cachyosKernels,
+      ...cachyosPackages,
+      'cachyos-hw-prober',
+      'cachyos-gaming-meta'
+  ];
+  const uniqueCachyosPackages = [...new Set(allCachyosPackagesToInstall)].filter(Boolean);
+  const cachyosPackagesStr = uniqueCachyosPackages.join(' ');
 
   let deInstallScript: string;
   if (desktopEnvironment.toLowerCase().includes('kde')) {
@@ -273,7 +294,7 @@ run_installation() {
 
         # Phase 3: Summoning the Base System
         echo 40; echo "Summoning the base system and kernel spirits (pacstrap)..."
-        pacstrap /mnt base ${safeKernels.join(' ')} linux-firmware intel-ucode amd-ucode
+        pacstrap /mnt base ${standardKernels.join(' ')} linux-firmware intel-ucode amd-ucode
 
         echo 60; echo "Generating the fstab grimoire..."
         genfstab -U /mnt >> /mnt/etc/fstab
@@ -384,14 +405,67 @@ grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB
 grub-mkconfig -o /boot/grub/grub.cfg
 
 echo "Summoning essential artifacts (packages)..."
-pacman -S --noconfirm --needed ${packages}${vmPackages}
+pacman -S --noconfirm --needed ${standardPackagesStr}${vmPackages}
 
 echo "Erecting the halls of the Desktop Environment: ${desktopEnvironment}..."
 ${deInstallScript}
 
-echo "Attuning hardware drivers via CachyOS Hardware Prober..."
-pacman -S --noconfirm --needed cachyos-hw-prober
+echo "Preparing first-boot hardware and CachyOS attunement ritual..."
+cat > /usr/local/bin/chirpy-first-boot.sh << 'FIRST_BOOT_SCRIPT'
+#!/bin/bash
+# This script runs once on the first boot to finalize setup.
+set -e
+# Log all output for debugging.
+exec > >(tee /var/log/chirpy-first-boot.log) 2>&1
+
+echo "--- Chirpy OS First Boot Setup ---"
+
+# Wait for an active network connection.
+echo "Waiting for NetworkManager to establish a connection..."
+while ! nmcli -t -f STATE g | grep -q "connected"; do
+    echo "Network not yet connected. Waiting 5 seconds..."
+    sleep 5
+done
+
+echo "Network connection established. Synchronizing databases..."
+pacman -Syu --noconfirm
+
+${cachyosPackagesStr ? `
+echo "Installing CachyOS specific packages, kernels, and gaming essentials..."
+pacman -S --noconfirm --needed ${cachyosPackagesStr}
+
+echo "Probing for and installing all required hardware drivers..."
 cachyos-hw-prober
+` : `
+echo "No CachyOS packages specified for first-boot installation."
+`}
+
+echo "First boot setup complete. This ritual will now self-destruct to prevent re-running."
+systemctl disable chirpy-first-boot.service
+rm /usr/local/bin/chirpy-first-boot.sh
+rm /etc/systemd/system/chirpy-first-boot.service
+
+echo "--- Chirpy OS is now fully attuned. Enjoy your quests! ---"
+
+FIRST_BOOT_SCRIPT
+
+chmod +x /usr/local/bin/chirpy-first-boot.sh
+
+cat > /etc/systemd/system/chirpy-first-boot.service << 'FIRST_BOOT_SERVICE'
+[Unit]
+Description=Chirpy OS First Boot Hardware & CachyOS Setup
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/chirpy-first-boot.sh
+
+[Install]
+WantedBy=multi-user.target
+FIRST_BOOT_SERVICE
+
+systemctl enable chirpy-first-boot.service
 
 echo "Summoning helpers from the Arch User Repository..."
 ${safeAurHelpers.includes('yay') ? 'pacman -S --noconfirm yay' : ''}
