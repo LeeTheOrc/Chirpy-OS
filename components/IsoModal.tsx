@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { CloseIcon, DownloadIcon, CopyIcon } from './Icons';
 import type { DistroConfig } from '../types';
+import { generateCalamaresConfiguration } from '../lib/calamares-generator';
 
 interface IsoModalProps {
   onClose: () => void;
-  generatedScript: string;
   config: DistroConfig;
 }
 
@@ -36,105 +36,72 @@ const CodeBlock: React.FC<{ children: React.ReactNode; lang?: string }> = ({ chi
     );
 };
 
-const utf8ToBase64 = (str: string): string => {
-    if (!str) return '';
-    try {
-        return btoa(unescape(encodeURIComponent(str)));
-    } catch (e) {
-        console.error("Failed to base64 encode script:", e);
-        return btoa("Error: Could not encode script due to invalid characters.");
-    }
-}
 
-export const IsoModal: React.FC<IsoModalProps> = ({ onClose, generatedScript, config }) => {
-    
+export const IsoModal: React.FC<IsoModalProps> = ({ onClose, config }) => {
+    const calamaresConfigs = generateCalamaresConfiguration(config);
+
     const customizeAiRootFsScript = `#!/bin/bash
 set -euo pipefail
-
 # This script is run by mkarchiso to customize the ISO image.
 
-# 1. Make our installer script executable.
-chmod +x /root/install.sh
+# 1. Configure Calamares with our generated configs
+# Note: The files are placed here by the master build script.
+mkdir -p /etc/calamares/modules
+mkdir -p /etc/calamares/scripts
 
-# 2. Configure systemd to auto-login as root on the first terminal (tty1).
-mkdir -p /etc/systemd/system/getty@tty1.service.d
-cat > /etc/systemd/system/getty@tty1.service.d/autologin.conf <<'EOF'
-[Service]
-ExecStart=
-ExecStart=-/usr/bin/agetty --autologin root --noclear %I $TERM
+# Move all generated configs to their final destination
+mv /tmp/calamares-config/modules/* /etc/calamares/modules/
+mv /tmp/calamares-config/scripts/* /etc/calamares/scripts/
+mv /tmp/calamares-config/settings.conf /etc/calamares/settings.conf
+mv /tmp/calamares-config/modules.conf /etc/calamares/modules.conf
+
+# Make all post-install scripts executable
+chmod +x /etc/calamares/scripts/*
+
+# 2. Setup the live user and autostart Calamares
+# We'll use the Architect's chosen username for the live session
+LIVE_USER="${config.username}"
+if ! id -u "$LIVE_USER" >/dev/null 2>&1; then
+    useradd -m -G wheel -s /bin/bash "$LIVE_USER"
+    # Set a blank password for easy login in the live environment
+    echo "$LIVE_USER:" | chpasswd -e
+fi
+# Grant passwordless sudo to the live user
+echo "$LIVE_USER ALL=(ALL) NOPASSWD: ALL" > "/etc/sudoers.d/99_liveuser"
+
+# Autologin to the live session
+sed -i 's/autologin-user=.*/autologin-user='"$LIVE_USER"'/' /etc/sddm.conf.d/autologin.conf
+
+# Autostart the Calamares installer
+mkdir -p "/home/$LIVE_USER/.config/autostart"
+cat > "/home/$LIVE_USER/.config/autostart/calamares.desktop" <<EOF
+[Desktop Entry]
+Name=Install Kael OS
+Exec=sudo calamares
+Icon=system-installer
+Terminal=false
+Type=Application
 EOF
-
-# 3. Configure the shell to run the installer script automatically on login.
-# This is a simple and effective way to auto-launch the TUI.
-cat >> /root/.bash_profile <<'EOF'
-
-# Auto-launch Kael Installer
-if [ -f /root/install.sh ]; then
-    /root/install.sh
-fi
-EOF
-
-# 4. Rebrand the boot menu for a seamless, friendly experience.
-if [ -f /boot/grub/grub.cfg ]; then
-    sed -i -E "s/menuentry 'Arch Linux archiso x86_64[^']*'/menuentry 'Install Kael OS (UEFI)'/g" /boot/grub/grub.cfg
-fi
-if [ -f /isolinux/syslinux.cfg ]; then
-    sed -i -E "s/MENU LABEL Arch Linux archiso x86_64.*/MENU LABEL Install Kael OS (BIOS)/g" /isolinux/syslinux.cfg
-fi
+chown -R "$LIVE_USER:$LIVE_USER" "/home/$LIVE_USER/.config"
 `;
 
-    const packageList = new Set<string>();
-    if (config) {
-        packageList.add('dialog');
-        packageList.add('networkmanager');
-        packageList.add('grub');
-        packageList.add('efibootmgr');
-        packageList.add('reflector');
-
-        if (config.packages) {
-            config.packages.split(',').map(p => p.trim()).filter(Boolean).forEach(p => packageList.add(p));
-        }
-        if (Array.isArray(config.kernels)) {
-            config.kernels.forEach(k => packageList.add(k));
-        }
-        if (config.desktopEnvironment) {
-            const de = config.desktopEnvironment.toLowerCase();
-            packageList.add('xorg');
-            if (de.includes('kde')) {
-                packageList.add('sddm');
-                packageList.add('plasma-meta');
-            } else if (de.includes('gnome')) {
-                packageList.add('gdm');
-                packageList.add('gnome');
-            } else {
-                packageList.add('gdm');
-                packageList.add(de.split(' ')[0]);
-            }
-        }
-        if (config.enableSnapshots && config.filesystem === 'btrfs') {
-            packageList.add('grub-btrfs');
-        }
-        if (Array.isArray(config.aurHelpers)) {
-            config.aurHelpers.forEach(h => {
-                if (h === 'yay' || h === 'paru') packageList.add(h);
-            });
-        }
-    }
+    const packageList = new Set<string>([
+        'archiso', 'calamares', 'kpmcore', 'grub', 'efibootmgr',
+        'networkmanager', 'git', 'reflector'
+    ]);
     
-    const standardPackagesOnly = Array.from(packageList).filter(p => !p.includes('cachyos'));
-    const allPackages = standardPackagesOnly.sort();
+    // Add packages from the blueprint so they are available for Calamares to install
+    config.packages.split(',').map(p => p.trim()).filter(Boolean).forEach(p => packageList.add(p));
+    config.kernels.forEach(k => packageList.add(k));
 
-    const hasChaotic = Array.isArray(config.extraRepositories) && config.extraRepositories.includes('chaotic');
-    const hasCachy = Array.isArray(config.extraRepositories) && config.extraRepositories.includes('cachy');
+    const allPackages = Array.from(packageList).filter(p => !p.includes('cachyos')).sort();
+    
+    const hasChaotic = config.extraRepositories.includes('chaotic');
+    const hasCachy = config.extraRepositories.includes('cachy');
     
     const masterBuildScript = `#!/bin/bash
-# Kael AI :: Master ISO Forge Script
-#
-# Run this script on an existing Arch Linux system to build a bootable
-# Kael OS installer ISO from your custom blueprint.
-# It automates dependency checks, directory setup, script embedding,
-# repository configuration, and the final ISO build.
-
+# Kael AI :: Master ISO Forge Script (Calamares Edition)
+# Run on an existing Arch Linux system to build a bootable Kael OS installer ISO.
 set -euo pipefail
 clear
 
@@ -143,19 +110,22 @@ ISO_WORKDIR="kael-iso-build"
 HAS_CACHY=${hasCachy}
 HAS_CHAOTIC=${hasChaotic}
 
-INSTALLER_SCRIPT_CONTENT=$(cat <<'EOF'
-${generatedScript}
-EOF
-)
-
-CUSTOMIZE_SCRIPT_CONTENT=$(cat <<'EOF'
+CUSTOMIZE_SCRIPT_CONTENT=$(cat <<'EOF_CUSTOMIZE'
 ${customizeAiRootFsScript}
-EOF
+EOF_CUSTOMIZE
 )
 
-PACKAGE_LIST_CONTENT=$(cat <<'EOF'
+# --- Calamares Configs ---
+${Object.entries(calamaresConfigs).map(([filename, content]) => `
+CALAMARES_${filename.replace(/[\/\.]/g, '_')}_CONTENT=$(cat <<'EOF_CALAMARES_${filename.replace(/[\/\.]/g, '_')}'
+${content}
+EOF_CALAMARES_${filename.replace(/[\/\.]/g, '_')}
+)
+`).join('')}
+
+PACKAGE_LIST_CONTENT=$(cat <<'EOF_PACKAGES'
 ${allPackages.join('\n')}
-EOF
+EOF_PACKAGES
 )
 # --- END SCRIPT CONFIGURATION ---
 
@@ -166,84 +136,63 @@ success() { echo -e "\\e[32m[SUCCESS]\\e[0m $1"; }
 error() { echo -e "\\e[31m[ERROR]\\e[0m $1"; exit 1; }
 
 # --- Main Execution ---
-
-# 1. Check dependencies and permissions
 info "Checking for root permissions and dependencies..."
 [ "$EUID" -eq 0 ] || error "This script must be run as root. Please use 'sudo ./build-iso.sh'."
-pacman -Q archiso &>/dev/null || error "'archiso' package not found. Please install it with 'sudo pacman -S archiso'."
+pacman -Q archiso &>/dev/null || pacman -S --noconfirm archiso
 
-# 2. Prepare build directory
 info "Setting up build directory at ~/$ISO_WORKDIR..."
-cd ~
-rm -rf "$ISO_WORKDIR"
-mkdir "$ISO_WORKDIR"
-cd "$ISO_WORKDIR"
+cd ~; rm -rf "$ISO_WORKDIR"; mkdir "$ISO_WORKDIR"; cd "$ISO_WORKDIR"
 cp -r /usr/share/archiso/configs/releng .
-info "Build directory created."
 
-# 3. Embed installer and customization scripts
-info "Embedding the TUI installer script..."
-echo "$INSTALLER_SCRIPT_CONTENT" > releng/airootfs/root/install.sh
-chmod +x releng/airootfs/root/install.sh
-
-info "Embedding the ISO customization script for auto-login and branding..."
+info "Embedding customization script..."
 echo "$CUSTOMIZE_SCRIPT_CONTENT" > releng/customize_airootfs.sh
 chmod +x releng/customize_airootfs.sh
-success "Scripts embedded successfully."
 
-# 4. Configure build environment for custom repositories
+info "Embedding Calamares configuration grimoires..."
+mkdir -p releng/airootfs/tmp/calamares-config/modules
+mkdir -p releng/airootfs/tmp/calamares-config/scripts
+${Object.entries(calamaresConfigs).map(([filename]) => `
+echo "$CALAMARES_${filename.replace(/[\/\.]/g, '_')}_CONTENT" > "releng/airootfs/tmp/calamares-config/${filename}"
+`).join('')}
+success "Scripts and configs embedded successfully."
+
+# Configure build environment for custom repositories
 if [ "$HAS_CACHY" = "true" ] || [ "$HAS_CHAOTIC" = "true" ]; then
-    info "Configuring pacman for custom repositories (CachyOS/Chaotic-AUR)..."
-
-    # Configure host system first to get keys and mirrorlists
+    info "Configuring pacman for custom repositories..."
     if [ "$HAS_CACHY" = "true" ]; then
         info "--> [Host] Setting up CachyOS repository..."
-        pacman-key --recv-keys F3B607488DB35A47 --keyserver keyserver.ubuntu.com
-        pacman-key --lsign-key F3B607488DB35A47
-        pacman -U --noconfirm --needed \\
-        'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-keyring-20240331-1-any.pkg.tar.zst' \\
-        'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-mirrorlist-22-1-any.pkg.tar.zst' \\
-        'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-v3-mirrorlist-22-1-any.pkg.tar.zst' \\
-        'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-v4-mirrorlist-22-1-any.pkg.tar.zst'
+        pacman-key --recv-keys F3B607488DB35A47 --keyserver keyserver.ubuntu.com; pacman-key --lsign-key F3B607488DB35A47
+        pacman -U --noconfirm --needed 'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-keyring-20240331-1-any.pkg.tar.zst' 'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-mirrorlist-22-1-any.pkg.tar.zst' 'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-v3-mirrorlist-22-1-any.pkg.tar.zst' 'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-v4-mirrorlist-22-1-any.pkg.tar.zst'
     fi
     if [ "$HAS_CHAOTIC" = "true" ]; then
         info "--> [Host] Setting up Chaotic-AUR repository..."
-        pacman-key --recv-key 3056513887B78AEB --keyserver keyserver.ubuntu.com
-        pacman-key --lsign-key 3056513887B78AEB
+        pacman-key --recv-key 3056513887B78AEB --keyserver keyserver.ubuntu.com; pacman-key --lsign-key 3056513887B78AEB
         pacman -U --noconfirm --needed 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst' 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst'
         grep -q "chaotic-aur" /etc/pacman.conf || echo -e "\\n[chaotic-aur]\\nInclude = /etc/pacman.d/chaotic-mirrorlist" | tee -a /etc/pacman.conf
     fi
-
-    # Now configure the ISO profile by copying the host's config
     info "--> [Profile] Copying configuration to ISO build directory..."
     cp /etc/pacman.conf releng/pacman.conf
     mkdir -p releng/airootfs/etc/pacman.d
-
     if [ "$HAS_CACHY" = "true" ]; then
-        cp /etc/pacman.d/cachyos-mirrorlist releng/airootfs/etc/pacman.d/
-        cp /etc/pacman.d/cachyos-v3-mirrorlist releng/airootfs/etc/pacman.d/
-        cp /etc/pacman.d/cachyos-v4-mirrorlist releng/airootfs/etc/pacman.d/
+        cp /etc/pacman.d/cachyos-mirrorlist releng/airootfs/etc/pacman.d/; cp /etc/pacman.d/cachyos-v3-mirrorlist releng/airootfs/etc/pacman.d/; cp /etc/pacman.d/cachyos-v4-mirrorlist releng/airootfs/etc/pacman.d/
+        # Also copy the keyring and mirrorlist packages for the target system
+        mkdir -p releng/airootfs/etc/pacman.d/cachyos-repo-files
+        cp /var/cache/pacman/pkg/cachyos-*.pkg.tar.zst releng/airootfs/etc/pacman.d/cachyos-repo-files/
     fi
     if [ "$HAS_CHAOTIC" = "true" ]; then
         cp /etc/pacman.d/chaotic-mirrorlist releng/airootfs/etc/pacman.d/
+        mkdir -p releng/airootfs/etc/pacman.d/chaotic-repo-files
+        cp /var/cache/pacman/pkg/chaotic-*.pkg.tar.zst releng/airootfs/etc/pacman.d/chaotic-repo-files/
     fi
-
-    info "--> Synchronizing pacman databases..."
-    pacman -Syu --noconfirm
-    success "Repository configuration complete."
+    info "--> Synchronizing pacman databases..."; pacman -Syu --noconfirm
 fi
 
-# 5. Embed all package dependencies
 info "Adding all blueprint packages to the ISO..."
 echo "$PACKAGE_LIST_CONTENT" >> releng/packages.x86_64
 success "Package list updated."
 
-# 6. Build the ISO
 info "Starting the ISO build process. This may take a while..."
-warn "The build will happen in './work'. The output ISO will be in './out'."
-# The default work dir is in /tmp which can be a small ramdisk. We use a local dir to avoid space issues.
 mkarchiso -v -w work -o out releng
-
 success "ISO build complete! Your custom Kael OS installer is located at '~/kael-iso-build/out/'."
 `;
 
@@ -263,7 +212,7 @@ success "ISO build complete! Your custom Kael OS installer is located at '~/kael
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center animate-fade-in-fast" onClick={onClose}>
             <div className="bg-forge-panel border-2 border-forge-border rounded-lg shadow-2xl w-full max-w-3xl p-6 m-4 flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-center mb-4 flex-shrink-0">
-                    <h2 className="text-xl font-bold text-forge-text-primary font-display tracking-wider">The Master's Path: Forge ISO</h2>
+                    <h2 className="text-xl font-bold text-forge-text-primary font-display tracking-wider">The Genesis Ritual: Forge ISO</h2>
                     <button onClick={onClose} className="text-forge-text-secondary hover:text-forge-text-primary">
                         <CloseIcon className="w-5 h-5" />
                     </button>
@@ -271,7 +220,7 @@ success "ISO build complete! Your custom Kael OS installer is located at '~/kael
 
                 <div className="overflow-y-auto pr-2 text-forge-text-secondary leading-relaxed">
                     <div className="animate-fade-in-fast space-y-4">
-                        <p>This path forges a completely custom Arch Linux ISO that boots directly into your installer. It is the ultimate method for creating a shareable, self-contained version of your OS. It requires an existing Arch Linux system (or a VM running Arch) to perform the build.</p>
+                        <p>This path forges a completely custom Arch Linux ISO that boots directly into a <strong className="text-dragon-fire">graphical installer (Calamares)</strong>. It is the ultimate method for creating a shareable, self-contained version of your OS. It requires an existing Arch Linux system (or a VM running Arch) to perform the build.</p>
                         
                         <div>
                             <h3 className="font-semibold text-lg text-forge-text-primary mt-4 mb-2">Step 1: Get the Master Forge Script</h3>

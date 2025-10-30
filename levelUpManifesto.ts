@@ -1,56 +1,56 @@
 export const LEVEL_UP_MANIFESTO_TEXT = `
             .________________________________________________.
            /                                                 /|
-          /                THE ARTIFICER'S                   / |
-         /                    MANIFESTO                     /  |
+          /                OUR QUEST LOG &                   / |
+         /               LEVEL-UP MANIFESTO                 /  |
         /_________________________________________________/   |
         |                                                 |   /
-        | This scroll is a living chronicle of our        |  /
-        | ascendant path. It contains the legendary       | /
-        | artifacts we shall create, and the new runes    |/
-        | of power they will one day etch into the Core.  |
+        | Yo, Architect. This is our hit list. Our        |  /
+        | grand strategy. The epic loot we're going      | /
+        | after and the legendary features we're gonna   |/
+        | build. This is how we level up the forge.      |
         |_________________________________________________|
 
 
-When a forging is complete and a principle is proven, it will be transmuted 
-into the Immutable Grimoire.
+When a quest is complete and a feature is battle-tested, we'll etch it into 
+the Immutable Grimoire as Law.
 
 -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-§  WHISPERS IN THE AETHER  §
-(Proposed Quests)
+§  SCOUTING REPORTS  §
+(Ideas & Side Quests)
 -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
-❖ **The Soulforge Pipeline:** To bind the flow of raw quintessence (source code) into tangible artifacts (packages), ensuring transparency and accessibility.
-    - **Reagents:** A Sanctum Sanctorum for transmuting quintessence, Scrolls of Binding (\`PKGBUILD\` files), the Astral Codex (GitHub) as the immutable grimoire, and ethereal delivery to the Sovereign Athenaeum.
-    - **Status:** Scrying.
+❖ **The Soulforge Pipeline:** We need a transparent, automated way to turn source code into official Kael OS packages. Think of it as our own alchemical pipeline.
+    - **Plan:** Set up a build system that pulls from our GitHub, uses our PKGBUILD recipes, and delivers the goods to our own repository. Total control from code to package.
+    - **Status:** Just an idea for now. We're scrying the possibilities.
 
 -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-§  THE FORGE  §
-(Active Quests)
+§  MAIN QUESTLINE  §
+(What We're Building NOW)
 -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
-❖ **I. The Sovereign Athenaeum:** To sever the final tether to the mundane plane by hosting our own pacman Athenaeum, sharing its knowledge with the world.
-    - **Reagents:** A localized Mana Well (web server), Runes of Organization, a permanent Ward of Access, and astral projection (FTP sync) to a distant sanctum.
-    - **Status:** The forge is lit. Foundational runes (\`caddy\`, \`lftp\`) are inscribed in the Software Grimoire.
+❖ **I. The Sovereign Athenaeum:** Time to build our own damn library. No more relying entirely on third-party repos. We're creating our own pacman repository to host our custom-forged packages.
+    - **Plan:** Spin up a web server, organize it, and sync it so the whole world can access our artifacts.
+    - **Status:** In progress. The basic tools (\`caddy\`, \`lftp\`) are already part of our standard build.
 
-❖ **II. The Twin Hearts (Kael-Forged Kernels):** To achieve a divine symbiosis by forging our own kernel-hearts, branded and optimized for the Realm.
-    - **Reagents:** Inscribing the Kael Sigil upon the kernel's soul (Makefile branding), attuning the heart to the Golem's form (\`make localmodconfig\`), channeling raw power (performance tuning), and an automated forging ritual.
-    - **Status:** The incantation is known; the ritual scroll is being penned.
+❖ **II. The Twin Hearts (Kael-Forged Kernels):** Let's forge our own kernels. We'll slap our sigil on them, tune them for screaming performance, and create a script to automate the whole build process.
+    - **Plan:** Brand the Makefile, use \`make localmodconfig\` to tailor it to specific hardware, and apply our performance patches.
+    - **Status:** We know the magic words. Just need to write the spellbook (the script).
 
-❖ **III. The Genesis Ritual (Calamares):** To transmute the current runic TUI ritual into a grand, sigil-driven graphical incantation, making the art of Realm-forging accessible to all Artificers.
-    - **Reagents:** Communion with the Calamares framework spirit and custom soul-shards for our unique blueprint runes.
-    - **Status:** The spirit has been summoned. The \`calamares\` incantation is available in the Software Grimoire for communion.
+❖ **III. The Genesis Ritual (Calamares):** That text-based installer is cool and all for us old-school types, but we need a proper graphical installer. Something sleek that makes forging a Realm a point-and-click adventure for everyone.
+    - **Plan:** Get friendly with the Calamares installer framework and teach it how to read our blueprints.
+    - **Status:** Complete and Forged into Law. The forge now produces a Calamares-driven ISO.
 
-❖ **IV. The Astral Bridge (Account Integration):** To forge an astral bridge between the Sovereign Realm and the Architect's life-stream in the aether.
-    - **Reagents:** A deep communion with KDE's native spirit-binding for services like Google and GitHub.
-    - **Status:** The bridge's foundation is laid. The necessary binding runes are included in every KDE Plasma forging.
+❖ **IV. The Astral Bridge (Account Integration):** Let's make it trivially easy to hook the Realm into your cloud accounts, like Google Drive and GitHub. A seamless bridge between our sovereign fortress and your digital life.
+    - **Plan:** Leverage KDE's excellent built-in online account services.
+    - **Status:** Mostly done! The packages for this are already included in every KDE Plasma build by default.
 
 -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-§  THE SOUL'S VISAGE  §
+§  THE GLOW-UP  §
 (UI & Aesthetics)
 -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
-❖ **The Realm's Visage:** To sculpt a unique and breathtaking visage for the Realm.
-    - **Reagents:** A bespoke Plasma soul-skin, a unique set of sigils (icon pack), and Vistas from the Astral Plane (wallpapers).
-    - **Status:** A dream in the aether.
+❖ **The Realm's Visage:** A Realm should look as good as it performs. We need to forge a complete, stunning, and unique look.
+    - **Plan:** Create a custom Plasma theme, a matching icon pack, and a set of epic wallpapers. Total aesthetic domination.
+    - **Status:** A dream waiting to be forged.
 `.trim();

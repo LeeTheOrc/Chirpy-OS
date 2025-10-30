@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { GoogleGenAI } from "@google/genai";
-import type { Message, DistroConfig, LinkState, BuildTarget } from './types';
+import type { Message, DistroConfig, LinkState } from './types';
 import { ChatMessage } from './components/ChatMessage';
 import { CommandSuggestions } from './components/CommandSuggestions';
 import { SendIcon, AttachmentIcon, ScanIcon } from './components/Icons';
@@ -8,15 +8,13 @@ import { FileAttachment } from './components/FileAttachment';
 import { DistroBlueprintPanel } from './components/DistroBlueprintPanel';
 import { MobileBlueprintDrawer } from './components/MobileBlueprintDrawer';
 import { SystemScanModal } from './components/SystemScanModal';
-import { TargetSelectionModal } from './components/TargetSelectionModal';
-import { BuildModal } from './components/BuildModal';
 import { IsoModal } from './components/IsoModal';
 import { CodexModal } from './components/CodexModal';
 import { AICoreModal } from './components/AICoreModal';
 import { PhilosophyModal } from './components/PhilosophyModal';
 import { LevelUpModal } from './components/LevelUpModal';
 import { INITIAL_DISTRO_CONFIG, COMMAND_SUGGESTIONS, BUILD_STEPS, CODEX_SNIPPETS, WELCOME_MESSAGE, CLOUD_AI_SYSTEM_PROMPT } from './constants';
-import { generateInstallScript, generateAICoreScript } from './lib/script-generator';
+import { generateAICoreScript } from './lib/script-generator';
 import { TopDock } from './components/TopDock';
 import { BottomPanel } from './components/BottomPanel';
 
@@ -38,14 +36,11 @@ const App: React.FC = () => {
     
     // Modal states
     const [isScanModalOpen, setScanModalOpen] = useState(false);
-    const [isTargetModalOpen, setTargetModalOpen] = useState(false);
-    const [isBuildModalOpen, setBuildModalOpen] = useState(false);
     const [isIsoModalOpen, setIsoModalOpen] = useState(false);
     const [isCodexModalOpen, setCodexModalOpen] = useState(false);
     const [isAICoreModalOpen, setAICoreModalOpen] = useState(false);
     const [isPhilosophyModalOpen, setPhilosophyModalOpen] = useState(false);
     const [isLevelUpModalOpen, setLevelUpModalOpen] = useState(false);
-    const [buildModalSteps, setBuildModalSteps] = useState(BUILD_STEPS);
     
     const [generatedScript, setGeneratedScript] = useState('');
     const [isAICoreScriptGenerated, setIsAICoreScriptGenerated] = useState(false);
@@ -128,7 +123,6 @@ const App: React.FC = () => {
                 prompt = `Using the following context file titled "${attachedFile?.name}", please answer the user's prompt.\n\nCONTEXT:\n---\n${attachedFileContent}\n---\n\nPROMPT:\n${text}`;
             }
 
-            // FIX: The 'contents' field should be a simple string when using systemInstruction.
             const response = await ai.models.generateContent({
                 model: 'gemini-2.5-pro',
                 contents: prompt,
@@ -162,14 +156,6 @@ const App: React.FC = () => {
     const handleFormSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         handleSendMessage(input, attachedFile?.content);
-    };
-
-    const handleBuildForTarget = (target: BuildTarget) => {
-        setTargetModalOpen(false);
-        const script = generateInstallScript(distroConfig, target);
-        setGeneratedScript(script);
-        setBuildModalSteps(BUILD_STEPS);
-        setBuildModalOpen(true);
     };
     
     const handleInitiateAICoreAttunement = () => {
@@ -258,7 +244,7 @@ const App: React.FC = () => {
                         onConfigChange={setDistroConfig} 
                         isLocked={isBlueprintLocked} 
                         onLockToggle={() => setIsBlueprintLocked(prev => !prev)}
-                        onBuild={() => setTargetModalOpen(true)}
+                        onBuild={() => setIsoModalOpen(true)}
                         onInitiateAICoreAttunement={handleInitiateAICoreAttunement}
                         isAICoreScriptGenerated={isAICoreScriptGenerated}
                     />
@@ -280,7 +266,7 @@ const App: React.FC = () => {
                     isLocked={isBlueprintLocked} 
                     onLockToggle={() => setIsBlueprintLocked(prev => !prev)}
                     onClose={() => setIsBlueprintDrawerOpen(false)}
-                    onBuild={() => { setTargetModalOpen(true); setIsBlueprintDrawerOpen(false); }}
+                    onBuild={() => { setIsoModalOpen(true); setIsBlueprintDrawerOpen(false); }}
                     onInitiateAICoreAttunement={() => { handleInitiateAICoreAttunement(); setIsBlueprintDrawerOpen(false); }}
                     isAICoreScriptGenerated={isAICoreScriptGenerated}
                 />
@@ -293,29 +279,9 @@ const App: React.FC = () => {
                 />
             )}
 
-            {isTargetModalOpen && (
-                <TargetSelectionModal
-                    onClose={() => setTargetModalOpen(false)}
-                    onSelectTarget={handleBuildForTarget}
-                />
-            )}
-
-            {isBuildModalOpen && (
-                <BuildModal
-                    steps={buildModalSteps}
-                    script={generatedScript}
-                    onClose={() => setBuildModalOpen(false)}
-                    onShowInstructions={() => {
-                        setBuildModalOpen(false);
-                        setIsoModalOpen(true);
-                    }}
-                />
-            )}
-
             {isIsoModalOpen && (
                 <IsoModal
                     onClose={() => setIsoModalOpen(false)}
-                    generatedScript={generatedScript}
                     config={distroConfig}
                 />
             )}
