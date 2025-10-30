@@ -50,12 +50,8 @@ export const BuildModal: React.FC<BuildModalProps> = ({ steps, script, onClose, 
         }
     }, [currentStep, steps]);
     
-    const quickInstallCommand = `# Create the installation script
-echo '${utf8ToBase64(script)}' | base64 -d > install.sh
-
-# Make it executable and run the ritual
-chmod +x install.sh && ./install.sh
-`;
+    const base64Script = utf8ToBase64(script);
+    const quickInstallCommand = `echo "${base64Script}" | base64 -d > install.sh && chmod +x install.sh && ./install.sh`;
 
     const handleCopy = (type: 'script' | 'command') => {
         const textToCopy = type === 'script' ? script : quickInstallCommand;
@@ -117,8 +113,8 @@ chmod +x install.sh && ./install.sh
 
                         {view === 'command' ? (
                             <div>
-                                <p className="text-slate-400 text-sm mb-2 text-center">Paste this command block into your Arch Linux live environment to perform the ritual.</p>
-                                <pre className="bg-slate-950/70 border border-slate-700 rounded-lg p-4 text-sm text-slate-300 max-h-60 overflow-y-auto font-mono">
+                                <p className="text-slate-400 text-sm mb-2 text-center">Paste this single command into your Arch Linux live environment to perform the ritual.</p>
+                                <pre className="bg-slate-950/70 border border-slate-700 rounded-lg p-4 text-xs text-slate-300 max-h-60 overflow-y-auto font-mono whitespace-pre-wrap break-words">
                                     <code>{quickInstallCommand}</code>
                                 </pre>
                                 <div className="mt-6 flex flex-col sm:flex-row justify-center items-center gap-3">
@@ -132,7 +128,7 @@ chmod +x install.sh && ./install.sh
                             </div>
                         ) : (
                              <div>
-                                <pre className="bg-slate-950/70 border border-slate-700 rounded-lg p-4 text-sm text-slate-300 max-h-60 overflow-y-auto font-mono">
+                                <pre className="bg-slate-950/70 border border-slate-700 rounded-lg p-4 text-xs text-slate-300 max-h-60 overflow-y-auto font-mono">
                                    <code>{script}</code>
                                 </pre>
                                 <div className="mt-6 flex flex-col sm:flex-row justify-center items-center gap-3">

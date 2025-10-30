@@ -17,6 +17,7 @@ export function generateInstallScript(config: DistroConfig, target: BuildTarget 
   const bootloader = config.bootloader || 'grub';
   const packages = config.packages || 'git, vim, firefox, docker, steam, lutris';
   const shell = config.shell || 'fish';
+  const location = config.location || 'USA';
   // For booleans, ?? is better as we want to preserve `false`.
   const enableSnapshots = config.enableSnapshots ?? true;
   const efiPartitionSize = config.efiPartitionSize || '512M';
@@ -36,7 +37,7 @@ export function generateInstallScript(config: DistroConfig, target: BuildTarget 
 
   let deInstallScript: string;
   if (desktopEnvironment.toLowerCase().includes('kde')) {
-    deInstallScript = `pacman -S --noconfirm xorg sddm plasma-meta plasma-wayland-session && systemctl enable sddm`;
+    deInstallScript = `pacman -S --noconfirm xorg sddm plasma-meta && systemctl enable sddm`;
   } else if (desktopEnvironment.toLowerCase().includes('gnome')) {
     deInstallScript = `pacman -S --noconfirm xorg gdm gnome && systemctl enable gdm`;
   } else {
@@ -55,6 +56,11 @@ export function generateInstallScript(config: DistroConfig, target: BuildTarget 
     vmPackages = ' virtualbox-guest-utils';
     vmServices = `echo "Enabling VirtualBox Guest Services..." && systemctl enable vboxservice.service`;
   }
+
+  const multilibEnableScript = `
+echo "Enabling multilib repository for 32-bit compatibility..."
+sed -i "/\\[multilib\\]/,/Include/s/^#//" /etc/pacman.conf
+`;
 
   const script = `#!/bin/bash
 # Chirpy AI :: The Forging Ritual (TUI Installer)
@@ -252,10 +258,17 @@ run_installation() {
         mkfs.${filesystem} -f "\${ROOT_PART}"
         sleep 1
         
-        echo 30; echo "Mounting the nascent realm..."
+        echo 25; echo "Mounting the nascent realm..."
         mount "\${ROOT_PART}" /mnt
         mkdir -p /mnt/boot
         mount "\${EFI_PART}" /mnt/boot
+        sleep 1
+        
+        # Phase 2.5: Attuning Mirrors
+        echo 35; echo "Attuning mirrors in ${location} for best speed..."
+        # The output of reflector can be verbose and will mess with the dialog UI.
+        # We redirect it. The 'set -uo pipefail' ensures that the script will exit on failure.
+        reflector --country "${location}" --protocol https --latest 20 --sort rate --save /etc/pacman.d/mirrorlist &>/dev/null
         sleep 1
 
         # Phase 3: Summoning the Base System
@@ -303,6 +316,9 @@ NET
 echo "Setting the root user's secret word..."
 echo "root:$PASSWORD_VAR" | chpasswd
 
+echo "Summoning the chosen shell: ${shell}..."
+pacman -S --noconfirm --needed ${shell}
+
 echo "Anointing the master user: $USERNAME_VAR..."
 useradd -m -g users -G wheel -s /bin/${shell} "$USERNAME_VAR"
 echo "$USERNAME_VAR:$PASSWORD_VAR" | chpasswd
@@ -315,23 +331,48 @@ mkswap /swapfile
 swapon /swapfile
 echo '/swapfile none swap defaults 0 0' >> /etc/fstab
 
+echo "Configuring software repositories..."
+${safeExtraRepositories.includes('cachy') ? `
+echo "-> Setting up CachyOS repositories..."
+# Using the documented bootstrap method.
+# NOTE: These URLs can become outdated. The custom 'pacman' package install was removed for stability.
+
+echo "--> Importing and signing CachyOS key..."
+pacman-key --recv-keys F3B607488DB35A47 --keyserver keyserver.ubuntu.com
+pacman-key --lsign-key F3B607488DB35A47
+
+echo "--> Installing CachyOS keyring and mirrorlists..."
+pacman -U --noconfirm \\
+'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-keyring-20240331-1-any.pkg.tar.zst' \\
+'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-mirrorlist-22-1-any.pkg.tar.zst' \\
+'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-v3-mirrorlist-22-1-any.pkg.tar.zst' \\
+'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-v4-mirrorlist-22-1-any.pkg.tar.zst'
+
+# THIS IS THE CRITICAL FIX: The repository definitions were missing from pacman.conf.
+echo "--> Appending CachyOS repositories to pacman.conf..."
+cat << 'EOF' >> /etc/pacman.conf
+
+[cachyos-v4]
+Include = /etc/pacman.d/cachyos-v4-mirrorlist
+[cachyos-v3]
+Include = /etc/pacman.d/cachyos-v3-mirrorlist
+[cachyos]
+Include = /etc/pacman.d/cachyos-mirrorlist
+EOF
+` : ''}
+
+${multilibEnableScript}
+
 ${safeExtraRepositories.includes('chaotic') ? `
-echo "Opening a chaotic portal..."
+echo "-> Adding Chaotic-AUR repository (fallback priority)..."
 pacman-key --recv-key 3056513887B78AEB --keyserver keyserver.ubuntu.com
 pacman-key --lsign-key 3056513887B78AEB
 pacman -U --noconfirm 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst'
 pacman -U --noconfirm 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst'
+# Append Chaotic-AUR config to the end of pacman.conf
+echo '' >> /etc/pacman.conf
 echo '[chaotic-aur]' >> /etc/pacman.conf
 echo 'Include = /etc/pacman.d/chaotic-mirrorlist' >> /etc/pacman.conf
-` : ''}
-
-${safeExtraRepositories.includes('cachy') ? `
-echo "Unlocking the CachyOS high-performance caches..."
-pacman -S --noconfirm wget
-wget https://mirror.cachyos.org/cachyos-repo.tar.xz -O /tmp/cachyos-repo.tar.xz
-tar xf /tmp/cachyos-repo.tar.xz -C /tmp
-(cd /tmp/cachyos-repo && ./cachyos-repo.sh)
-rm -rf /tmp/cachyos-repo /tmp/cachyos-repo.tar.xz
 ` : ''}
 
 echo "Synchronizing with the digital aether and upgrading the realm..."

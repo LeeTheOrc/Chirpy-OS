@@ -23,7 +23,7 @@ const SnippetItem: React.FC<{ snippet: Snippet }> = ({ snippet }) => {
                 <span className="transform transition-transform group-open:rotate-90 text-yellow-400/80">{'>'}</span>
             </summary>
             <div className="p-4 border-t border-slate-700">
-                <pre className="bg-slate-950/70 border border-slate-700 rounded-lg p-3 text-sm text-slate-300 max-h-48 overflow-y-auto font-mono relative">
+                <pre className="bg-slate-950/70 border border-slate-700 rounded-lg p-3 text-xs text-slate-300 max-h-48 overflow-y-auto font-mono relative">
                     <code>{snippet.content}</code>
                     <button onClick={handleCopy} className="absolute top-2 right-2 p-1 bg-slate-800 rounded-md text-slate-400 hover:text-white transition-colors" aria-label="Copy code snippet">
                         {copied ? 'Copied!' : <CopyIcon className="w-4 h-4" />}

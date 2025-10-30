@@ -216,7 +216,7 @@ const App: React.FC = () => {
                 }}
             />}
             {isCodexModalOpen && <CodexModal snippets={CODEX_SNIPPETS} onClose={() => setIsCodexModalOpen(false)} />}
-            {isIsoModalOpen && <IsoModal generatedScript={generatedScript} onClose={() => setIsIsoModalOpen(false)} />}
+            {isIsoModalOpen && <IsoModal generatedScript={generatedScript} onClose={() => setIsIsoModalOpen(false)} config={distroConfig} />}
             {isDrawerOpen && <MobileBlueprintDrawer
                 config={distroConfig}
                 onConfigChange={setDistroConfig}
