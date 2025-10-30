@@ -13,10 +13,6 @@ export const FirewallConfigurator: React.FC<FirewallConfiguratorProps> = ({ conf
     const [newRule, setNewRule] = useState<Omit<FirewallRule, 'description'>>({ port: '', protocol: 'tcp' });
     const [description, setDescription] = useState('');
 
-    const handleToggleFirewall = (e: React.ChangeEvent<HTMLInputElement>) => {
-        onConfigChange({ ...config, enableFirewall: e.target.checked });
-    };
-
     const handleAddRule = (e: React.FormEvent) => {
         e.preventDefault();
         if (newRule.port.trim() === '') return;
@@ -34,20 +30,13 @@ export const FirewallConfigurator: React.FC<FirewallConfiguratorProps> = ({ conf
     return (
         <div className="space-y-3">
              <div className="flex justify-between items-center bg-forge-panel/30 p-2 rounded-md">
-                <label htmlFor="enableFirewall" className="flex items-center gap-1.5 text-forge-text-secondary text-sm">Enable Firewall
-                    <Tooltip text="Activates the Uncomplicated Firewall (ufw) with a default-deny policy for incoming connections." />
+                <label className="flex items-center gap-1.5 text-forge-text-secondary text-sm">Firewall Status
+                    <Tooltip text="Per the Core Philosophy, the Realm's Aegis (ufw) is an immutable, always-on security feature." />
                 </label>
-                 <label className="relative inline-flex items-center cursor-pointer">
-                    <input 
-                        type="checkbox" 
-                        id="enableFirewall"
-                        checked={config.enableFirewall} 
-                        onChange={handleToggleFirewall} 
-                        disabled={isLocked}
-                        className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-forge-border peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-dragon-fire"></div>
-                </label>
+                 <div className="flex items-center gap-2 text-xs font-semibold text-dragon-fire">
+                    <div className="w-2 h-2 rounded-full bg-dragon-fire animate-pulse"></div>
+                    Always Active
+                </div>
             </div>
 
             <div className="text-forge-text-secondary text-xs">Custom Rules:</div>

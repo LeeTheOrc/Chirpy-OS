@@ -31,12 +31,14 @@ This is the staging ground for our future. It is a living document containing th
     - **Automated Distribution:** A secure FTP/SFTP sync mechanism to push compiled packages to the Sovereign Repository (both local and offsite).
 - **Status:** Planned.
 
-#### III. The Twin Souls (Custom Kernels)
-- **Objective:** To move beyond reliance on upstream kernels by compiling our own, tailored for ultimate performance and security.
+#### III. The Twin Souls (Kael-Forged Kernels)
+- **Objective:** To achieve ultimate system symbiosis by compiling our own kernels, branded and optimized for the Realm, imbuing them with the Kael identity.
 - **Components:**
-    - One kernel focused on bleeding-edge performance, low latency, and gaming optimizations.
-    - A second kernel focused on security-hardening, long-term stability, and server-grade reliability.
-- **Status:** Research.
+    - **Branding the Core:** The kernel's Makefile will be modified to append a custom version string (e.g., \`-kael\`). This makes the kernel identifiable as a core component of the Realm with a simple \`uname -r\` command.
+    - **Hardware Attunement:** We will utilize \`make localmodconfig\` to create a lean kernel configuration tailored to the specific hardware it's compiled on, stripping out unused drivers for faster boot times and a smaller footprint.
+    - **Performance Tuning:** We will select specific configuration options (preemption model, schedulers, etc.) that align with a high-performance philosophy.
+    - **Forge Automation:** A dedicated build script (\`forge-kernel.sh\`) will automate the entire ritual: fetching the source, applying branding, configuring, compiling, and packaging for \`pacman\`.
+- **Status:** In Progress. The philosophy is defined; the forge script is the next step.
 
 #### IV. The Calamares Genesis
 - **Objective:** To evolve the current TUI installer into a full-fledged graphical installer, making the Realm accessible to all Architects, regardless of their terminal proficiency.
@@ -52,4 +54,11 @@ This is the staging ground for our future. It is a living document containing th
     - A custom icon pack, using legally sourced and open-source assets.
     - Custom wallpapers that reflect the philosophy of the Forge.
 - **Status:** Conceptual.
+
+#### VI. The Nexus of Realms (Online Account Integration)
+- **Objective:** To bridge the Sovereign Realm with the Architect's digital life in the cloud, seamlessly integrating key online services into the native desktop experience.
+- **Components:**
+    - **KDE Online Accounts:** Deep integration with KDE's native account management system for a unified experience.
+    - **Service Support:** Initial focus on Google (for Calendar, Contacts, and Drive via \`kio-gdrive\`), GitHub, and future support for our own Sovereign FTP services.
+- **Status:** In Progress. The foundational packages (\`kaccounts-integration\`, \`kaccounts-providers\`, \`kio-gdrive\`) are now included by default in every KDE Plasma installation, laying the groundwork for this feature.
 `.trim();

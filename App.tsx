@@ -3,8 +3,7 @@ import { GoogleGenAI } from "@google/genai";
 import type { Message, DistroConfig, LinkState, BuildTarget } from './types';
 import { ChatMessage } from './components/ChatMessage';
 import { CommandSuggestions } from './components/CommandSuggestions';
-import { Logo } from './components/Logo';
-import { SendIcon, AttachmentIcon, BlueprintIcon, ScanIcon, InformationCircleIcon, ScrollIcon, RocketLaunchIcon } from './components/Icons';
+import { SendIcon, AttachmentIcon, ScanIcon } from './components/Icons';
 import { FileAttachment } from './components/FileAttachment';
 import { DistroBlueprintPanel } from './components/DistroBlueprintPanel';
 import { MobileBlueprintDrawer } from './components/MobileBlueprintDrawer';
@@ -16,8 +15,11 @@ import { CodexModal } from './components/CodexModal';
 import { AICoreModal } from './components/AICoreModal';
 import { PhilosophyModal } from './components/PhilosophyModal';
 import { LevelUpModal } from './components/LevelUpModal';
-import { INITIAL_DISTRO_CONFIG, COMMAND_SUGGESTIONS, BUILD_STEPS, CODEX_SNIPPETS, WELCOME_MESSAGE, CLOUD_AI_SYSTEM_PROMPT, AI_CORE_BUILD_STEPS } from './constants';
+import { INITIAL_DISTRO_CONFIG, COMMAND_SUGGESTIONS, BUILD_STEPS, CODEX_SNIPPETS, WELCOME_MESSAGE, CLOUD_AI_SYSTEM_PROMPT } from './constants';
 import { generateInstallScript, generateAICoreScript } from './lib/script-generator';
+import { TopDock } from './components/TopDock';
+import { BottomPanel } from './components/BottomPanel';
+
 
 // Initialize the Google Gemini AI Client (the "Cloud Core").
 // The API key, which you might refer to as your "Studio Key" from Google AI Studio,
@@ -42,7 +44,7 @@ const App: React.FC = () => {
     const [isCodexModalOpen, setCodexModalOpen] = useState(false);
     const [isAICoreModalOpen, setAICoreModalOpen] = useState(false);
     const [isPhilosophyModalOpen, setPhilosophyModalOpen] = useState(false);
-    const [isLevelUpModalOpen, setLevelUpModalOpen] = useState(false); // New State
+    const [isLevelUpModalOpen, setLevelUpModalOpen] = useState(false);
     const [buildModalSteps, setBuildModalSteps] = useState(BUILD_STEPS);
     
     const [generatedScript, setGeneratedScript] = useState('');
@@ -182,45 +184,10 @@ const App: React.FC = () => {
 
     return (
         <div className="bg-forge-bg text-forge-text-primary min-h-screen flex flex-col font-sans">
-            <header className="fixed top-0 left-0 right-0 bg-forge-bg/80 backdrop-blur-lg border-b border-forge-border z-30 px-4 py-3 flex justify-between items-center">
-                <Logo linkState={linkState} onToggle={() => setLinkState(s => s === 'online' ? 'offline' : 'online')} />
-                <div className="flex items-center gap-2">
-                     <button
-                        onClick={() => setLevelUpModalOpen(true)}
-                        className="hidden sm:inline-flex items-center gap-1.5 text-sm text-forge-text-secondary hover:text-dragon-fire transition-colors py-1.5 px-3 rounded-md hover:bg-forge-panel"
-                        title="View the Level Up Manifesto"
-                    >
-                        <RocketLaunchIcon className="w-5 h-5" />
-                        <span>Manifesto</span>
-                    </button>
-                     <button
-                        onClick={() => setPhilosophyModalOpen(true)}
-                        className="hidden sm:inline-flex items-center gap-1.5 text-sm text-forge-text-secondary hover:text-dragon-fire transition-colors py-1.5 px-3 rounded-md hover:bg-forge-panel"
-                        title="View the Core Philosophy"
-                    >
-                        <ScrollIcon className="w-5 h-5" />
-                        <span>Philosophy</span>
-                    </button>
-                     <button
-                        onClick={() => setCodexModalOpen(true)}
-                        className="hidden sm:inline-flex items-center gap-1.5 text-sm text-forge-text-secondary hover:text-dragon-fire transition-colors py-1.5 px-3 rounded-md hover:bg-forge-panel"
-                        title="Open the Kael Codex for common commands"
-                    >
-                        <InformationCircleIcon className="w-5 h-5" />
-                        <span>Codex</span>
-                    </button>
-                    <button
-                        onClick={() => setIsBlueprintDrawerOpen(true)}
-                        className="md:hidden p-2 rounded-full hover:bg-forge-panel/50 transition-colors"
-                        aria-label="Open Blueprint"
-                    >
-                        <BlueprintIcon className="w-5 h-5 text-dragon-fire" />
-                    </button>
-                </div>
-            </header>
+            <TopDock onBlueprintClick={() => setIsBlueprintDrawerOpen(true)} />
 
-            <div className="flex flex-1 pt-16">
-                <main className="flex-1 flex flex-col">
+            <div className="flex flex-1 pt-20 pb-12 w-full h-full">
+                <main className="flex-1 flex flex-col max-w-full">
                     <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
                        {messages.map((msg, index) => (
                            <ChatMessage key={index} message={msg} />
@@ -298,6 +265,14 @@ const App: React.FC = () => {
                 </aside>
             </div>
             
+            <BottomPanel 
+                linkState={linkState}
+                onToggleLinkState={() => setLinkState(s => s === 'online' ? 'offline' : 'online')}
+                onCodexClick={() => setCodexModalOpen(true)}
+                onPhilosophyClick={() => setPhilosophyModalOpen(true)}
+                onManifestoClick={() => setLevelUpModalOpen(true)}
+            />
+
             {isBlueprintDrawerOpen && (
                 <MobileBlueprintDrawer 
                     config={distroConfig} 

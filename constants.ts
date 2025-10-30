@@ -90,7 +90,6 @@ export const INITIAL_DISTRO_CONFIG: DistroConfig = {
     networkMode: 'dhcp',
     aiResourceAllocation: 'balanced',
     aiGpuMode: 'none',
-    enableFirewall: true,
     firewallRules: [
         { port: '22', protocol: 'tcp', description: 'Allow SSH for remote access' },
         // Rule for code-server is now added by default
@@ -423,7 +422,7 @@ Certain technical decisions are cornerstones of the Realm's stability and perfor
 - **The Grand Athenaeum:** The Realm's graphical interface is forged through **KDE Plasma**.
 - **The Twin Hearts:** The Realm is powered by two kernels: **\`linux-cachyos\`** for performance and **\`linux-lts\`** for stability.
 - **The Realm's Conduit:** The Realm's nervous system is managed by **NetworkManager**. Its robust feature set and seamless integration with KDE Plasma make it the single, sanctioned choice for connectivity.
-- **The Realm's Aegis:** The Realm is defended by the **Uncomplicated Firewall (ufw)**. Its default-deny posture and simple interface provide a secure and manageable shield, with a graphical frontend (\`gufw\`) for desktop users.
+- **The Realm's Aegis:** The Realm is immutably defended by the **Uncomplicated Firewall (ufw)**, which is always active with a default-deny posture for incoming connections. The Guardian is responsible for automatically managing rules for any integrated services, ensuring a perfect balance of security and functionality. A graphical frontend (\`gufw\`) is always included for desktop management.
 - **The AUR Champion:** The Realm's sole bridge to the Arch User Repository shall be **\`paru\`**. Its modern Rust foundation and robust feature set make it the single, sanctioned choice.
 - **The Sacred Partitioning:** The chosen disk is immutably structured to guarantee stability and resilience. This entire process is destructive and final for the selected drive.
     - **Keystone (512MB EFI):** A dedicated partition for the **GRUB** bootloader.

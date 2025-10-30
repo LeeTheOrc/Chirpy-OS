@@ -65,7 +65,6 @@ export interface DistroConfig {
   aiResourceAllocation?: 'minimal' | 'balanced' | 'performance' | 'dynamic';
   aiGpuMode?: 'none' | 'dedicated' | 'dynamic';
   // New: Firewall configuration
-  enableFirewall: boolean;
   firewallRules: FirewallRule[];
   // New: Sovereign Services
   internalizedServices: InternalizedService[];
