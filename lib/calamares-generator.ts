@@ -133,13 +133,13 @@ ufw --force enable
 `;
 };
 
-const getChwdScript = (): string => {
+const getKhwsScript = (): string => {
     return `#!/bin/bash
 set -e
-echo "--- Running the Ritual of Insight (chwd) ---"
+echo "--- Running the Ritual of Insight (khws) ---"
 # Automatically detect and install all relevant drivers.
 # The --quiet flag reduces verbosity for the installer log.
-chwd -a --quiet
+khws -a --quiet
 `;
 };
 
@@ -242,7 +242,7 @@ const generatePackagesConf = (config: DistroConfig): string => {
         'ollama', 'xorg', 'plasma-meta', 'sddm', 'konsole', 'dolphin',
         'ufw', 'gufw', 'kaccounts-integration', 'kaccounts-providers', 'kio-gdrive',
         'qemu-guest-agent', 'virtualbox-guest-utils', // Include both VM utils for universal ISO
-        'remmina', 'google-chrome', 'chwd' // Add chwd to the core packages
+        'remmina', 'google-chrome', 'khws' // Add khws to the core packages
     ]);
     config.kernels.forEach(k => packageList.add(k));
     config.packages.split(',').map(p => p.trim()).filter(Boolean).forEach(p => packageList.add(p));
@@ -274,8 +274,8 @@ const generateShellprocessConf = (): string => `
         file: "/etc/calamares/scripts/setup-repos.sh"
         chrooted: true
     -   # Second job: run hardware detection
-        name: "chwd"
-        file: "/etc/calamares/scripts/run-chwd.sh"
+        name: "khws"
+        file: "/etc/calamares/scripts/run-khws.sh"
         chrooted: true
     -   # Third job: setup AUR helper
         name: "aur"
@@ -326,7 +326,7 @@ export const generateCalamaresConfiguration = (config: DistroConfig): Record<str
 
         // Post-install scripts
         'scripts/setup-repos.sh': getRepoSetupScript(config),
-        'scripts/run-chwd.sh': getChwdScript(),
+        'scripts/run-khws.sh': getKhwsScript(),
         'scripts/setup-aur.sh': getAurSetupScript(config),
         'scripts/install-aur-packages.sh': getAurPackagesScript(config),
         'scripts/setup-firewall.sh': getFirewallSetupScript(config),

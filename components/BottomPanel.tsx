@@ -90,7 +90,7 @@ export const BottomPanel: React.FC<BottomPanelProps> = ({ linkState, onToggleLin
             </div>
             <div className="flex-1 flex justify-end items-center gap-3">
                  <div className="flex items-center gap-1">
-                    <button onClick={onChwdClick} className="p-2 rounded-full hover:bg-forge-border/60 text-forge-text-secondary transition-colors" title="Ritual of Insight (chwd)">
+                    <button onClick={onChwdClick} className="p-2 rounded-full hover:bg-forge-border/60 text-forge-text-secondary transition-colors" title="Ritual of Insight (khws)">
                         <EyeIcon className="w-5 h-5" />
                     </button>
                     <button onClick={onForgeBuilderClick} className="p-2 rounded-full hover:bg-forge-border/60 text-forge-text-secondary transition-colors" title="The Forge: Genesis Ritual">

@@ -33,41 +33,44 @@ const CodeBlock: React.FC<{ children: React.ReactNode; lang?: string }> = ({ chi
     );
 };
 
-const PKGBUILD_CONTENT = `# Maintainer: CachyOS <ptr1337@cachyos.org>
-# Contributor: The Architect & Kael <https://github.com/LeeTheOrc/Kael-OS>
-pkgname=chwd
-pkgver=3.1
+const PKGBUILD_CONTENT = `# Maintainer: The Architect & Kael <https://github.com/LeeTheOrc/Kael-OS>
+# Original work by: CachyOS <ptr1337@cachyos.org>
+pkgname=khws
+pkgver=1.0.0
 pkgrel=1
-pkgdesc="CachyOS Hardware Detection Tool to install the right drivers"
+pkgdesc="Kael Hardware Scry: Kael's hardware detection tool (based on CachyOS chwd)"
 arch=('x86_64')
-url="https://github.com/CachyOS/chwd"
+url="https://github.com/LeeTheOrc/Kael-OS"
 license=('GPL3')
 depends=('pciutils' 'dmidecode' 'hwinfo' 'mesa-utils' 'xorg-xrandr' 'vulkan-tools')
-makedepends=('meson' 'ninja')
-source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+makedepends=('meson' 'ninja' 'git')
+# NOTE: Cloning the latest version from the original repository.
+# The source URL points to the original repo, but we build it as 'khws'.
+source=("$pkgname::git+https://github.com/CachyOS/chwd.git")
 sha256sums=('SKIP')
 
 build() {
-    cd "$pkgname-$pkgver"
-    meson setup build --prefix=/usr --buildtype=release
-    ninja -C build
+    # Use explicit source and build directories for meson to be robust.
+    # build() is run from the $srcdir, which contains our checkout in the '$pkgname' dir.
+    meson setup "$pkgname/build" "$pkgname" --prefix=/usr --buildtype=release
+    ninja -C "$pkgname/build"
 }
 
 package() {
-    cd "$pkgname-$pkgver"
-    DESTDIR="$pkgdir" meson install -C build
+    # Install from the build directory created in the build() step.
+    DESTDIR="$pkgdir" meson install -C "$pkgname/build"
 }
 `;
 
 const SETUP_COMMAND_BLOCK = `# 1. Create the directory structure for our new package
-mkdir -p ~/packages/chwd
+mkdir -p ~/packages/khws
 
 # 2. Create the PKGBUILD recipe file inside the new directory
-cat > ~/packages/chwd/PKGBUILD << 'EOF'
+cat > ~/packages/khws/PKGBUILD << 'EOF'
 ${PKGBUILD_CONTENT}
 EOF
 
-echo "The recipe for 'chwd' has been created in ~/packages/chwd/"
+echo "The recipe for 'khws' has been prepared in ~/packages/khws/"
 `;
 
 
@@ -78,7 +81,7 @@ export const ChwdRitualModal: React.FC<ChwdRitualModalProps> = ({ onClose }) => 
                 <div className="flex justify-between items-center mb-4 flex-shrink-0">
                     <h2 className="text-xl font-bold text-forge-text-primary font-display tracking-wider flex items-center gap-3">
                         <EyeIcon className="w-5 h-5 text-dragon-fire" />
-                        The Ritual of Insight: Forging `chwd`
+                        The Ritual of Insight: Forging `khws`
                     </h2>
                     <button onClick={onClose} className="text-forge-text-secondary hover:text-forge-text-primary">
                         <CloseIcon className="w-5 h-5" />
@@ -87,18 +90,18 @@ export const ChwdRitualModal: React.FC<ChwdRitualModalProps> = ({ onClose }) => 
 
                 <div className="overflow-y-auto pr-2 text-forge-text-secondary leading-relaxed">
                     <div className="animate-fade-in-fast space-y-4">
-                        <p>Architect, this ritual will bestow upon our forge the gift of <strong className="text-dragon-fire">Insight</strong>. We will package the CachyOS Hardware Detection tool (<code className="font-mono text-xs">chwd</code>) and place it in our Athenaeum. Once this is done, every Realm we forge will automatically detect its host's hardware and install the perfect drivers.</p>
+                        <p>Architect, this ritual will bestow upon our forge the gift of <strong className="text-dragon-fire">Insight</strong>. We will package our own version of the CachyOS Hardware Detection tool, naming it <strong className="text-orc-steel">khws (Kael Hardware Scry)</strong>, and place it in our Athenaeum. Once this is done, every Realm we forge will automatically detect its host's hardware and install the perfect drivers.</p>
                         
                         <div>
                            <h3 className="font-semibold text-lg text-orc-steel mt-4 mb-2">Step 1: Prepare Your Tools (One-Time Setup)</h3>
-                            <p>If you have not already done so for the Keystone Ritual, your Forge needs the <code className="font-mono text-xs">git</code> and <code className="font-mono text-xs">gh</code> tools, and you must be logged into GitHub.</p>
+                            <p>If you have not already done so for the Keystone Ritual, your Forge needs the <code className="font-mono text-xs">git</code> and <code className="font-mono text-xs">gh</code> tools, and you must be logged into GitHub. The `base-devel` package group is also required for building.</p>
                             <p>Run this command if this is your first time publishing. Otherwise, you can skip this step.</p>
-                            <CodeBlock lang="bash">{`sudo pacman -S git github-cli --noconfirm && gh auth login`}</CodeBlock>
+                            <CodeBlock lang="bash">{`sudo pacman -S git github-cli base-devel --noconfirm && gh auth login`}</CodeBlock>
                         </div>
 
                         <div>
-                            <h3 className="font-semibold text-lg text-forge-text-primary mt-4 mb-2">Step 2: Forge the `chwd` Recipe</h3>
-                            <p>Next, we create the sacred recipe (<strong className="text-orc-steel">PKGBUILD</strong>) that teaches the forge how to build `chwd` from source. <strong className="text-dragon-fire">Copy this entire block and paste it into your terminal.</strong> It will create the directory and the recipe file.</p>
+                            <h3 className="font-semibold text-lg text-forge-text-primary mt-4 mb-2">Step 2: Forge the Recipe</h3>
+                            <p>Next, we create the sacred recipe (<strong className="text-orc-steel">PKGBUILD</strong>). This single command block prepares everything needed for the build. <strong className="text-dragon-fire">Copy this entire block and paste it into your terminal.</strong></p>
                             <CodeBlock lang="bash">{SETUP_COMMAND_BLOCK}</CodeBlock>
                         </div>
 
@@ -106,7 +109,7 @@ export const ChwdRitualModal: React.FC<ChwdRitualModalProps> = ({ onClose }) => 
                             <h3 className="font-semibold text-lg text-forge-text-primary mt-4 mb-2">Step 3: Publish to the Athenaeum</h3>
                             <p>With the recipe prepared, we use the master Publisher Script to build the artifact and send it to our Athenaeum. This script should already exist at <code className="font-mono text-xs">~/packages/publish-package.sh</code> from the Keystone Ritual.</p>
                             <CodeBlock>
-cd ~/packages && ./publish-package.sh chwd
+cd ~/packages && ./publish-package.sh khws
                             </CodeBlock>
                             <p className="mt-2">Once this ritual is complete, the gift of Insight is ours. Every ISO forged from this moment on will contain this new power.</p>
                         </div>
