@@ -1,4 +1,3 @@
-// Fix: Create type definitions for the application.
 export type Role = 'user' | 'model';
 export type LinkState = 'online' | 'offline';
 export type BuildTarget = 'bare-metal' | 'qemu' | 'virtualbox';
@@ -61,7 +60,6 @@ export interface DistroConfig {
   ipAddress?: string; // e.g., '192.168.1.100/24'
   gateway?: string; // e.g., '192.168.1.1'
   dnsServers?: string; // e.g., '1.1.1.1,8.8.8.8'
-  // Fix: Add AI Core properties for AICoreTuner component
   aiResourceAllocation?: 'minimal' | 'balanced' | 'performance' | 'dynamic';
   aiGpuMode?: 'none' | 'dedicated' | 'dynamic';
   // New: Firewall configuration

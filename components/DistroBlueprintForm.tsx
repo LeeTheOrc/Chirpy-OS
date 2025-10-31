@@ -202,7 +202,6 @@ export const DistroBlueprintForm: React.FC<DistroBlueprintFormProps> = ({ config
             </div>
             <DetailInput label="Extra Repos" name="extraRepositories" value={renderArrayAsString(config.extraRepositories)} onChange={(e) => handleArrayChange('extraRepositories', e.target.value)} disabled={isLocked} />
 
-            {/* Fix: Replace button with AICoreTuner component for better UX */}
             {onInitiateAICoreAttunement && (
                  <div className="pt-6">
                     <h4 className="font-bold text-orc-steel/90 mb-4 text-md tracking-wide font-display">Local AI Core</h4>

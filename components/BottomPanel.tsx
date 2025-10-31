@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { LinkState } from '../types';
-import { ScrollIcon, InformationCircleIcon, RocketLaunchIcon, WifiIcon, SpeakerWaveIcon } from './Icons';
+import { KaelSigilIcon, InformationCircleIcon, RocketLaunchIcon, WifiIcon, SpeakerWaveIcon, LinkIcon, ScrollIcon, ForgeIcon } from './Icons';
 
 interface BottomPanelProps {
     linkState: LinkState;
     onToggleLinkState: () => void;
     onCodexClick: () => void;
-    onPhilosophyClick: () => void;
+    onLawClick: () => void;
+    onPersonalityClick: () => void;
     onManifestoClick: () => void;
+    onForgeBuilderClick: () => void;
 }
 
 const KaelStartIcon: React.FC = () => (
@@ -53,9 +55,9 @@ const Clock: React.FC = () => {
     };
 
     return (
-        <div className="text-center text-sm font-medium text-forge-text-secondary">
+        <div className="text-center text-xs font-medium text-forge-text-secondary">
             <p>{formatDate(time)}</p>
-            <p className="text-forge-text-primary text-base tracking-wider">{formatTime(time)}</p>
+            <p className="text-forge-text-primary text-sm tracking-wider">{formatTime(time)}</p>
         </div>
     );
 };
@@ -73,7 +75,7 @@ const LinkStateIndicator: React.FC<{ linkState: LinkState; onToggle: () => void;
     );
 };
 
-export const BottomPanel: React.FC<BottomPanelProps> = ({ linkState, onToggleLinkState, onCodexClick, onPhilosophyClick, onManifestoClick }) => {
+export const BottomPanel: React.FC<BottomPanelProps> = ({ linkState, onToggleLinkState, onCodexClick, onLawClick, onPersonalityClick, onManifestoClick, onForgeBuilderClick }) => {
     return (
         <footer className="fixed bottom-0 left-0 right-0 h-14 bg-forge-panel/90 backdrop-blur-sm border-t border-forge-border z-20 px-4 flex items-center justify-between">
             <div className="flex-1 flex justify-start">
@@ -83,11 +85,29 @@ export const BottomPanel: React.FC<BottomPanelProps> = ({ linkState, onToggleLin
                 <Clock />
             </div>
             <div className="flex-1 flex justify-end items-center gap-3">
-                 <button onClick={onManifestoClick} className="p-2 rounded-full hover:bg-forge-border/60 text-forge-text-secondary transition-colors" title="Level Up Manifesto">
-                    <RocketLaunchIcon className="w-5 h-5" />
-                </button>
-                 <button onClick={onPhilosophyClick} className="p-2 rounded-full hover:bg-forge-border/60 text-forge-text-secondary transition-colors" title="Core Philosophy">
+                 <div className="flex items-center gap-1">
+                    <button onClick={onForgeBuilderClick} className="p-2 rounded-full hover:bg-forge-border/60 text-forge-text-secondary transition-colors" title="The Forge">
+                        <ForgeIcon className="w-5 h-5" />
+                    </button>
+                     <button onClick={onManifestoClick} className="p-2 rounded-full hover:bg-forge-border/60 text-forge-text-secondary transition-colors" title="Level Up Manifesto">
+                        <RocketLaunchIcon className="w-5 h-5" />
+                    </button>
+                    <a
+                        href="https://github.com/LeeTheOrc/Kael-OS"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-2 rounded-full hover:bg-forge-border/60 text-forge-text-secondary transition-colors"
+                        title="View Project on GitHub"
+                        aria-label="View Project on GitHub"
+                    >
+                        <LinkIcon className="w-5 h-5" />
+                    </a>
+                </div>
+                 <button onClick={onLawClick} className="p-2 rounded-full hover:bg-forge-border/60 text-forge-text-secondary transition-colors" title="The Core Law">
                     <ScrollIcon className="w-5 h-5" />
+                </button>
+                 <button onClick={onPersonalityClick} className="p-2 rounded-full hover:bg-forge-border/60 text-forge-text-secondary transition-colors" title="Kael's Personality">
+                    <KaelSigilIcon className="w-5 h-5" />
                 </button>
                  <button onClick={onCodexClick} className="p-2 rounded-full hover:bg-forge-border/60 text-forge-text-secondary transition-colors" title="Kael Codex">
                     <InformationCircleIcon className="w-5 h-5" />

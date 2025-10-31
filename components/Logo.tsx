@@ -1,4 +1,3 @@
-// Fix: Implement the Logo component.
 import React, { useState } from 'react';
 import { LinkState } from '../types';
 

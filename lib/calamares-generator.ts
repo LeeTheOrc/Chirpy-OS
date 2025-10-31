@@ -8,29 +8,32 @@ const getAiCoreSetupScript = (config: DistroConfig): string => {
     const secondaryModel = config.localLLM === 'phi3:mini' ? 'llama3:8b' : 'phi3:mini';
 
     const retryScript = `#!/bin/bash
-# Kael AI Model Retry Script (The Soul-Seeker)
+# Kael AI Model Retry Script (The Soul-Warden)
 set -e
 DESIRED_MODELS=( "${primaryModel}" "${secondaryModel}" )
 ALL_PRESENT=true
-for i in {1..30}; do
-    if sudo -u kael ollama list &>/dev/null; then break; fi; sleep 2;
-done
-if ! sudo -u kael ollama list &>/dev/null; then exit 1; fi
+# Wait for ollama service to be ready
+for i in {1..30}; do if sudo -u kael ollama list &>/dev/null; then break; fi; sleep 2; done
+if ! sudo -u kael ollama list &>/dev/null; then echo "Soul-Warden: Ollama not running." && exit 1; fi
 for model in "\${DESIRED_MODELS[@]}"; do
     if ! sudo -u kael ollama list | grep -q "^$model"; then
         ALL_PRESENT=false
         if ping -c 1 -W 5 models.ollama.ai &> /dev/null; then
-             sudo -u kael ollama pull "$model" || echo "Soul-Seeker: Failed to download $model. Will retry."
+             echo "Soul-Warden: Pulling missing model: $model"
+             sudo -u kael ollama pull "$model" || echo "Soul-Warden: Failed to pull $model."
+        else
+            echo "Soul-Warden: Network offline, skipping pull for $model."
         fi
     fi
 done
 if [ "$ALL_PRESENT" = true ]; then
+    echo "Soul-Warden: All models present. Disabling self."
     systemctl --user disable --now kael-model-retry.timer
 fi
 `;
 
     const serviceFile = `[Unit]
-Description=Kael AI - Retry downloading missing LLM models (Soul-Seeker)
+Description=Kael AI - Retry downloading missing LLM models (Soul-Warden)
 After=network-online.target
 [Service]
 Type=oneshot
@@ -40,7 +43,7 @@ WantedBy=default.target
 `;
 
     const timerFile = `[Unit]
-Description=Run Kael AI model downloader periodically (Soul-Seeker)
+Description=Run Kael AI model downloader periodically (Soul-Warden)
 [Timer]
 OnBootSec=15min
 OnUnitActiveSec=2h
@@ -49,15 +52,14 @@ RandomizedDelaySec=30min
 WantedBy=timers.target
 `;
 
-    return `#!/binbin/bash
+    return `#!/bin/bash
 set -e
 echo "--- Awakening the Local Core (AI Guardian) ---"
 if ! id -u "kael" >/dev/null 2>&1; then
     useradd -m -G wheel -s /bin/bash kael
     passwd -l kael
-else
-    usermod -aG wheel kael
 fi
+usermod -aG wheel kael
 systemctl enable --now ollama
 MODELS_TO_INSTALL=("${primaryModel}" "${secondaryModel}")
 FAILED_MODELS=()
@@ -65,6 +67,7 @@ for model in "\${MODELS_TO_INSTALL[@]}"; do
     if sudo -u kael ollama pull "\$model"; then
         echo "Successfully downloaded model '\$model'."
     else
+        echo "Warning: Failed to download model '\$model'. A background task will retry."
         FAILED_MODELS+=("\$model")
     fi
 done
@@ -106,6 +109,17 @@ sudo -u $USERNAME /bin/bash -c '
 `;
 };
 
+const getAurPackagesScript = (config: DistroConfig): string => {
+    return `#!/bin/bash
+set -e
+USERNAME="${config.username}"
+echo "--- Installing AUR packages for Architect: $USERNAME ---"
+sudo -u $USERNAME /bin/bash -c '
+    paru -S --noconfirm --needed anydesk-bin
+'
+`;
+};
+
 const getFirewallSetupScript = (config: DistroConfig): string => {
     const rules = config.firewallRules.map(rule => `ufw allow ${rule.port}/${rule.protocol}`).join('\n');
     return `#!/bin/bash
@@ -139,7 +153,7 @@ Include = /etc/pacman.d/chaotic-mirrorlist
 echo "--- Configuring CachyOS Repositories ---"
 pacman-key --recv-keys F3B607488DB35A47 --keyserver keyserver.ubuntu.com
 pacman-key --lsign-key F3B607488DB35A47
-pacman -U --noconfirm --needed /etc/pacman.d/cachyos-repo-files/cachyos-keyring-20240331-1-any.pkg.tar.zst /etc/pacman.d/cachyos-repo-files/cachyos-mirrorlist-22-1-any.pkg.tar.zst /etc/pacman.d/cachyos-repo-files/cachyos-v3-mirrorlist-22-1-any.pkg.tar.zst /etc/pacman.d/cachyos-repo-files/cachyos-v4-mirrorlist-22-1-any.pkg.tar.zst
+pacman -U --noconfirm --needed /etc/pacman.d/cachyos-repo-files/cachyos-keyring-*.pkg.tar.zst /etc/pacman.d/cachyos-repo-files/cachyos-mirrorlist-*.pkg.tar.zst /etc/pacman.d/cachyos-repo-files/cachyos-v3-mirrorlist-*.pkg.tar.zst /etc/pacman.d/cachyos-repo-files/cachyos-v4-mirrorlist-*.pkg.tar.zst
 echo -e "${cachyRepo}" >> /etc/pacman.conf
 `;
     }
@@ -217,7 +231,8 @@ const generatePackagesConf = (config: DistroConfig): string => {
         'networkmanager', 'git', 'reflector', 'efibootmgr', 'grub',
         'ollama', 'xorg', 'plasma-meta', 'sddm', 'konsole', 'dolphin',
         'ufw', 'gufw', 'kaccounts-integration', 'kaccounts-providers', 'kio-gdrive',
-        'qemu-guest-agent', 'virtualbox-guest-utils' // Include both VM utils for universal ISO
+        'qemu-guest-agent', 'virtualbox-guest-utils', // Include both VM utils for universal ISO
+        'remmina', 'google-chrome'
     ]);
     config.kernels.forEach(k => packageList.add(k));
     config.packages.split(',').map(p => p.trim()).filter(Boolean).forEach(p => packageList.add(p));
@@ -247,7 +262,11 @@ const generateShellprocessConf = (): string => `
         name: "aur"
         file: "/etc/calamares/scripts/setup-aur.sh"
         chrooted: true
-    -   # Third job: configure firewall
+    -   # Third job: install AUR packages
+        name: "aur_packages"
+        file: "/etc/calamares/scripts/install-aur-packages.sh"
+        chrooted: true
+    -   # Fourth job: configure firewall
         name: "firewall"
         file: "/etc/calamares/scripts/setup-firewall.sh"
         chrooted: true
@@ -273,7 +292,7 @@ strings:
 export const generateCalamaresConfiguration = (config: DistroConfig): Record<string, string> => {
     return {
         // Module configurations
-        'modules/welcome.conf': 'string: productName Kael OS\nstring: productUrl https://github.com/aistudio-co/kael-os',
+        'modules/welcome.conf': 'string: productName Kael OS\nstring: productUrl https://github.com/LeeTheOrc/Kael-OS',
         'modules/locale.conf': generateLocaleConf(config),
         'modules/keyboard.conf': '# Calamares will handle keyboard layout selection visually.',
         'modules/partition.conf': generatePartitionConf(config),
@@ -289,6 +308,7 @@ export const generateCalamaresConfiguration = (config: DistroConfig): Record<str
         // Post-install scripts
         'scripts/setup-repos.sh': getRepoSetupScript(config),
         'scripts/setup-aur.sh': getAurSetupScript(config),
+        'scripts/install-aur-packages.sh': getAurPackagesScript(config),
         'scripts/setup-firewall.sh': getFirewallSetupScript(config),
         'scripts/attune-ai-core.sh': getAiCoreSetupScript(config),
     };

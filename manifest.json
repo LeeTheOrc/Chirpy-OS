@@ -1,0 +1,20 @@
+{
+  "short_name": "Kael OS",
+  "name": "Kael OS Forge",
+  "icons": [
+    {
+      "src": "/image.jpg",
+      "type": "image/jpeg",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/image.jpg",
+      "type": "image/jpeg",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#ffcc00",
+  "background_color": "#120e1a"
+}

@@ -15,6 +15,17 @@ Kael OS is more than just a custom Arch spin; it's an experiment in human-AI col
 *   **Sovereign by Design:** A Realm should be self-sufficient. Kael OS internalizes key services to enhance resilience and privacy. The first and most critical manifestation of this is the built-in, web-based VS Code instance (`code-server`), making every Realm a ready-to-use development environment out of the box.
 *   **Dual-Path Forging:** Create your world your way. You can forge a complete, bootable OS from a custom ISO, or use the **Attunement Script** to imbue any existing Arch-based system with the Kael AI core and your blueprint's configuration.
 
+## 🏛️ Repository Structure
+
+This project follows a sacred separation of concerns, managed across two distinct GitHub repositories:
+
+*   **[Kael-OS](https://github.com/LeeTheOrc/Kael-OS) (The Forge):** The repository you are currently in. This is the design and development hub, containing the web UI, AI personality, and the generator scripts that create the build artifacts.
+*   **`kael-os-repo` (The Athenaeum):** This is our sovereign `pacman` package repository, which serves our custom-built packages to every Kael OS installation. It uses a two-branch system:
+    *   **`main` branch:** Contains the `PKGBUILD` source files for our custom packages.
+    *   **`gh-pages` branch:** Contains only the compiled `.pkg.tar.zst` packages and the repository database, served via GitHub Pages.
+
+This structure keeps our development environment clean while providing a robust, version-controlled delivery pipeline for our finished artifacts.
+
 ## 🚀 Features
 
 *   **AI-Powered Blueprints:** Describe your ideal OS in plain English and let Kael translate it into a detailed configuration.

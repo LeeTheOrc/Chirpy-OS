@@ -1,4 +1,3 @@
-// Fix: Implement the CommandSuggestions component.
 import React from 'react';
 import { SendIcon } from './Icons';
 

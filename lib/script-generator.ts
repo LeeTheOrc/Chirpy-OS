@@ -1,4 +1,4 @@
-import type { DistroConfig } from './types';
+import type { DistroConfig } from '../types';
 
 const generateAiCoreSetupScript = (config: DistroConfig): string => {
     const primaryModel = config.localLLM;
@@ -123,9 +123,13 @@ WantedBy=timers.target
         echo -e '${serviceFile}' | sudo -u kael tee "\$SERVICE_FILE_PATH" > /dev/null
         echo -e '${timerFile}' | sudo -u kael tee "\$TIMER_FILE_PATH" > /dev/null
         
+        # Enable lingering for the 'kael' user so their services start on boot
+        # without requiring a login session.
         loginctl enable-linger kael
 
         echo "Enabling the systemd timer for user kael..."
+        # We must run systemctl --user commands with the correct context.
+        # This is the magic incantation to run a user systemd command from a root script.
         sudo -u kael XDG_RUNTIME_DIR="/run/user/$(id -u kael)" systemctl --user daemon-reload
         sudo -u kael XDG_RUNTIME_DIR="/run/user/$(id -u kael)" systemctl --user enable --now kael-model-retry.timer
 
@@ -142,7 +146,7 @@ WantedBy=timers.target
 export const generateAICoreScript = (config: DistroConfig): string => {
     
     const packageList = new Set<string>([
-        'git', 'ufw', 'networkmanager', 'ollama'
+        'git', 'ufw', 'networkmanager', 'ollama', 'remmina'
     ]);
     if (config.packages) config.packages.split(',').map(p => p.trim()).filter(Boolean).forEach(p => packageList.add(p));
     if (config.kernels) config.kernels.forEach(k => packageList.add(k));
@@ -225,6 +229,15 @@ sudo -u "${config.username}" /bin/bash -c '
         rm -rf paru
     else
         echo "paru is already installed."
+    fi
+'
+
+echo "--> Installing additional AUR packages for ${config.username}..."
+sudo -u "${config.username}" /bin/bash -c '
+    if command -v paru &> /dev/null; then
+        paru -S --noconfirm --needed anydesk-bin google-chrome
+    else
+        echo "Warning: paru not found, skipping AUR package installation."
     fi
 '
 

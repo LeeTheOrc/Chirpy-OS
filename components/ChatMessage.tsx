@@ -1,8 +1,8 @@
-// Fix: Implement the ChatMessage component.
 import React, { useState } from 'react';
 import type { Message } from '../types';
 import { GuardianAvatar } from './ChirpyAvatar';
 import { CopyIcon, KaelSigilIcon } from './Icons';
+import { FormattedContent } from './FormattedContent';
 
 interface ChatMessageProps {
   message: Message;
@@ -11,6 +11,7 @@ interface ChatMessageProps {
 export const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
   const [copied, setCopied] = useState(false);
   const isModel = message.role === 'model';
+  const isWelcome = message.text.includes("Welcome to the Forge, Architect.");
 
   const handleCopy = () => {
     navigator.clipboard.writeText(message.text);
@@ -37,9 +38,15 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
       <div className={`flex flex-col gap-2 ${isModel ? '' : 'items-end'}`}>
         <div className={`relative w-fit max-w-full md:max-w-2xl lg:max-w-3xl rounded-2xl px-4 py-2.5 ${isModel ? 'bg-gradient-to-br from-forge-panel to-[#1d182e] text-forge-text-primary border-l-4 border-dragon-fire shadow-lg' : 'bg-gradient-to-br from-orc-steel/50 to-magic-purple/50 text-white'}`}>
             {isModel && <KaelSigilIcon className="absolute top-2 right-2 w-4 h-4 text-dragon-fire/20" />}
-            <p className="whitespace-pre-wrap font-sans text-base leading-relaxed">{message.text}</p>
+            
+            {isWelcome ? (
+              <FormattedContent text={message.text} />
+            ) : (
+              <p className="whitespace-pre-wrap font-sans text-base leading-relaxed">{message.text}</p>
+            )}
+
         </div>
-        {isModel && (
+        {isModel && !isWelcome && (
             <div className="flex items-center justify-start">
                 <button 
                     onClick={handleCopy}

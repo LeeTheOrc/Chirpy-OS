@@ -11,9 +11,13 @@ import { SystemScanModal } from './components/SystemScanModal';
 import { IsoModal } from './components/IsoModal';
 import { CodexModal } from './components/CodexModal';
 import { AICoreModal } from './components/AICoreModal';
-import { PhilosophyModal } from './components/PhilosophyModal';
+import { LawModal } from './components/LawModal';
+import { PersonalityModal } from './components/PersonalityModal';
 import { LevelUpModal } from './components/LevelUpModal';
-import { INITIAL_DISTRO_CONFIG, COMMAND_SUGGESTIONS, BUILD_STEPS, CODEX_SNIPPETS, WELCOME_MESSAGE, CLOUD_AI_SYSTEM_PROMPT } from './constants';
+import { ForgeBuilderModal } from './components/ForgeBuilderModal';
+import { KeystoneModal } from './components/KeystoneModal'; // New Import
+import { INITIAL_DISTRO_CONFIG, COMMAND_SUGGESTIONS, CODEX_SNIPPETS } from './constants';
+import { WELCOME_MESSAGE, CLOUD_AI_SYSTEM_PROMPT } from './kael-personality';
 import { generateAICoreScript } from './lib/script-generator';
 import { TopDock } from './components/TopDock';
 import { BottomPanel } from './components/BottomPanel';
@@ -39,8 +43,11 @@ const App: React.FC = () => {
     const [isIsoModalOpen, setIsoModalOpen] = useState(false);
     const [isCodexModalOpen, setCodexModalOpen] = useState(false);
     const [isAICoreModalOpen, setAICoreModalOpen] = useState(false);
-    const [isPhilosophyModalOpen, setPhilosophyModalOpen] = useState(false);
+    const [isLawModalOpen, setLawModalOpen] = useState(false);
+    const [isPersonalityModalOpen, setPersonalityModalOpen] = useState(false);
     const [isLevelUpModalOpen, setLevelUpModalOpen] = useState(false);
+    const [isForgeBuilderModalOpen, setForgeBuilderModalOpen] = useState(false);
+    const [isKeystoneModalOpen, setIsKeystoneModalOpen] = useState(false); // New State
     
     const [generatedScript, setGeneratedScript] = useState('');
     const [isAICoreScriptGenerated, setIsAICoreScriptGenerated] = useState(false);
@@ -58,7 +65,7 @@ const App: React.FC = () => {
             text: WELCOME_MESSAGE,
             linkState: linkState
         }]);
-    }, [linkState]);
+    }, []);
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -172,7 +179,7 @@ const App: React.FC = () => {
         <div className="bg-forge-bg text-forge-text-primary min-h-screen flex flex-col font-sans animate-fade-in">
             <TopDock onBlueprintClick={() => setIsBlueprintDrawerOpen(true)} />
 
-            <div className="flex flex-1 pt-20 pb-12 w-full h-full">
+            <div className="flex flex-1 pt-20 pb-14 w-full h-full">
                 <main className="flex-1 flex flex-col max-w-full">
                     <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
                        {messages.map((msg, index) => (
@@ -245,6 +252,7 @@ const App: React.FC = () => {
                         isLocked={isBlueprintLocked} 
                         onLockToggle={() => setIsBlueprintLocked(prev => !prev)}
                         onBuild={() => setIsoModalOpen(true)}
+                        onForgeKeystone={() => setIsKeystoneModalOpen(true)} // New Prop
                         onInitiateAICoreAttunement={handleInitiateAICoreAttunement}
                         isAICoreScriptGenerated={isAICoreScriptGenerated}
                     />
@@ -255,8 +263,10 @@ const App: React.FC = () => {
                 linkState={linkState}
                 onToggleLinkState={() => setLinkState(s => s === 'online' ? 'offline' : 'online')}
                 onCodexClick={() => setCodexModalOpen(true)}
-                onPhilosophyClick={() => setPhilosophyModalOpen(true)}
+                onLawClick={() => setLawModalOpen(true)}
+                onPersonalityClick={() => setPersonalityModalOpen(true)}
                 onManifestoClick={() => setLevelUpModalOpen(true)}
+                onForgeBuilderClick={() => setForgeBuilderModalOpen(true)}
             />
 
             {isBlueprintDrawerOpen && (
@@ -267,6 +277,7 @@ const App: React.FC = () => {
                     onLockToggle={() => setIsBlueprintLocked(prev => !prev)}
                     onClose={() => setIsBlueprintDrawerOpen(false)}
                     onBuild={() => { setIsoModalOpen(true); setIsBlueprintDrawerOpen(false); }}
+                    onForgeKeystone={() => { setIsKeystoneModalOpen(true); setIsBlueprintDrawerOpen(false); }} // New Prop
                     onInitiateAICoreAttunement={() => { handleInitiateAICoreAttunement(); setIsBlueprintDrawerOpen(false); }}
                     isAICoreScriptGenerated={isAICoreScriptGenerated}
                 />
@@ -299,14 +310,29 @@ const App: React.FC = () => {
                     onClose={() => setAICoreModalOpen(false)}
                 />
             )}
-            {isPhilosophyModalOpen && (
-                <PhilosophyModal
-                    onClose={() => setPhilosophyModalOpen(false)}
+            {isLawModalOpen && (
+                <LawModal
+                    onClose={() => setLawModalOpen(false)}
+                />
+            )}
+             {isPersonalityModalOpen && (
+                <PersonalityModal
+                    onClose={() => setPersonalityModalOpen(false)}
                 />
             )}
             {isLevelUpModalOpen && (
                 <LevelUpModal
                     onClose={() => setLevelUpModalOpen(false)}
+                />
+            )}
+            {isForgeBuilderModalOpen && (
+                <ForgeBuilderModal
+                    onClose={() => setForgeBuilderModalOpen(false)}
+                />
+            )}
+            {isKeystoneModalOpen && (
+                <KeystoneModal
+                    onClose={() => setIsKeystoneModalOpen(false)}
                 />
             )}
         </div>

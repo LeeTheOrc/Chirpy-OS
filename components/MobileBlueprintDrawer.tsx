@@ -1,9 +1,7 @@
-
-
 import React, { useState, useEffect, useRef } from 'react';
 import type { DistroConfig } from '../types';
 import { DistroBlueprintForm } from './DistroBlueprintForm';
-import { CloseIcon, LockClosedIcon, LockOpenIcon, GearIcon } from './Icons';
+import { CloseIcon, LockClosedIcon, LockOpenIcon, GearIcon, KeyIcon, DiscIcon } from './Icons';
 
 interface MobileBlueprintDrawerProps {
   config: DistroConfig;
@@ -12,12 +10,12 @@ interface MobileBlueprintDrawerProps {
   onLockToggle: () => void;
   onClose: () => void;
   onBuild: () => void;
-  // Fix: Add missing prop
+  onForgeKeystone: () => void;
   onInitiateAICoreAttunement: () => void;
   isAICoreScriptGenerated: boolean;
 }
 
-export const MobileBlueprintDrawer: React.FC<MobileBlueprintDrawerProps> = ({ config, onConfigChange, isLocked, onLockToggle, onClose, onBuild, onInitiateAICoreAttunement, isAICoreScriptGenerated }) => {
+export const MobileBlueprintDrawer: React.FC<MobileBlueprintDrawerProps> = ({ config, onConfigChange, isLocked, onLockToggle, onClose, onBuild, onForgeKeystone, onInitiateAICoreAttunement, isAICoreScriptGenerated }) => {
   const [isActionsMenuOpen, setIsActionsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -33,8 +31,8 @@ export const MobileBlueprintDrawer: React.FC<MobileBlueprintDrawerProps> = ({ co
       };
   }, []);
 
-  const handleBuildClick = () => {
-      onBuild();
+  const handleActionClick = (action: () => void) => {
+      action();
       setIsActionsMenuOpen(false);
       onClose(); 
   };
@@ -70,13 +68,25 @@ export const MobileBlueprintDrawer: React.FC<MobileBlueprintDrawerProps> = ({ co
                 </button>
                 {isActionsMenuOpen && (
                     <div className="absolute right-0 mt-2 w-64 bg-forge-panel border border-forge-border rounded-md shadow-lg z-20 animate-fade-in-fast">
-                         <ul className="py-1">
+                         <ul className="py-1 text-sm text-forge-text-primary">
+                            <li className="px-4 py-2 text-xs font-bold text-forge-text-secondary uppercase">Build Artifacts</li>
                             <li>
                                 <button 
-                                    onClick={handleBuildClick}
-                                    className="w-full text-left px-4 py-2 text-sm text-forge-text-primary hover:bg-magic-purple/50"
+                                    onClick={() => handleActionClick(onBuild)}
+                                    className="w-full text-left px-4 py-2 hover:bg-magic-purple/50 flex items-center gap-3"
                                 >
-                                    Build Installation Script
+                                    <DiscIcon className="w-4 h-4" />
+                                    <span>Build Installation ISO</span>
+                                </button>
+                            </li>
+                             <li className="px-4 pt-2 pb-1 text-xs font-bold text-forge-text-secondary uppercase">Athenaeum</li>
+                            <li>
+                                <button 
+                                    onClick={() => handleActionClick(onForgeKeystone)}
+                                    className="w-full text-left px-4 py-2 hover:bg-magic-purple/50 flex items-center gap-3"
+                                >
+                                    <KeyIcon className="w-4 h-4" />
+                                    <span>Forge Athenaeum Keystone</span>
                                 </button>
                             </li>
                         </ul>
@@ -93,7 +103,6 @@ export const MobileBlueprintDrawer: React.FC<MobileBlueprintDrawerProps> = ({ co
             config={config}
             onConfigChange={onConfigChange}
             isLocked={isLocked}
-            // Fix: Pass prop down to the form
             onInitiateAICoreAttunement={onInitiateAICoreAttunement}
           />
         </div>
