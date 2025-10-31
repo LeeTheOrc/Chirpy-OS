@@ -15,7 +15,10 @@ import { LawModal } from './components/LawModal';
 import { PersonalityModal } from './components/PersonalityModal';
 import { LevelUpModal } from './components/LevelUpModal';
 import { ForgeBuilderModal } from './components/ForgeBuilderModal';
-import { KeystoneModal } from './components/KeystoneModal'; // New Import
+import { KeystoneModal } from './components/KeystoneModal';
+import { AthenaeumScryerModal } from './components/AthenaeumScryerModal';
+import { HousekeepingModal } from './components/HousekeepingModal';
+import { ChwdRitualModal } from './components/ChwdRitualModal'; // New Import
 import { INITIAL_DISTRO_CONFIG, COMMAND_SUGGESTIONS, CODEX_SNIPPETS } from './constants';
 import { WELCOME_MESSAGE, CLOUD_AI_SYSTEM_PROMPT } from './kael-personality';
 import { generateAICoreScript } from './lib/script-generator';
@@ -47,7 +50,10 @@ const App: React.FC = () => {
     const [isPersonalityModalOpen, setPersonalityModalOpen] = useState(false);
     const [isLevelUpModalOpen, setLevelUpModalOpen] = useState(false);
     const [isForgeBuilderModalOpen, setForgeBuilderModalOpen] = useState(false);
-    const [isKeystoneModalOpen, setIsKeystoneModalOpen] = useState(false); // New State
+    const [isKeystoneModalOpen, setIsKeystoneModalOpen] = useState(false);
+    const [isScryerModalOpen, setIsScryerModalOpen] = useState(false);
+    const [isHousekeepingModalOpen, setHousekeepingModalOpen] = useState(false);
+    const [isChwdModalOpen, setIsChwdModalOpen] = useState(false); // New State
     
     const [generatedScript, setGeneratedScript] = useState('');
     const [isAICoreScriptGenerated, setIsAICoreScriptGenerated] = useState(false);
@@ -317,6 +323,10 @@ const App: React.FC = () => {
                 onPersonalityClick={() => setPersonalityModalOpen(true)}
                 onManifestoClick={() => setLevelUpModalOpen(true)}
                 onForgeBuilderClick={() => setForgeBuilderModalOpen(true)}
+                onKeystoneClick={() => setIsKeystoneModalOpen(true)}
+                onScryerClick={() => setIsScryerModalOpen(true)}
+                onHousekeepingClick={() => setHousekeepingModalOpen(true)}
+                onChwdClick={() => setIsChwdModalOpen(true)}
             />
 
             {isBlueprintDrawerOpen && (
@@ -385,6 +395,21 @@ const App: React.FC = () => {
             {isKeystoneModalOpen && (
                 <KeystoneModal
                     onClose={() => setIsKeystoneModalOpen(false)}
+                />
+            )}
+            {isScryerModalOpen && (
+                <AthenaeumScryerModal
+                    onClose={() => setIsScryerModalOpen(false)}
+                />
+            )}
+            {isHousekeepingModalOpen && (
+                <HousekeepingModal
+                    onClose={() => setHousekeepingModalOpen(false)}
+                />
+            )}
+            {isChwdModalOpen && (
+                <ChwdRitualModal
+                    onClose={() => setIsChwdModalOpen(false)}
                 />
             )}
         </div>

@@ -48,7 +48,7 @@ export interface DistroConfig {
   graphicsMode: 'integrated' | 'nvidia' | 'hybrid';
   shell: 'zsh';
   aurHelpers: ('paru')[];
-  extraRepositories: ('cachy' | 'chaotic')[];
+  extraRepositories: ('kael-os' | 'cachy' | 'chaotic')[];
   // New properties for detailed installation
   targetDisk: string;
   filesystem: 'btrfs' | 'ext4';

@@ -96,6 +96,7 @@ chown -R "$LIVE_USER:$LIVE_USER" "/home/$LIVE_USER/.config"
 
     const allPackages = Array.from(packageList).filter(p => !p.includes('cachyos')).sort();
     
+    const hasKael = config.extraRepositories.includes('kael-os');
     const hasChaotic = config.extraRepositories.includes('chaotic');
     const hasCachy = config.extraRepositories.includes('cachy');
     
@@ -107,6 +108,7 @@ clear
 
 # --- SCRIPT CONFIGURATION (Injected by Kael AI) ---
 ISO_WORKDIR="kael-iso-build"
+HAS_KAEL=${hasKael}
 HAS_CACHY=${hasCachy}
 HAS_CHAOTIC=${hasChaotic}
 
@@ -157,8 +159,12 @@ echo "$CALAMARES_${filename.replace(/[\/\.]/g, '_')}_CONTENT" > "releng/airootfs
 success "Scripts and configs embedded successfully."
 
 # Configure build environment for custom repositories
-if [ "$HAS_CACHY" = "true" ] || [ "$HAS_CHAOTIC" = "true" ]; then
+if [ "$HAS_KAEL" = "true" ] || [ "$HAS_CACHY" = "true" ] || [ "$HAS_CHAOTIC" = "true" ]; then
     info "Configuring pacman for custom repositories..."
+    if [ "$HAS_KAEL" = "true" ]; then
+        info "--> [Host] Setting up Kael OS Athenaeum..."
+        grep -q "kael-os" /etc/pacman.conf || echo -e "\\n[kael-os]\\nSigLevel = Optional TrustAll\\nServer = https://leetheorc.github.io/kael-os-repo/\\n" | tee -a /etc/pacman.conf
+    fi
     if [ "$HAS_CACHY" = "true" ]; then
         info "--> [Host] Setting up CachyOS repository..."
         pacman-key --recv-keys F3B607488DB35A47 --keyserver keyserver.ubuntu.com; pacman-key --lsign-key F3B607488DB35A47

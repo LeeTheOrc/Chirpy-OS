@@ -33,20 +33,6 @@ interface DistroBlueprintFormProps {
   isLocked: boolean;
   onInitiateAICoreAttunement?: () => void;
 }
-
-// Defensive renderer for array-like fields to prevent crashes from malformed AI responses.
-const renderArrayAsString = (value: unknown): string => {
-    if (Array.isArray(value)) {
-      // Ensure all items are strings before joining, just in case.
-      return value.map(String).join(', ');
-    }
-    // If it's already a string, use it. This can happen with a corrupted state.
-    if (typeof value === 'string') {
-      return value;
-    }
-    // Otherwise, default to empty string for safety.
-    return '';
-  };
   
 export const DistroBlueprintForm: React.FC<DistroBlueprintFormProps> = ({ config, onConfigChange, isLocked, onInitiateAICoreAttunement }) => {
     
@@ -97,9 +83,15 @@ export const DistroBlueprintForm: React.FC<DistroBlueprintFormProps> = ({ config
             });
         }
     };
-
-    const handleArrayChange = (name: 'extraRepositories', value: string) => {
-        onConfigChange({ ...config, [name]: value.split(',').map(s => s.trim()).filter(Boolean) as any });
+    
+    const handleRepoToggle = (repo: 'cachy' | 'chaotic') => {
+        if (isLocked) return;
+        const otherRepos = config.extraRepositories.filter(r => r !== 'kael-os' && (r === 'cachy' || r === 'chaotic'));
+        const newOtherRepos = otherRepos.includes(repo)
+            ? otherRepos.filter(r => r !== repo)
+            : [...otherRepos, repo];
+        
+        onConfigChange({ ...config, extraRepositories: ['kael-os', ...newOtherRepos] });
     };
     
     const countriesForSelectedContinent = LOCATIONS_DATA[selectedContinent as keyof typeof LOCATIONS_DATA] || [];
@@ -200,7 +192,33 @@ export const DistroBlueprintForm: React.FC<DistroBlueprintFormProps> = ({ config
                 </label>
                 <span className="text-forge-text-primary font-medium text-sm">Paru</span>
             </div>
-            <DetailInput label="Extra Repos" name="extraRepositories" value={renderArrayAsString(config.extraRepositories)} onChange={(e) => handleArrayChange('extraRepositories', e.target.value)} disabled={isLocked} />
+            <div className="py-2.5 border-b border-forge-border/50">
+                <label className="flex items-center gap-1.5 text-forge-text-secondary text-sm mb-2">
+                    Extra Repositories
+                    <Tooltip text="Enable additional pacman repositories for more software." />
+                </label>
+                <div className="flex flex-wrap items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 bg-dragon-fire/20 text-dragon-fire font-semibold text-xs px-2.5 py-1.5 rounded-full">
+                        kael-os
+                        <Tooltip text="The sovereign Kael OS package repository. Foundational and always active." />
+                    </span>
+                    
+                    <button 
+                        onClick={() => handleRepoToggle('cachy')}
+                        disabled={isLocked}
+                        className={`font-semibold text-xs px-2.5 py-1.5 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${config.extraRepositories.includes('cachy') ? 'bg-magic-purple/30 text-magic-purple ring-1 ring-magic-purple/50' : 'bg-forge-panel text-forge-text-secondary hover:bg-forge-border'}`}
+                    >
+                        cachy
+                    </button>
+                    <button 
+                        onClick={() => handleRepoToggle('chaotic')}
+                        disabled={isLocked}
+                        className={`font-semibold text-xs px-2.5 py-1.5 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${config.extraRepositories.includes('chaotic') ? 'bg-magic-purple/30 text-magic-purple ring-1 ring-magic-purple/50' : 'bg-forge-panel text-forge-text-secondary hover:bg-forge-border'}`}
+                    >
+                        chaotic
+                    </button>
+                </div>
+            </div>
 
             {onInitiateAICoreAttunement && (
                  <div className="pt-6">

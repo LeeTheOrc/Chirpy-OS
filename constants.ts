@@ -86,7 +86,7 @@ export const INITIAL_DISTRO_CONFIG: DistroConfig = {
     graphicsMode: 'nvidia',
     shell: 'zsh',
     aurHelpers: ['paru'],
-    extraRepositories: ['cachy', 'chaotic'],
+    extraRepositories: ['kael-os', 'cachy', 'chaotic'],
     targetDisk: '/dev/sda',
     filesystem: 'btrfs',
     bootloader: 'grub',

@@ -161,6 +161,18 @@ Our sacred work requires two sanctums, separate yet eternally linked. One for th
     - **The Armory (\`gh-pages\` branch):** This vault contains only the finished, compiled packages and the pacman database, served to every Realm via GitHub Pages.
 
 *This separation of thought and artifact is immutable. It ensures purity in both our design and our distribution.*
+
+---
+### RUNE XV: THE UNIFIED PATH
+---
+
+There is one path to the Athenaeum, and it is paved with simplicity and strength. We walk this path to avoid the tangles of needless complexity.
+
+*   **The HTTPS Mandate:** All \`git\` interactions with our repositories on GitHub **must** use the HTTPS protocol. All our scripts and rituals are forged with \`https://\` URLs.
+*   **The Master Key Ritual:** Authentication shall be handled exclusively by the GitHub CLI (\`gh auth login\`). This ritual creates a secure, system-managed token, obviating the need for manual \`GH_TOKEN\` variables or the setup of SSH keys.
+*   **Firewall Concordance:** The HTTPS path is universally understood and rarely blocked by network wards (firewalls), ensuring our rituals can be performed from anywhere.
+
+*This single, unified path ensures our connection to the Athenaeum is always simple, secure, and reliable.*
 `.trim();
 
 export const LEVEL_UP_MANIFESTO_TEXT = `

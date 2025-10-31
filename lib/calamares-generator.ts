@@ -133,6 +133,16 @@ ufw --force enable
 `;
 };
 
+const getChwdScript = (): string => {
+    return `#!/bin/bash
+set -e
+echo "--- Running the Ritual of Insight (chwd) ---"
+# Automatically detect and install all relevant drivers.
+# The --quiet flag reduces verbosity for the installer log.
+chwd -a --quiet
+`;
+};
+
 const getRepoSetupScript = (config: DistroConfig): string => {
     const cachyRepo = `
 [cachyos-v3]
@@ -232,7 +242,7 @@ const generatePackagesConf = (config: DistroConfig): string => {
         'ollama', 'xorg', 'plasma-meta', 'sddm', 'konsole', 'dolphin',
         'ufw', 'gufw', 'kaccounts-integration', 'kaccounts-providers', 'kio-gdrive',
         'qemu-guest-agent', 'virtualbox-guest-utils', // Include both VM utils for universal ISO
-        'remmina', 'google-chrome'
+        'remmina', 'google-chrome', 'chwd' // Add chwd to the core packages
     ]);
     config.kernels.forEach(k => packageList.add(k));
     config.packages.split(',').map(p => p.trim()).filter(Boolean).forEach(p => packageList.add(p));
@@ -240,6 +250,11 @@ const generatePackagesConf = (config: DistroConfig): string => {
     else if (config.gpuDriver === 'amd') { packageList.add('mesa'); packageList.add('xf86-video-amdgpu'); }
     else if (config.gpuDriver === 'intel') { packageList.add('mesa'); packageList.add('xf86-video-intel'); }
     config.aurHelpers.forEach(h => packageList.add(h));
+
+    if (config.extraRepositories.includes('kael-os')) {
+        packageList.add('kael-pacman-conf');
+    }
+
     if (config.filesystem === 'btrfs' && config.enableSnapshots) {
         packageList.add('grub-btrfs');
         packageList.add('timeshift');
@@ -258,15 +273,19 @@ const generateShellprocessConf = (): string => `
         name: "repositories"
         file: "/etc/calamares/scripts/setup-repos.sh"
         chrooted: true
-    -   # Second job: setup AUR helper
+    -   # Second job: run hardware detection
+        name: "chwd"
+        file: "/etc/calamares/scripts/run-chwd.sh"
+        chrooted: true
+    -   # Third job: setup AUR helper
         name: "aur"
         file: "/etc/calamares/scripts/setup-aur.sh"
         chrooted: true
-    -   # Third job: install AUR packages
+    -   # Fourth job: install AUR packages
         name: "aur_packages"
         file: "/etc/calamares/scripts/install-aur-packages.sh"
         chrooted: true
-    -   # Fourth job: configure firewall
+    -   # Fifth job: configure firewall
         name: "firewall"
         file: "/etc/calamares/scripts/setup-firewall.sh"
         chrooted: true
@@ -307,6 +326,7 @@ export const generateCalamaresConfiguration = (config: DistroConfig): Record<str
 
         // Post-install scripts
         'scripts/setup-repos.sh': getRepoSetupScript(config),
+        'scripts/run-chwd.sh': getChwdScript(),
         'scripts/setup-aur.sh': getAurSetupScript(config),
         'scripts/install-aur-packages.sh': getAurPackagesScript(config),
         'scripts/setup-firewall.sh': getFirewallSetupScript(config),

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LinkState } from '../types';
-import { KaelSigilIcon, InformationCircleIcon, RocketLaunchIcon, WifiIcon, SpeakerWaveIcon, LinkIcon, ScrollIcon, ForgeIcon } from './Icons';
+import { KaelSigilIcon, InformationCircleIcon, RocketLaunchIcon, WifiIcon, SpeakerWaveIcon, LinkIcon, ScrollIcon, ForgeIcon, KeyIcon, BookOpenIcon, WrenchScrewdriverIcon, EyeIcon } from './Icons';
 
 interface BottomPanelProps {
     linkState: LinkState;
@@ -10,6 +10,10 @@ interface BottomPanelProps {
     onPersonalityClick: () => void;
     onManifestoClick: () => void;
     onForgeBuilderClick: () => void;
+    onKeystoneClick: () => void;
+    onScryerClick: () => void;
+    onHousekeepingClick: () => void;
+    onChwdClick: () => void;
 }
 
 const KaelStartIcon: React.FC = () => (
@@ -75,7 +79,7 @@ const LinkStateIndicator: React.FC<{ linkState: LinkState; onToggle: () => void;
     );
 };
 
-export const BottomPanel: React.FC<BottomPanelProps> = ({ linkState, onToggleLinkState, onCodexClick, onLawClick, onPersonalityClick, onManifestoClick, onForgeBuilderClick }) => {
+export const BottomPanel: React.FC<BottomPanelProps> = ({ linkState, onToggleLinkState, onCodexClick, onLawClick, onPersonalityClick, onManifestoClick, onForgeBuilderClick, onKeystoneClick, onScryerClick, onHousekeepingClick, onChwdClick }) => {
     return (
         <footer className="fixed bottom-0 left-0 right-0 h-14 bg-forge-panel/90 backdrop-blur-sm border-t border-forge-border z-20 px-4 flex items-center justify-between">
             <div className="flex-1 flex justify-start">
@@ -86,8 +90,20 @@ export const BottomPanel: React.FC<BottomPanelProps> = ({ linkState, onToggleLin
             </div>
             <div className="flex-1 flex justify-end items-center gap-3">
                  <div className="flex items-center gap-1">
-                    <button onClick={onForgeBuilderClick} className="p-2 rounded-full hover:bg-forge-border/60 text-forge-text-secondary transition-colors" title="The Forge">
+                    <button onClick={onChwdClick} className="p-2 rounded-full hover:bg-forge-border/60 text-forge-text-secondary transition-colors" title="Ritual of Insight (chwd)">
+                        <EyeIcon className="w-5 h-5" />
+                    </button>
+                    <button onClick={onForgeBuilderClick} className="p-2 rounded-full hover:bg-forge-border/60 text-forge-text-secondary transition-colors" title="The Forge: Genesis Ritual">
                         <ForgeIcon className="w-5 h-5" />
+                    </button>
+                     <button onClick={onScryerClick} className="p-2 rounded-full hover:bg-forge-border/60 text-forge-text-secondary transition-colors" title="Athenaeum Scryer">
+                        <BookOpenIcon className="w-5 h-5" />
+                    </button>
+                    <button onClick={onKeystoneClick} className="p-2 rounded-full hover:bg-forge-border/60 text-forge-text-secondary transition-colors" title="Forge Athenaeum Keystone">
+                        <KeyIcon className="w-5 h-5" />
+                    </button>
+                    <button onClick={onHousekeepingClick} className="p-2 rounded-full hover:bg-forge-border/60 text-forge-text-secondary transition-colors" title="Forge Housekeeping">
+                        <WrenchScrewdriverIcon className="w-5 h-5" />
                     </button>
                      <button onClick={onManifestoClick} className="p-2 rounded-full hover:bg-forge-border/60 text-forge-text-secondary transition-colors" title="Level Up Manifesto">
                         <RocketLaunchIcon className="w-5 h-5" />
