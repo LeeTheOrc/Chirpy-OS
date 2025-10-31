@@ -36,29 +36,29 @@ const CodeBlock: React.FC<{ children: React.ReactNode; lang?: string }> = ({ chi
 const PKGBUILD_CONTENT = `# Maintainer: The Architect & Kael <https://github.com/LeeTheOrc/Kael-OS>
 # Original work by: CachyOS <ptr1337@cachyos.org>
 pkgname=khws
-pkgver=1.0.0
-pkgrel=1
+pkgver=0.3.3
+pkgrel=8
 pkgdesc="Kael Hardware Scry: Kael's hardware detection tool (based on CachyOS chwd)"
 arch=('x86_64')
-url="https://github.com/LeeTheOrc/Kael-OS"
+url="https://github.com/CachyOS/chwd"
 license=('GPL3')
-depends=('pciutils' 'dmidecode' 'hwinfo' 'mesa-utils' 'xorg-xrandr' 'vulkan-tools')
-makedepends=('meson' 'ninja' 'git')
-# NOTE: Cloning the latest version from the original repository.
-# The source URL points to the original repo, but we build it as 'khws'.
-source=("$pkgname::git+https://github.com/CachyOS/chwd.git")
-sha256sums=('SKIP')
+depends=('pciutils' 'dmidecode' 'hwinfo' 'mesa-utils' 'xorg-xrandr' 'vulkan-tools' 'libdrm')
+makedepends=('meson' 'ninja')
+# As learned from the CachyOS grimoires, the correct archive URL uses a 'v' prefix.
+source=("$url/archive/v$pkgver.tar.gz")
+sha256sums=('a02a46c2f9d0c2e30c45d6541571d9d06079d8544d6731d1a938c538c8230623')
 
 build() {
-    # Use explicit source and build directories for meson to be robust.
-    # build() is run from the $srcdir, which contains our checkout in the '$pkgname' dir.
-    meson setup "$pkgname/build" "$pkgname" --prefix=/usr --buildtype=release
-    ninja -C "$pkgname/build"
+    # The source tarball extracts to 'chwd-0.3.3', not 'khws-0.3.3'
+    cd "chwd-$pkgver"
+    meson setup _build --prefix=/usr --buildtype=release
+    ninja -C _build
 }
 
 package() {
-    # Install from the build directory created in the build() step.
-    DESTDIR="$pkgdir" meson install -C "$pkgname/build"
+    # The source tarball extracts to 'chwd-0.3.3', not 'khws-0.3.3'
+    cd "chwd-$pkgver"
+    DESTDIR="$pkgdir" ninja -C _build install
 }
 `;
 
@@ -81,7 +81,7 @@ export const ChwdRitualModal: React.FC<ChwdRitualModalProps> = ({ onClose }) => 
                 <div className="flex justify-between items-center mb-4 flex-shrink-0">
                     <h2 className="text-xl font-bold text-forge-text-primary font-display tracking-wider flex items-center gap-3">
                         <EyeIcon className="w-5 h-5 text-dragon-fire" />
-                        The Ritual of Insight: Forging `khws`
+                        The Ritual of Insight: Forging \`khws\`
                     </h2>
                     <button onClick={onClose} className="text-forge-text-secondary hover:text-forge-text-primary">
                         <CloseIcon className="w-5 h-5" />

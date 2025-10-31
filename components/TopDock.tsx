@@ -32,7 +32,7 @@ export const TopDock: React.FC<TopDockProps> = ({ onBlueprintClick }) => {
             <div className="w-px h-8 bg-forge-border mx-2" />
             <button
                 onClick={onBlueprintClick}
-                className="p-2 rounded-full transition-all duration-200 text-dragon-fire hover:bg-forge-border/60 hover:drop-shadow-[0_0_4px_#ffcc00cc] md:hidden"
+                className="p-2 rounded-full transition-all duration-200 text-dragon-fire hover:bg-forge-border/60 hover:drop-shadow-[0_0_4px_#ffcc00cc]"
                 title="Open Blueprint"
                 aria-label="Open Blueprint"
             >

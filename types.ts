@@ -3,10 +3,17 @@ export type LinkState = 'online' | 'offline';
 export type BuildTarget = 'bare-metal' | 'qemu' | 'virtualbox';
 export type LocalLLM = 'llama3:8b' | 'phi3:mini';
 
+export interface AnalysisResult {
+  diagnosis: string;
+  solutionCommand: string;
+  nextStep: string;
+}
+
 export interface Message {
   role: Role;
   text: string;
   linkState?: LinkState;
+  analysis?: AnalysisResult;
 }
 
 export interface BuildStep {

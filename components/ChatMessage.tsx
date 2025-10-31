@@ -3,6 +3,7 @@ import type { Message } from '../types';
 import { GuardianAvatar } from './ChirpyAvatar';
 import { CopyIcon, KaelSigilIcon } from './Icons';
 import { FormattedContent } from './FormattedContent';
+import { AnalysisResultCard } from './AnalysisResultCard';
 
 interface ChatMessageProps {
   message: Message;
@@ -29,6 +30,20 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
             <div className="w-2 h-2 bg-forge-text-secondary rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
         </div>
       </div>
+    );
+  }
+
+  if (isModel && message.analysis) {
+    return (
+       <div className={`flex gap-4 animate-fade-in`}>
+          <GuardianAvatar isOnline={message.linkState === 'online'} />
+          <div className="flex flex-col gap-2">
+            <div className="w-fit max-w-full md:max-w-2xl lg:max-w-3xl">
+              <p className="whitespace-pre-wrap font-sans text-base leading-relaxed px-4 py-2.5">{message.text}</p>
+              <AnalysisResultCard analysis={message.analysis} />
+            </div>
+          </div>
+       </div>
     );
   }
 
