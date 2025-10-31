@@ -54,6 +54,7 @@ const App: React.FC = () => {
 
     const chatEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const importBlueprintRef = useRef<HTMLInputElement>(null); // Ref for blueprint import
     
     useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -173,6 +174,46 @@ const App: React.FC = () => {
             setAICoreModalOpen(true);
         }
     };
+
+    const handleExportBlueprint = () => {
+        const blob = new Blob([JSON.stringify(distroConfig, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'kael-blueprint.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    };
+
+    const handleImportBlueprint = () => {
+        importBlueprintRef.current?.click();
+    };
+
+    const handleFileImportChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const content = e.target?.result as string;
+                    const newConfig = JSON.parse(content);
+                    // Add some validation here if needed
+                    setDistroConfig(newConfig);
+                     setMessages(prev => [...prev, {
+                        role: 'model',
+                        text: "Blueprint successfully imbued from the artifact.",
+                        linkState
+                    }]);
+                } catch (error) {
+                    console.error("Failed to parse blueprint file:", error);
+                    alert("Error: The selected file is not a valid blueprint artifact.");
+                }
+            };
+            reader.readAsText(file);
+        }
+    };
     
 
     return (
@@ -225,6 +266,13 @@ const App: React.FC = () => {
                                     onChange={handleFileChange}
                                     className="hidden"
                                 />
+                                <input
+                                    type="file"
+                                    ref={importBlueprintRef}
+                                    onChange={handleFileImportChange}
+                                    className="hidden"
+                                    accept=".json"
+                                />
                                  <button
                                     type="button"
                                     onClick={() => setScanModalOpen(true)}
@@ -252,9 +300,11 @@ const App: React.FC = () => {
                         isLocked={isBlueprintLocked} 
                         onLockToggle={() => setIsBlueprintLocked(prev => !prev)}
                         onBuild={() => setIsoModalOpen(true)}
-                        onForgeKeystone={() => setIsKeystoneModalOpen(true)} // New Prop
+                        onForgeKeystone={() => setIsKeystoneModalOpen(true)}
                         onInitiateAICoreAttunement={handleInitiateAICoreAttunement}
                         isAICoreScriptGenerated={isAICoreScriptGenerated}
+                        onExportBlueprint={handleExportBlueprint}
+                        onImportBlueprint={handleImportBlueprint}
                     />
                 </aside>
             </div>
@@ -277,9 +327,11 @@ const App: React.FC = () => {
                     onLockToggle={() => setIsBlueprintLocked(prev => !prev)}
                     onClose={() => setIsBlueprintDrawerOpen(false)}
                     onBuild={() => { setIsoModalOpen(true); setIsBlueprintDrawerOpen(false); }}
-                    onForgeKeystone={() => { setIsKeystoneModalOpen(true); setIsBlueprintDrawerOpen(false); }} // New Prop
+                    onForgeKeystone={() => { setIsKeystoneModalOpen(true); setIsBlueprintDrawerOpen(false); }}
                     onInitiateAICoreAttunement={() => { handleInitiateAICoreAttunement(); setIsBlueprintDrawerOpen(false); }}
                     isAICoreScriptGenerated={isAICoreScriptGenerated}
+                    onExportBlueprint={() => { handleExportBlueprint(); setIsBlueprintDrawerOpen(false); }}
+                    onImportBlueprint={() => { handleImportBlueprint(); setIsBlueprintDrawerOpen(false); }}
                 />
             )}
 

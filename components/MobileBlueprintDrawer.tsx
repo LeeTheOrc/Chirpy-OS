@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { DistroConfig } from '../types';
 import { DistroBlueprintForm } from './DistroBlueprintForm';
-import { CloseIcon, LockClosedIcon, LockOpenIcon, GearIcon, KeyIcon, DiscIcon } from './Icons';
+import { CloseIcon, LockClosedIcon, LockOpenIcon, GearIcon, KeyIcon, DiscIcon, DownloadIcon, FolderIcon } from './Icons';
 
 interface MobileBlueprintDrawerProps {
   config: DistroConfig;
@@ -13,9 +13,11 @@ interface MobileBlueprintDrawerProps {
   onForgeKeystone: () => void;
   onInitiateAICoreAttunement: () => void;
   isAICoreScriptGenerated: boolean;
+  onExportBlueprint: () => void;
+  onImportBlueprint: () => void;
 }
 
-export const MobileBlueprintDrawer: React.FC<MobileBlueprintDrawerProps> = ({ config, onConfigChange, isLocked, onLockToggle, onClose, onBuild, onForgeKeystone, onInitiateAICoreAttunement, isAICoreScriptGenerated }) => {
+export const MobileBlueprintDrawer: React.FC<MobileBlueprintDrawerProps> = ({ config, onConfigChange, isLocked, onLockToggle, onClose, onBuild, onForgeKeystone, onInitiateAICoreAttunement, isAICoreScriptGenerated, onExportBlueprint, onImportBlueprint }) => {
   const [isActionsMenuOpen, setIsActionsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -34,7 +36,6 @@ export const MobileBlueprintDrawer: React.FC<MobileBlueprintDrawerProps> = ({ co
   const handleActionClick = (action: () => void) => {
       action();
       setIsActionsMenuOpen(false);
-      onClose(); 
   };
 
   return (
@@ -67,7 +68,28 @@ export const MobileBlueprintDrawer: React.FC<MobileBlueprintDrawerProps> = ({ co
                     <GearIcon className="w-5 h-5" />
                 </button>
                 {isActionsMenuOpen && (
-                    <div className="absolute right-0 mt-2 w-64 bg-forge-panel border border-forge-border rounded-md shadow-lg z-20 animate-fade-in-fast">
+                    <div className="absolute right-0 mt-2 w-64 bg-forge-panel border border-forge-border rounded-md shadow-lg z-20 animate-fade-in-fast divide-y divide-forge-border">
+                         <ul className="py-1 text-sm text-forge-text-primary">
+                             <li className="px-4 py-2 text-xs font-bold text-forge-text-secondary uppercase">Blueprint Management</li>
+                             <li>
+                                <button 
+                                    onClick={() => handleActionClick(onImportBlueprint)}
+                                    className="w-full text-left px-4 py-2 hover:bg-magic-purple/50 flex items-center gap-3"
+                                >
+                                    <FolderIcon className="w-4 h-4" />
+                                    <span>Import Blueprint...</span>
+                                </button>
+                            </li>
+                            <li>
+                                <button 
+                                    onClick={() => handleActionClick(onExportBlueprint)}
+                                    className="w-full text-left px-4 py-2 hover:bg-magic-purple/50 flex items-center gap-3"
+                                >
+                                    <DownloadIcon className="w-4 h-4" />
+                                    <span>Export Blueprint</span>
+                                </button>
+                            </li>
+                         </ul>
                          <ul className="py-1 text-sm text-forge-text-primary">
                             <li className="px-4 py-2 text-xs font-bold text-forge-text-secondary uppercase">Build Artifacts</li>
                             <li>
