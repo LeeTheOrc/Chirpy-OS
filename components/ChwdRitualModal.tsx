@@ -44,19 +44,20 @@ url="https://github.com/CachyOS/chwd"
 license=('GPL3')
 depends=('pciutils' 'dmidecode' 'hwinfo' 'mesa-utils' 'xorg-xrandr' 'vulkan-tools' 'libdrm')
 makedepends=('meson' 'ninja')
-# As learned from the CachyOS grimoires, the correct archive URL uses a 'v' prefix.
-source=("$url/archive/v$pkgver.tar.gz")
+# This renames the downloaded source tarball to match our package name.
+# The 'v' prefix on the version is critical for the GitHub archive URL.
+source=("$pkgname-$pkgver.tar.gz::$url/archive/v$pkgver.tar.gz")
 sha256sums=('a02a46c2f9d0c2e30c45d6541571d9d06079d8544d6731d1a938c538c8230623')
 
 build() {
-    # The source tarball extracts to 'chwd-0.3.3', not 'khws-0.3.3'
+    # The source tarball extracts to 'chwd-0.3.3', not our pkgname.
     cd "chwd-$pkgver"
     meson setup _build --prefix=/usr --buildtype=release
     ninja -C _build
 }
 
 package() {
-    # The source tarball extracts to 'chwd-0.3.3', not 'khws-0.3.3'
+    # The source tarball extracts to 'chwd-0.3.3', not our pkgname.
     cd "chwd-$pkgver"
     DESTDIR="$pkgdir" ninja -C _build install
 }

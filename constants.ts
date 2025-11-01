@@ -12,6 +12,29 @@ export const LOCAL_LLM_PROFILES: Record<LocalLLM, { name: string; description: s
     'phi3:mini': { name: 'Featherlight (Phi-3)', description: 'A lightweight, resilient failsafe soul.' },
 };
 
+export const APPRENTICE_PRESETS = {
+  general: {
+    name: 'General Use',
+    description: 'For browsing, office work, and media.',
+    packages: 'firefox, libreoffice-still, vlc, gimp',
+    gpuDriver: 'amd', // A safe, open-source default
+  },
+  gaming: {
+    name: 'Gaming',
+    description: 'For playing games via Steam and Lutris.',
+    packages: 'steam, lutris, discord, obs-studio, mangohud',
+    gpuDriver: 'nvidia',
+    extraRepositories: ['kael-os', 'cachy', 'chaotic'],
+  },
+  development: {
+    name: 'Software Development',
+    description: 'For coding, containers, and version control.',
+    packages: 'vscode, git, docker, podman, gitkraken',
+    gpuDriver: 'intel', // Another safe default
+  }
+};
+
+
 export const LOCATIONS_DATA = {
     "Africa": [
         { name: 'Nigeria', timezones: ['Africa/Lagos'], locales: ['en_NG.UTF-8'], keyboards: ['us'] },
@@ -105,10 +128,10 @@ export const INITIAL_DISTRO_CONFIG: DistroConfig = {
 };
 
 export const COMMAND_SUGGESTIONS = [
-    "Let's start from scratch. Give me a minimal server setup.",
-    "I'm a gamer. Forge me a high-performance Realm with KDE, NVIDIA drivers, and the latest kernel.",
-    "Create a blueprint for a secure development machine with GNOME, docker, and a btrfs filesystem with snapshots.",
-    "What are the benefits of using the 'chaotic' repository?",
+    "Build me a simple computer for browsing.",
+    "I want a powerful computer for gaming.",
+    "What's a 'repository'?",
+    "How do I get started?",
 ];
 
 export const BUILD_STEPS: BuildStep[] = [

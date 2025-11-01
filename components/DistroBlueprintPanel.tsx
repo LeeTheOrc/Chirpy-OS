@@ -39,8 +39,8 @@ export const DistroBlueprintPanel: React.FC<DistroBlueprintPanelProps> = ({ conf
 
 
     return (
-        <div className="bg-gradient-to-br from-forge-panel to-[#1a1626] border-2 border-forge-border rounded-lg ring-1 ring-forge-border/50 animate-fade-in divide-y divide-forge-border shadow-2xl shadow-black/30">
-            <div className="p-5 flex justify-between items-start">
+        <div className="bg-gradient-to-br from-forge-panel to-[#1a1626] border-2 border-forge-border rounded-lg ring-1 ring-forge-border/50 animate-fade-in divide-y divide-forge-border shadow-2xl shadow-black/30 flex flex-col h-full">
+            <div className="p-5 flex justify-between items-start flex-shrink-0">
                 <div>
                     <h3 className="text-xl font-bold text-dragon-fire font-display tracking-wider">The Architect's Blueprint</h3>
                     <p className="text-forge-text-secondary text-sm">A living document of our realm's configuration.</p>
@@ -113,12 +113,14 @@ export const DistroBlueprintPanel: React.FC<DistroBlueprintPanelProps> = ({ conf
                     </div>
                 </div>
             </div>
-            <DistroBlueprintForm 
-                config={config} 
-                onConfigChange={onConfigChange} 
-                isLocked={isLocked}
-                onInitiateAICoreAttunement={onInitiateAICoreAttunement}
-            />
+            <div className="overflow-y-auto">
+                <DistroBlueprintForm 
+                    config={config} 
+                    onConfigChange={onConfigChange} 
+                    isLocked={isLocked}
+                    onInitiateAICoreAttunement={onInitiateAICoreAttunement}
+                />
+            </div>
         </div>
     );
 };

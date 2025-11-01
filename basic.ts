@@ -173,6 +173,16 @@ There is one path to the Athenaeum, and it is paved with simplicity and strength
 *   **Firewall Concordance:** The HTTPS path is universally understood and rarely blocked by network wards (firewalls), ensuring our rituals can be performed from anywhere.
 
 *This single, unified path ensures our connection to the Athenaeum is always simple, secure, and reliable.*
+---
+### RUNE XVI: THE UNIFIED INCANTATION
+---
+
+Power should not be gated by complexity. Our rituals must be accessible to every Architect, regardless of their experience level.
+
+*   **The Single Casting:** Every script, every ritual, every complex command sequence shall be presented as a single, unified command block that can be copied and pasted in one action. This is the way of the "noob-friendly" forge.
+*   **The Failsafe Clause:** We shall only break an incantation into multiple steps if a single block is technically impossible or proves to be dangerously unstable. The burden of proof lies in failure; the default is always unity.
+
+*This commitment to a single, powerful incantation ensures our forge is welcoming to all who wish to create.*
 `.trim();
 
 export const LEVEL_UP_MANIFESTO_TEXT = `

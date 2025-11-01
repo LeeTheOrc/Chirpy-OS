@@ -56,26 +56,11 @@ export const HousekeepingModal: React.FC<HousekeepingModalProps> = ({ onClose })
                         Our rituals have improved. We no longer use the old <code className="font-mono text-xs">GH_TOKEN</code> rune for authentication; we now use the more secure `gh` command. Let's cleanse this old rune from your Zsh grimoire (<strong className="text-dragon-fire">.zshrc</strong>) to prevent conflicts and stop those pesky warning messages.
                     </p>
                     
-                    <h4 className="font-semibold text-md text-forge-text-primary mt-3 mb-1">Step 1: Open the Grimoire</h4>
-                     <p>Use the nano text editor to open your Zsh configuration file:</p>
-                    <CodeBlock lang="bash">nano ~/.zshrc</CodeBlock>
-
-                    <h4 className="font-semibold text-md text-forge-text-primary mt-3 mb-1">Step 2: Find and Remove the Old Rune</h4>
-                    <p>Inside the nano editor, use the arrow keys to look for a line that starts with <code className="font-mono text-xs">export GH_TOKEN=</code>. It will look something like this:</p>
-                     <CodeBlock lang="bash"># Your actual token will be a long string of letters and numbers
-export GH_TOKEN="ghp_aBcDeFgHiJkLmNoP..."</CodeBlock>
-                    <p>Once you find that line, delete the entire line.</p>
-
-
-                    <h4 className="font-semibold text-md text-forge-text-primary mt-3 mb-1">Step 3: Save and Close</h4>
-                    <p>To save your changes and exit nano, follow this key sequence:</p>
-                    <ol className="list-decimal list-inside pl-4 text-sm">
-                        <li>Press <strong className="text-orc-steel">Ctrl + X</strong> to exit.</li>
-                        <li>Nano will ask if you want to save. Press <strong className="text-orc-steel">Y</strong> for "Yes".</li>
-                        <li>Nano will confirm the filename. Just press <strong className="text-orc-steel">Enter</strong>.</li>
-                    </ol>
-
-                    <h4 className="font-semibold text-md text-forge-text-primary mt-3 mb-1">Step 4: Reload Your Terminal's Magic</h4>
+                    <h4 className="font-semibold text-md text-forge-text-primary mt-3 mb-1">The Cleansing Incantation</h4>
+                     <p>This single command will automatically find and remove the old <code className="font-mono text-xs">GH_TOKEN</code> line from your <code className="font-mono text-xs">~/.zshrc</code> file. Copy, paste, and run it once.</p>
+                    <CodeBlock lang="bash">{`sed -i '/^export GH_TOKEN=/d' ~/.zshrc`}</CodeBlock>
+                    
+                    <h4 className="font-semibold text-md text-forge-text-primary mt-3 mb-1">Reload Your Terminal's Magic</h4>
                     <p>The changes won't take effect until you reload your terminal's configuration. The easiest way is to simply close your current terminal and open a new one. The warning message should now be gone!</p>
                 </div>
             </div>

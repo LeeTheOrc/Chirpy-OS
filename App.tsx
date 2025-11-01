@@ -2,19 +2,17 @@ import React, { useState, useEffect, useRef } from 'react';
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 
 import type { DistroConfig, Message, LinkState, AnalysisResult } from './types';
-import { INITIAL_DISTRO_CONFIG, COMMAND_SUGGESTIONS, BUILD_STEPS, CODEX_SNIPPETS } from './constants';
+import { INITIAL_DISTRO_CONFIG, COMMAND_SUGGESTIONS } from './constants';
 import { WELCOME_MESSAGE, CLOUD_AI_SYSTEM_PROMPT } from './kael-personality';
 import { generateAICoreScript } from './lib/script-generator';
-import { generateCalamaresConfiguration } from './lib/calamares-generator';
 
 // Component Imports
-import { Logo } from './components/Logo';
-import { TopDock } from './components/TopDock';
-import { MobileBlueprintDrawer } from './components/MobileBlueprintDrawer';
+import { Header } from './components/Header';
 import { ChatMessage } from './components/ChatMessage';
 import { CommandSuggestions } from './components/CommandSuggestions';
 import { BottomPanel } from './components/BottomPanel';
 import { FileAttachment } from './components/FileAttachment';
+import { DistroBlueprintPanel } from './components/DistroBlueprintPanel';
 
 // Modal Imports
 import { BuildModal } from './components/BuildModal';
@@ -33,15 +31,14 @@ import { ChwdRitualModal } from './components/ChwdRitualModal';
 import { ChroniclerModal } from './components/ChroniclerModal';
 import { ForgeInspectorModal } from './components/ForgeInspectorModal';
 import { SigilCrafterModal } from './components/SigilCrafterModal';
-import { KeyringRitualModal } from './components/KeyringRitualModal';
+import { KeyringAttunementModal } from './components/KeyringAttunementModal';
 
 
 type ModalType = 
     | 'build' | 'iso' | 'keystone' | 'ai-core' | 'law' | 'levelup' 
     | 'personality' | 'codex' | 'system-scan' | 'forge-builder'
     | 'athenaeum-scryer' | 'housekeeping' | 'chwd-ritual' | 'chronicler'
-    | 'forge-inspector' | 'sigil-crafter' | 'keyring-ritual' | null;
-
+    | 'forge-inspector' | 'sigil-crafter' | 'keyring-attunement' | null;
 
 const App: React.FC = () => {
     const [config, setConfig] = useState<DistroConfig>(INITIAL_DISTRO_CONFIG);
@@ -51,7 +48,6 @@ const App: React.FC = () => {
     const [linkState, setLinkState] = useState<LinkState>('online');
     const [isLoading, setIsLoading] = useState(false);
     const [activeModal, setActiveModal] = useState<ModalType>(null);
-    const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const [isAICoreScriptGenerated, setIsAICoreScriptGenerated] = useState(false);
     const [aiCoreScript, setAiCoreScript] = useState('');
     const [attachedFile, setAttachedFile] = useState<File | null>(null);
@@ -69,10 +65,9 @@ const App: React.FC = () => {
     }, [messages]);
 
     const handleConfigChange = (newConfig: DistroConfig) => {
-        if (!isLocked) {
-            setConfig(newConfig);
-            setIsAICoreScriptGenerated(false);
-        }
+        if (isLocked) return;
+        setConfig(newConfig);
+        setIsAICoreScriptGenerated(false);
     };
     
     const handleSendMessage = async (messageText: string) => {
@@ -92,7 +87,6 @@ const App: React.FC = () => {
                 fileContent = await attachedFile.text();
             } catch (e) {
                 console.error("Error reading file:", e);
-                // Handle error, maybe show a message to the user.
             }
         }
 
@@ -100,7 +94,6 @@ const App: React.FC = () => {
             const isKaelChronicle = fileContent && fileContent.includes("KAEL CHRONICLE") && fileContent.includes("FAILED (unknown public key B62C3D10C54D5DA9)");
             
             if (isKaelChronicle) {
-                // Mocked AI response for the specific GPG error from the user's log
                 setMessages(prev => prev.slice(0, -1)); // remove thinking
                 const analysis: AnalysisResult = {
                   diagnosis: "The build failed because the forge's security wards do not recognize the signature of the CachyOS master artisan for the 'chwd' package. This is a GPG key verification failure.",
@@ -127,7 +120,7 @@ const App: React.FC = () => {
                 
                 const responseText = response.text;
                 
-                setMessages(prev => prev.slice(0, -1)); // Remove thinking indicator
+                setMessages(prev => prev.slice(0, -1));
 
                 const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/);
                 if (jsonMatch && jsonMatch[1]) {
@@ -156,7 +149,7 @@ const App: React.FC = () => {
             }
         } catch (error) {
             console.error("Error communicating with AI:", error);
-             setMessages(prev => prev.slice(0, -1)); // remove thinking
+             setMessages(prev => prev.slice(0, -1));
             const errorMessage: Message = {
                 role: 'model',
                 text: "My connection to the cloud animus seems to be severed. Please check the connection or try again later.",
@@ -196,7 +189,7 @@ const App: React.FC = () => {
                     try {
                         const newConfig = JSON.parse(event.target?.result as string);
                         setConfig(newConfig);
-                        setIsLocked(true); // Lock after importing a new blueprint
+                        setIsLocked(true);
                     } catch (err) {
                         alert("Error: Could not parse the blueprint file.");
                     }
@@ -207,17 +200,16 @@ const App: React.FC = () => {
         input.click();
     };
 
-
     const renderModal = () => {
         switch (activeModal) {
-            case 'build': return <BuildModal steps={BUILD_STEPS} onClose={() => setActiveModal(null)} onComplete={() => setActiveModal('iso')} />;
+            case 'build': return <BuildModal steps={[{ name: 'Calibrating the Chrono-Anvil...', duration: 1000 }, { name: 'Etching Configuration Grimoires...', duration: 1500 }, { name: 'Summoning Calamares Spirit...', duration: 2000 }, { name: 'Binding Post-Install Incantations...', duration: 2500 }, { name: 'Forging the Master Build Script...', duration: 1000 }]} onClose={() => setActiveModal(null)} onComplete={() => setActiveModal('iso')} />;
             case 'iso': return <IsoModal config={config} onClose={() => setActiveModal(null)} />;
             case 'keystone': return <KeystoneModal onClose={() => setActiveModal(null)} />;
             case 'ai-core': return <AICoreModal script={aiCoreScript} onClose={() => setActiveModal(null)} />;
             case 'law': return <LawModal onClose={() => setActiveModal(null)} />;
             case 'levelup': return <LevelUpModal onClose={() => setActiveModal(null)} />;
             case 'personality': return <PersonalityModal onClose={() => setActiveModal(null)} />;
-            case 'codex': return <CodexModal snippets={CODEX_SNIPPETS} onClose={() => setActiveModal(null)} />;
+            case 'codex': return <CodexModal snippets={[{id: "1", title: "Manually Partition a Disk", content: "..."}]} onClose={() => setActiveModal(null)} />;
             case 'system-scan': return <SystemScanModal onClose={() => setActiveModal(null)} onComplete={(report) => handleSendMessage(`Analyze this system report and suggest blueprint changes:\n${report}`)} />;
             case 'forge-builder': return <ForgeBuilderModal onClose={() => setActiveModal(null)} />;
             case 'athenaeum-scryer': return <AthenaeumScryerModal onClose={() => setActiveModal(null)} />;
@@ -226,39 +218,18 @@ const App: React.FC = () => {
             case 'chronicler': return <ChroniclerModal onClose={() => setActiveModal(null)} />;
             case 'forge-inspector': return <ForgeInspectorModal onClose={() => setActiveModal(null)} />;
             case 'sigil-crafter': return <SigilCrafterModal onClose={() => setActiveModal(null)} onGenerate={(prompt) => handleSendMessage(prompt)} />;
-            case 'keyring-ritual': return <KeyringRitualModal onClose={() => setActiveModal(null)} />;
+            case 'keyring-attunement': return <KeyringAttunementModal onClose={() => setActiveModal(null)} />;
             default: return null;
         }
     };
     
     return (
         <div className="bg-forge-bg min-h-screen text-forge-text-primary font-sans flex flex-col">
-             <div className="fixed top-0 left-0 right-0 z-20 p-4 flex justify-between items-center md:hidden bg-forge-bg/80 backdrop-blur-sm">
-                <Logo linkState={linkState} />
-            </div>
-
-            <TopDock onBlueprintClick={() => setIsDrawerOpen(true)} />
-
-            <main className="flex-1 flex flex-col p-4 pt-20 md:pt-4 gap-4 max-w-screen-2xl mx-auto w-full">
-                {/* Mobile Blueprint Drawer */}
-                {isDrawerOpen && (
-                    <MobileBlueprintDrawer
-                        config={config}
-                        onConfigChange={handleConfigChange}
-                        isLocked={isLocked}
-                        onLockToggle={() => setIsLocked(!isLocked)}
-                        onClose={() => setIsDrawerOpen(false)}
-                        onBuild={() => { setActiveModal('build'); setIsDrawerOpen(false); }}
-                        onForgeKeystone={() => { setActiveModal('keystone'); setIsDrawerOpen(false); }}
-                        onInitiateAICoreAttunement={() => { handleInitiateAICoreAttunement(); setIsDrawerOpen(false); }}
-                        isAICoreScriptGenerated={isAICoreScriptGenerated}
-                        onExportBlueprint={handleExportBlueprint}
-                        onImportBlueprint={handleImportBlueprint}
-                    />
-                )}
-                
-                {/* Chat Panel */}
-                <div className="flex-1 flex flex-col h-full">
+            <Header linkState={linkState} />
+            
+            <main className="flex-1 w-full max-w-screen-2xl mx-auto p-4 pt-20 lg:pt-24 grid lg:grid-cols-3 gap-8">
+                {/* Chat Panel (Left Column) */}
+                <div className="lg:col-span-2 flex flex-col h-[75vh] lg:h-[calc(100vh-7.5rem)]">
                      <div className="flex-1 overflow-y-auto pr-2 space-y-6 pb-4">
                         {messages.map((msg, index) => (
                             <ChatMessage key={index} message={msg} />
@@ -287,6 +258,23 @@ const App: React.FC = () => {
                         onOpenMenu={(menu) => setActiveModal(menu)}
                     />
                 </div>
+                
+                {/* Blueprint Panel (Right Column) */}
+                <div className="lg:col-span-1 flex flex-col">
+                    <DistroBlueprintPanel
+                        config={config}
+                        onConfigChange={handleConfigChange}
+                        isLocked={isLocked}
+                        onLockToggle={() => setIsLocked(!isLocked)}
+                        onBuild={() => setActiveModal('build')}
+                        onForgeKeystone={() => setActiveModal('keystone')}
+                        onInitiateAICoreAttunement={handleInitiateAICoreAttunement}
+                        isAICoreScriptGenerated={isAICoreScriptGenerated}
+                        onExportBlueprint={handleExportBlueprint}
+                        onImportBlueprint={handleImportBlueprint}
+                    />
+                </div>
+
             </main>
             {renderModal()}
         </div>
