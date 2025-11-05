@@ -1,528 +1,247 @@
-export const generateTuiInstallerScript = (): string => {
+// This file generates a self-contained bash script that provides a
+// terminal-based UI (TUI) for managing the Kael OS development workflow.
 
-const TUI_SCRIPT_RAW = `#!/bin/bash
-# Kael OS Forge - TUI v1.2
-# A command-line interface for all our sacred rituals.
+const generateKhwsRitualScript = (): string => {
+    // This is the exact PKGBUILD content, with shell variables escaped
+    // so they are treated as literals within the JS template string.
+    const PKGBUILD_CONTENT = `
+# Maintainer: The Architect & Kael <https://github.com/LeeTheOrc/Kael-OS>
+# Original work by: CachyOS <ptr1337@cachyos.org>
 
+_realname=chwd
+pkgname=khws
+pkgver=1.16.1
+pkgrel=1
+pkgdesc="Kael Hardware Scry: Kael's hardware detection tool (based on CachyOS chwd)"
+arch=('x86_64')
+url="https://github.com/CachyOS/\${_realname}"
+license=('GPL3')
+depends=('pciutils' 'dmidecode' 'hwinfo' 'mesa-utils' 'xorg-xrandr' 'vulkan-tools' 'libdrm')
+makedepends=('rust' 'cargo' 'git')
+source=("\${_realname}::git+\${url}.git#tag=\${pkgver}")
+sha256sums=('SKIP')
+
+prepare() {
+	cd "\${_realname}"
+	git submodule update --init
+}
+
+build() {
+    cd "\${_realname}"
+    cargo build --release --locked --all-features
+}
+
+package() {
+    cd "\${_realname}"
+    install -Dm755 target/release/chwd "$pkgdir/usr/bin/khws"
+    install -Dm755 target/release/chwd-kernel "$pkgdir/usr/bin/khws-kernel"
+    install -Dm644 -t "$pkgdir/usr/share/licenses/\$pkgname/" LICENSE
+}
+`.trim();
+
+    // The script that will be executed. It's the same logic as the modal.
+    const RITUAL_SCRIPT_RAW = `#!/bin/bash
+# Kael OS - Unified Ritual of Insight for 'khws'
 set -euo pipefail
 
-# --- CONFIGURATION & VERSION ---
-TUI_VERSION="1.2"
-UPDATE_SOURCE_URL="https://raw.githubusercontent.com/LeeTheOrc/Kael-OS/main/components/TuiInstallerModal.tsx"
+echo "--- Beginning the Ritual of Insight ---"
+echo "This incantation will forge the 'khws' recipe and publish it to the Athenaeum."
 
-# --- STYLING & HELPERS ---
+# Ensure the packages directory exists.
+mkdir -p ~/packages
+
+# Step 1: Check for and forge the Unified Publisher Script if missing
+if [ ! -f "$HOME/packages/publish-package.sh" ]; then
+    echo "--> 'publish-package.sh' not found. Forging it now..."
+    # The script content is embedded here via Base64 to ensure integrity.
+    PUBLISHER_SCRIPT_B64='IyEvYmluL2Jhc2gKIyBLYWVsIE9TIC0gQXRoZW5hZXVtIFB1Ymxpc2hlciBTY3JpcHQgKHY1IC0gd2l0aCBwcmUtZmxpZ2h0IGNoZWNrcykKIyBGb3JnZXMgYSBwYWNrYWdlLCBzaWducyBpdCwgYW5kIHB1Ymxpc2hlcyBpdC4KCnNldCAtZXVvIHBpcGVmYWlsCgojIC0tLSBQUkUtRkxJR0hUIENIRUNLUyAtLS0KaWYgISBjb21tYW5kIC12IGdpdCAmPiAvZGV2L251bGw7IHRoZW4KICAgIGVjaG8gIkVSUk9SOiAnZ2l0JyBpcyBub3QgaW5zdGFsbGVkLiBQbGVhc2UgcnVuIFN0ZXAgMSBvZiB0aGUgS2V5c3RvbmUgUml0dWFsLiIgPiYyCiAgICBleGl0IDEKZmkKaWYgISBjb21tYW5kIC12IGdoICY+IC9kZXYvbnVsbDsgdGhlbgogICAgZWNobyAiRVJST1I6IEdpdEh1YiBDTEkgJ2doJyBpcyBub3QgaW5zdGFsbGVkLiBQbGVhc2UgcnVuIFN0ZXAgMSBvZiB0aGUgS2V5c3RvbmUgUml0dWFsLiIgPiYyCiAgICBleGl0IDEKZmkKaWYgISBnaCBhdXRoIHN0YXR1cyAmPiAvZGV2L251bGw7IHRoZW4KICAgIGVjaG8gIkVSUk9SOiBZb3UgYXJlIG5vdCBhdXRoZW50aWNhdGVkIHdpdGggR2l0SHViLiBQbGVhc2UgcnVuICdnaCBhdXRoIGxvZ2luJyBvciBTdGVwIDEgb2YgdGhlIEtleXN0b25lIFJpdHVhbC4iID4mMgogICAgZXhpdCAxCmZpCmlmICEgY29tbWFuZCAtdiByZXBvLWFkZCAmPiAvZGV2L251bGw7IHRoZW4KICAgIGVjaG8gIkVSUk9SOiAncmVwby1hZGQnIGlzIG5vdCBpbnN0YWxsZWQuIEl0IGlzIHBhcnQgb2YgJ3BhY21hbi1jb250cmliJy4gUGxlYXNlIHJ1biAnc3VkbyBwYWNtYW4gLVMgcGFjbWFuLWNvbnRyaWInLiIgPiYyCiAgICBleGl0IDEKZmkKCiMgLS0tIENPTkZJR1VSQVRJT04gLS0tClJFUE9fRElSPSJ+L2thZWwtb3MtcmVwbyIKUEFDS0FHRV9OQU1FPSQxCiMgLS0tIFNDUklQVCBTVEFSVCAtLS0KZWNobyAiLS0tIFByZXBhcmluZyB0aGUgRm9yZ2UgZm9yIHBhY2thZ2U6ICRQQUNLQUdFX05BTUUgLS0tIgoKIyAtLS0gVkFMSURBVElPTiAtLS0KaWYgWyAteiAiJFBBY2thZ2VOYW1lIiBdOyB0aGVuCiAgICBlY2hvICJFUlJPUjogWW91IG11c3Qgc3BlY2lmeSBhIHBhY2thZ2UgZGlyZWN0b3J5IHRvIGJ1aWxkLiIKICAgIGVjaG8gIlVzYWdlOiAuL3B1Ymxpc2gtcGFja2FnZS5zaCA8cGFja2FnZV9uYW1lPiIKICAgIGV4aXQgMQpmaQppZiBbICEgLWQgIiRQQUNLQUdFX05BTUUiIF0gfHwgWyAhIC1mICIkUEFDS0FHRV9OQU1FL1BLR0JVSUxEIiBdOyB0aGVuCiAgICBlY2hvICJFUlJPUjogRGlyZWN0b3J5ICckUEFDS0FHRV9OQU1FJyBkb2VzIG5vdCBleGlzdCBvciBkb2VzIG5vdCBjb250YWluIGEgUEtHQlVJTEQuIgogICAgZXhpdCAxCmZpCgojIC0tLSBBVVRPLVNJR05JTkcgTE9HSUMgLS0tCmVjaG8gIi0tPiBTZWFyY2hpbmcgZm9yIEdQRyBrZXkgZm9yIHNpZ25pbmcuLi4iCiMgRmlyc3QsIHRyeSB0byBmaW5kIHRoZSBzcGVjaWZpYyAnS2FlbCBPUyBNYXN0ZXIgS2V5Jy4KU0lHTklOR19LRVlfSUQ9JChncGcgLS1saXN0LXNlY3JldC1rZXlzIC0td2l0aC1jb2xvbnMgIkthZWwgT1MgTWFzdGVyIEtleSIgMj4vZGV2L251bGwgfCBhd2sgLUY6ICckMSA9PSAic2VjIiB7IHByaW50ICQ1IH0nIHwgaGVhZCAtbiAxKQoKIyBJZiBub3QgZm9undwgZmFsbCBidWNrIHRvIHRoZSBmaXJzdCBhdmFpbGFibGUgc2VjcmV0IGtleS4KaWYgWyAteiAiJFNJR05JTkdfS0VZX0lEIiBdOyB0aGVuCiAgICBlY2hvICItLT4gJ0thZWwgT1MgTWFzdGVyIEtleScgbm90IGZvdW5kLiBVc2luZyBmaXJzdCBhdmFpbGFibGUgc2VjcmV0IGtleS4iCiAgICBTSUdOSU5HX0tFWV9JRD0kKGdwZyAtLWxpc3Qtc2VjcmV0LWtleXMgLS13aXRoLWNvbG9ucyAyPi9kZXYvbnVsbCB8IGF3ayAtRjogJyQxID09ICJzZWMiIHsgcHJpbnQgJDUgfScgfCBoZWFkIC1uIDEpCmZpCgojIElmIHN0aWxsIG5vIGtleSwgdGhlbiB3ZSBjYW5ub3QgcHJvY2VlZC4KaWYgWyAteiAiJFNJR05JTkdfS0VZX0lEIiBdOyB0aGVuCiAgICBlY2hvICJFUlJPUjogQ291bGQgbm90IGZpbmQgYW55IEdQRyBzZWNyZXQga2V5IGZvciBzaWduaW5nLiBBYm9ydGluZy4iCiAgICBlY2hvICJQbGVhc2UgZW5zdXJlIHlvdSBoYXZlIGEgR1BHIGtleSBieSBydW5uaW5nIFN0ZXAgMiBvZiB0aGUgS2V5c3RvbmUgUml0dWFsLiIKICAgIGV4aXQgMQpmaQoKZWNobyAiW1NVQ0NFU1NdIFVzaW5nIE1hc3RlciBLZXk6ICRTSUdOSU5HX0tFWV9JRCBmb3Igc2lnbmluZy4iCgojIC0tLSBGT1JHSU5HIC0tLQplY2hvICItLT4gRW50ZXJpbmcgdGhlIGZvcmdlIGZvciBwYWNrYWdlOiAkUEFDS0FHRV9OQU1FLi4uIgpkZWNsYXJlIC1hIG1ha2Vwa2dfYXJncyAoXQptYWtlcGtnX2FyZ3MrPSgtc2YpCm1ha2Vwa2dfYXJncysoLS1zaWduKQptYWtlcGtnX2FyZ3MrPSgtLWtleikKbWFrZXBrZ19hcmdzKz0oIlNESUdOSU5HX0tFWV9JRCIpCm1ha2Vwa2dfYXJncysoLS1za2lwcGdwY2hlY2spCm1ha2Vwa2dfYXJncysoLS1ub25jb25maXJtKQoKY2QgIiRQQUNLQUdFX05BTUUiCgplY2hvICItLT4gRm9yZ2luZyBhbmQgc2lnbmluZyB0aGUgcGFja2FnZSAobWFrZXBrZykuLi4iCm1ha2Vwa2cg"\${mYWtlcGtnX2FyZ3N[@]}"CgpQQUNLQUdFX0ZJTEU9JChmaW5kIC4gLW5hbWUgIioucGtnLnRhci56c3QiIC1wcmludCAtcXVpdCkKaWYgWyAteiAiJFBBY2thZ2VGaWxlIiBdOyB0aGVuCiAgICBlY2hvICJFUlJPUjogQnVpbGQgZmFpbGVkLiBObyBwYWNrYWdlIGZpbGUgd2FzIGNyZWF0ZWQuIgogICAgZXhpdCAxCmZpCgojIC0tLSBQVUJMSVNISU5HIC0tLQpFWFBBTkRFRF9SRVBPX0RJUj0kKGV2YWwgZWNobyAkUkVQT19ESVIpCmVjaG8gIi0tPiBNb3ZpbmcgZm9yZ2VkIGFydGlmYWN0IHRvIHRoZSBBdGhlbmFldW06ICRFWFBBTkRFRF9SRVBPX0RJUiIKbXYgIiRQQUNLQUdFX0ZJTEUiKiAiJEVYUEFOREVEX1JFUE9fRElSIiAvICMgTW92ZSBib3RoIHRoZSBwYWNrYWdlIGFuZCBpdHMgLnNpZyBmaWxlCgpjZCAiJEVYUEFOREVEX1JFUE9fRElSIgplY2hvICItLT4gVXBkYXRpbmcgdGhlIEF0aGVuYWV1bSdzIGdyaW1vaXJlIChkYXRhYmFzZSkuLi4iCiMgUmVtb3ZlIG9sZCBwYWNrYWdlIGVudHJ5IGZpcnN0IHRvIHByZXZlbnQgZHVwbGljYXRlcy5yZXBvLXJlbW92ZSBrYWVsLW9zLXJlcG8uZGIudGFyLmd6ICIkKGJhc2VuYW1lICIkUEFDS0FHRV9GSUxFIiAucGtnLnRhci56c3QpIiAyPi9kZXYvbnVsbCB8fCB0cnVlCnJlcG8tYWRkIGthZWwtb3MtcmVwby5kYi50YXIuZ3ogIiQoYmFzZW5hbWUgIiRQQUNLQUdFX0ZJTEUiKSIKCiMgVXBkYXRlIHRoZSBwYWNrYWdlIHNvdXJjZXMgcmVwb3NpdG9yeSBpZiBpdCBleGlzdHMKaWYgWyAtZCAiLi4vJFBBY2thZ2VOYW1lLy5naXQiIF07IHRoZW4KICAgIGVjaG8gIi0tPiBVcGRhdGluZyBzb3VyY2UgcmVwb3NpdG9yeSBmb3IgJFBBY2thZ2VOYW1lLi4uIgogICAgY2QgIi4uLyRQQUNLQUdFX05BTUUiCiAgICBnaXQgcHVsbCBvcmlnaW4gbWFzdGVyCmZpCmVjaG8gIi0tLSBDb21taXR0aW5nIHRoZSBuZXcgYXJ0aWZhY3QgdG8gdGhlIEF0aGVuYWV1bSdzIGhpc3RvcnkuLi4iCmdpdCBhZGQgLgogICAgZ2l0IGNvbW1pdCAtbSAiZmVhdDogQWRkL3VwZGF0ZSBwYWNrYWdlICRQQUNLQUdFX05BTUUiCiAgICBnaXQgcHVzaAoKZWNobyAiLS0tIFRoZSBhcnRpZmFjdCBoYXMgYmVlbiBzdWNjZXNzZnVsbHkgcHVibGlzaGVkIHRvIHRoZSBBdGhlbmFldW0uIC0tLSI='
+    echo "$PUBLISHER_SCRIPT_B64" | base64 --decode > "$HOME/packages/publish-package.sh"
+    chmod +x "$HOME/packages/publish-package.sh"
+    echo "[SUCCESS] 'publish-package.sh' has been forged."
+fi
+
+# Step 2: Scribe the recipe for 'khws'
+echo "--> Scribing the recipe for 'khws'..."
+mkdir -p ~/packages/khws
+cat > ~/packages/khws/PKGBUILD << 'PKGBUILD_EOF'
+${PKGBUILD_CONTENT}
+PKGBUILD_EOF
+echo "[SUCCESS] Recipe has been scribed."
+
+# Step 3: Initiate the Publishing Rite
+echo "--> Initiating the Publishing Rite..."
+cd ~/packages
+./publish-package.sh khws
+
+echo "--- The Ritual of Insight is Complete ---"
+`;
+    
+    // Return the Base64 encoded version for embedding in the TUI
+    return btoa(unescape(encodeURIComponent(RITUAL_SCRIPT_RAW)));
+};
+
+
+export const generateTuiInstallerScript = (): string => {
+
+    const RITUAL_KHWS_B64 = generateKhwsRitualScript();
+
+    // This is the main TUI script that will be written to a file.
+    // It contains the menu logic and embeds other scripts as Base64 strings.
+    const tuiScript = `#!/bin/bash
+# Kael Forge TUI - v1.1
+# A Terminal UI for managing the Kael OS development environment.
+
+# --- Colors and Styles ---
 C_RESET='\\033[0m'
-C_DRAGON_FIRE='\\033[38;5;220m' # Gold/Yellow
-C_ORC_STEEL='\\033[38;5;121m'   # Green
-C_MAGIC_PURPLE='\\033[38;5;171m' # Purple
-C_CYAN='\\033[38;5;87m'
-C_GRAY='\\033[38;5;244m'
+C_BOLD='\\033[1m'
+C_DRAGON='\\033[38;5;220m' # Gold/Dragon Fire
+C_ORC='\\033[38;5;47m'   # Green/Orc Steel
+C_PURPLE='\\033[38;5;171m' # Purple/Magic
+C_CYAN='\\033[38;5;51m'
+C_SECONDARY='\\033[38;5;244m'
+C_RED='\\033[38;5;196m'
+C_BLUE='\\033[38;5;39m'
 
-print_header() {
+# --- Embedded Scripts (Base64) ---
+# Each ritual script is stored here to keep the TUI self-contained.
+RITUAL_KHWS_B64="${RITUAL_KHWS_B64}"
+
+# --- Helper Functions ---
+show_header() {
     clear
-    echo -e "\$C_DRAGON_FIRE"
-    echo "    .        .         .        .      .       ."
-    echo "    |        |         |        |      |       |"
-    echo "  --== Kael OS Forge TUI ==--  --== Kael OS Forge TUI ==--"
-    echo "    |        |         |        |      |       |"
-    echo "    '        '         '        '      '       '"
-    echo -e "\$C_RESET"
-    echo -e "\$C_MAGIC_PURPLE    \$1\$C_RESET"
-    echo -e "\$C_GRAY-----------------------------------------------------\$C_RESET"
+    # ASCII Art for "KAEL"
+    echo -e "\\\${C_BOLD}\\\${C_DRAGON}"
+    echo '██╗  ██╗ █████╗ ███████╗██╗      '
+    echo '██║ ██╔╝██╔══██╗██╔════╝██║      '
+    echo '█████╔╝ ███████║█████╗  ██║      '
+    echo '██╔═██╗ ██╔══██║██╔══╝  ██║      '
+    echo '██║  ██╗██║  ██║███████╗███████╗'
+    echo '╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝╚══════╝'
+    echo -e "\\\${C_RESET}"
+    echo -e " \\\${C_BOLD}The Forge TUI - Your command-line partner\\\${C_RESET}"
+    echo -e " \\\${C_SECONDARY}-------------------------------------------\\\${C_RESET}"
 }
 
 press_enter_to_continue() {
     echo ""
-    read -p "\$(echo -e "\$C_ORC_STEEL[PROMPT]\$C_RESET Press Enter to return to the main menu...")"
+    echo -e " \\\${C_SECONDARY}Press [Enter] to return to the main menu...\\\${C_RESET}"
+    read -r
 }
 
-# --- SELF-UPDATE MECHANISM ---
-check_for_updates() {
-    if ! command -v curl &> /dev/null; then
-        echo -e "\$C_GRAY[INFO] curl is not installed. Skipping update check.\$C_RESET"
-        sleep 2
-        return
-    fi
-    
-    echo -e "\$C_GRAY--> Checking for updates...\$C_RESET"
-    LATEST_SOURCE_FILE=\$(curl -s "\$UPDATE_SOURCE_URL")
-    
-    if [ -z "\$LATEST_SOURCE_FILE" ]; then
-        return # Silently fail if offline or URL is broken
-    fi
+# --- Ritual Functions ---
 
-    LATEST_INSTALLER_CONTENT=\$(echo "\$LATEST_SOURCE_FILE" | sed -n '/const INSTALL_SCRIPT_RAW = \\\`/,/^\\\`;\\\$/p' | sed '1d;\\$d')
-    if [ -z "\$LATEST_INSTALLER_CONTENT" ]; then return; fi
-
-    LATEST_VERSION=\$(echo "\$LATEST_INSTALLER_CONTENT" | grep "TUI_VERSION=" | head -n 1 | cut -d'"' -f2)
-    if [ -z "\$LATEST_VERSION" ]; then return; fi
-
-    if [ "\$LATEST_VERSION" != "\$TUI_VERSION" ]; then
-        print_header "Update Available"
-        echo -e "\$C_DRAGON_FIRE[UPDATE]\$C_RESET A new version (\$LATEST_VERSION) of Kael Forge is available!"
-        read -p "\$(echo -e "\$C_ORC_STEEL[PROMPT]\$C_RESET Would you like to update now? [Y/n]: ")" choice
-        if [ -z "\$choice" ]; then choice="Y"; fi
-        if [[ "\$choice" =~ ^[Yy]$ ]]; then
-            echo "--> Updating Kael Forge TUI..."
-            ENCODED_SCRIPT=\$(printf "%s" "\$LATEST_INSTALLER_CONTENT" | base64 -w 0)
-            echo "\$ENCODED_SCRIPT" | base64 --decode | bash
-
-            echo -e "\$C_ORC_STEEL[SUCCESS]\$C_RESET Update complete! Restarting..."
-            sleep 2
-            exec "\$0" "\$@"
-            exit 0
-        else
-            echo "Update skipped. Continuing with current version."
-            sleep 1
-        fi
-    fi
-}
-
-# --- RITUAL FUNCTIONS ---
-
-run_keystone_rituals() {
-    print_header "Keystone Rituals: Forging the Athenaeum"
-    echo "This is a one-time setup to establish our package repository."
-    echo "1. Prepare the Forge (Install tools, log in)"
-    echo "2. Forge Master Key & Recipes"
-    echo "3. Publish Foundational Artifacts"
-    echo "4. All Steps (Automated)"
-    read -p "\$(echo -e "\$C_ORC_STEEL[PROMPT]\$C_RESET Enter choice [1-4]: ")" choice
-
-    run_prepare_script() {
-        bash << 'PREPARE_EOF'
-set -e
-sudo pacman -S git github-cli base-devel --noconfirm
-# We suggest defaults, but the user can change them if they are savvy.
-git config --global user.name "LeeTheOrc"
-git config --global user.email "leetheorc@gmail.com"
-echo "--> You will now be prompted to log into GitHub."
-gh auth login
-if [ -d "$HOME/kael-os-repo" ]; then
-    echo "--> Athenaeum found locally. Updating..."
-    cd ~/kael-os-repo && git pull
-else
-    echo "--> Cloning the Athenaeum for the first time..."
-    cd ~ && git clone https://github.com/LeeTheOrc/kael-os-repo.git
-fi
-PREPARE_EOF
-    }
-
-    run_key_recipe_script() {
-        bash << 'KEY_RECIPE_EOF'
-set -e
-echo "--> Searching for the 'Kael OS Master Key'..."
-GPG_KEY_ID=$(gpg --list-secret-keys --with-colons "Kael OS Master Key" 2>/dev/null | awk -F: '$1 == "sec" { print $5 }' | head -n 1)
-
-if [ -z "$GPG_KEY_ID" ]; then
-    echo "--> Specific 'Kael OS Master Key' not found. Searching for any available key..."
-    GPG_KEY_ID=$(gpg --list-secret-keys --with-colons 2>/dev/null | awk -F: '$1 == "sec" { print $5 }' | head -n 1)
-    if [ ! -z "$GPG_KEY_ID" ]; then
-        KEY_INFO=$(gpg --list-secret-keys "$GPG_KEY_ID" | grep 'uid')
-        echo ""
-        echo "[ATTENTION] Using the first available GPG key found on your system:"
-        echo "    Key ID: $GPG_KEY_ID"
-        echo "    Owner: $KEY_INFO"
-        read -p "    Use this key for signing? [Y/n]: " use_key_confirm
-        if [ -z "$use_key_confirm" ]; then use_key_confirm="Y"; fi
-        if [[ ! "$use_key_confirm" =~ ^[Yy]$ ]]; then
-            GPG_KEY_ID="" # Unset the key ID to proceed to creation
-        fi
-    fi
-fi
-
-if [ -z "$GPG_KEY_ID" ]; then
-    echo "--> No GPG keys found or you opted not to use the found key. Let us forge one now."
-    echo "    Please follow the prompts with these values:"
-    echo "    -> Kind of key: (1) RSA and RSA"
-    echo "    -> Keysize: 4096"
-    echo "    -> Expires: 0 (does not expire)"
-    echo "    -> Real name: Kael OS Master Key"
-    echo "    -> Email address: leetheorc@gmail.com"
-    echo "    -> And a secure passphrase you can remember!"
-    gpg --full-generate-key
-    GPG_KEY_ID=$(gpg --list-secret-keys --with-colons "Kael OS Master Key" 2>/dev/null | awk -F: '$1 == "sec" { print $5 }' | head -n 1)
-    if [ -z "$GPG_KEY_ID" ]; then
-        echo "ERROR: Key creation failed or name does not exactly match 'Kael OS Master Key'."
-        exit 1
-    fi
-    echo "[SUCCESS] Master Key forged successfully! Key ID: $GPG_KEY_ID"
-else
-    echo "[SUCCESS] Found and will use GPG Key ID: $GPG_KEY_ID"
-fi
-
-echo "--> Exporting public key..."
-gpg --armor --export "$GPG_KEY_ID" > ~/kael-os.asc
-
-echo "--> Forging recipe for kael-keyring..."
-mkdir -p ~/packages/kael-keyring
-mv ~/kael-os.asc ~/packages/kael-keyring/
-cat > ~/packages/kael-keyring/PKGBUILD << 'PKGBUILD_EOF'
-# Maintainer: The Architect <leetheorc@gmail.com>
-pkgname=kael-keyring
-pkgver=1
-pkgrel=1
-pkgdesc="Kael OS Master Keyring"
-arch=('any')
-license=('GPL')
-source=('kael-os.asc')
-sha256sums=('SKIP')
-
-package() {
-    install -Dm644 "$srcdir/kael-os.asc" "$pkgdir/usr/share/pacman/keyrings/kael-os.gpg"
-}
-PKGBUILD_EOF
-
-echo "--> Forging recipe for kael-pacman-conf..."
-mkdir -p ~/packages/kael-pacman-conf
-cat > ~/packages/kael-pacman-conf/kael-os.conf << 'CONF_EOF'
-[kael-os]
-SigLevel = Required DatabaseOptional
-Server = https://leetheorc.github.io/kael-os-repo/$arch
-CONF_EOF
-
-cat > ~/packages/kael-pacman-conf/PKGBUILD << 'PKGBUILD_EOF2'
-# Maintainer: The Architect <leetheorc@gmail.com>
-pkgname=kael-pacman-conf
-pkgver=1
-pkgrel=1
-pkgdesc="Pacman configuration for the Kael OS repository"
-arch=('any')
-license=('GPL')
-source=('kael-os.conf')
-sha256sums=('SKIP')
-
-package() {
-    install -Dm644 "$srcdir/kael-os.conf" "$pkgdir/etc/pacman.d/kael-os.conf"
-}
-PKGBUILD_EOF2
-
-echo ""
-echo "[SUCCESS] Foundational recipes have been forged in ~/packages/"
-KEY_RECIPE_EOF
-    }
-    
-    run_publish_script() {
-        bash << 'PUBLISH_EOF'
-set -e
-echo "--> Searching for GPG key for signing..."
-GPG_KEY_ID=$(gpg --list-secret-keys --with-colons "Kael OS Master Key" 2>/dev/null | awk -F: '$1 == "sec" { print $5 }' | head -n 1)
-if [ -z "$GPG_KEY_ID" ]; then
-    echo "--> 'Kael OS Master Key' not found. Using first available secret key."
-    GPG_KEY_ID=$(gpg --list-secret-keys --with-colons 2>/dev/null | awk -F: '$1 == "sec" { print $5 }' | head -n 1)
-fi
-if [ -z "$GPG_KEY_ID" ]; then
-    echo "ERROR: Could not find any GPG secret key for signing. Aborting."
-    exit 1
-fi
-echo "[SUCCESS] Using Master Key: $GPG_KEY_ID for signing."
-
-echo "--> Building kael-keyring..."
-cd ~/packages/kael-keyring
-makepkg -sf --sign --key "$GPG_KEY_ID" --skippgpcheck --noconfirm
-mv *.pkg.tar.zst* ~/kael-os-repo/
-
-echo "--> Building kael-pacman-conf..."
-cd ~/packages/kael-pacman-conf
-makepkg -sf --sign --key "$GPG_KEY_ID" --skippgpcheck --noconfirm
-mv *.pkg.tar.zst* ~/kael-os-repo/
-
-echo "--> Committing new artifacts to the Athenaeum..."
-cd ~/kael-os-repo
-repo-add kael-os-repo.db.tar.gz *.pkg.tar.zst
-git add .
-git commit -m "feat: Establish Athenaeum foundation"
-git push
-
-echo ""
-echo "[SUCCESS] Foundation laid. The Athenaeum is now live."
-PUBLISH_EOF
-    }
-
-    case \$choice in
-        1) run_prepare_script ;;
-        2) run_key_recipe_script ;;
-        3) run_publish_script ;;
-        4) run_prepare_script && run_key_recipe_script && run_publish_script ;;
-        *) echo "Invalid choice." ;;
-    esac
+run_ritual() {
+    local ritual_name="\$1"
+    local ritual_b64="\$2"
+    show_header
+    echo -e "\\\${C_BOLD}\\\${C_ORC}Initiating Ritual: \${ritual_name}\\\${C_RESET}"
+    echo ""
+    echo "This will execute the full script for this ritual."
+    echo -e "Please follow any on-screen prompts."
+    echo ""
+    read -p "Press [Enter] to begin or Ctrl+C to abort."
+    echo ""
+    # Decode and execute the embedded script
+    echo "\$ritual_b64" | base64 --decode | bash
+    echo ""
+    echo -e "\\\${C_BOLD}\\\${C_ORC}Ritual Complete.\\\${C_RESET}"
     press_enter_to_continue
 }
 
-run_publish_package() {
-    local package_name=\$1
-    if [ -z "\$package_name" ]; then echo "No package name provided to publisher."; return 1; fi
-    
-    # This script is fed into a new bash instance, receiving the package name as its first argument (\$1).
-    # The delimiter is single-quoted to prevent variable expansion by the outer shell.
-    bash -s -- "\$package_name" << 'PUBLISH_PACKAGE_EOF'
+# --- Main Menu ---
+main_menu() {
+    while true; do
+        show_header
+        echo -e "\\\${C_BOLD}Select a ritual to perform:\\\${C_RESET}"
+        echo ""
+        echo -e " \\\${C_DRAGON}1)\\\${C_RESET} Ritual of Insight (\`khws\`) \\\${C_SECONDARY}(Forge & publish the hardware detection tool)"
+        echo ""
+        echo -e " \\\${C_BLUE}2)\\\${C_RESET} Forge Athenaeum Keystone \\\${C_SECONDARY}(Setup package repository)"
+        echo -e " \\\${C_BLUE}3)\\\${C_RESET} Athenaeum Scryer \\\${C_SECONDARY}(Study other repos)"
+        echo ""
+        echo -e " \\\${C_RED}Q)\\\${C_RESET} Quit the Forge"
+        echo ""
+        echo -e -n "\\\${C_BOLD}Your choice: \\\${C_RESET}"
+        read -r choice
+
+        case \$choice in
+            1) run_ritual "Ritual of Insight (\`khws\`)" "\$RITUAL_KHWS_B64" ;;
+            2) show_header; echo -e "\\\${C_BLUE}Please perform the multi-step Keystone Ritual using the web UI for now.\\\${C_RESET}"; press_enter_to_continue ;;
+            3) show_header; echo -e "\\\${C_BLUE}Please use the commands from the web UI to use the Athenaeum Scryer.\\\${C_RESET}"; press_enter_to_continue ;;
+            [Qq]) clear; echo -e "\\\${C_DRAGON}Farewell, Architect. The forge awaits your return.\\n\\\${C_RESET}" ; exit 0 ;;
+            *) echo -e "\\n\\\${C_RED}Invalid choice. Please try again.\\n\\\${C_RESET}" ; sleep 1 ;;
+        esac
+    done
+}
+
+# --- Script Entry Point ---
+main_menu
+`;
+
+    // This is the installer part that wraps the main TUI script.
+    const installerScript = `#!/bin/bash
+# Kael Forge TUI Installer - v1.1
+# This script installs the Kael Forge TUI.
+
 set -euo pipefail
 
-PACKAGE_NAME="$1"
-PACKAGE_DIR="$HOME/packages/$PACKAGE_NAME"
-REPO_DIR="$HOME/kael-os-repo"
+# --- Installer Logic ---
+install_tui() {
+    INSTALL_DIR="\$HOME/.local/bin"
+    INSTALL_PATH="\$INSTALL_DIR/kael-forge"
+    LOGIN_SHELL_PATH=\$(getent passwd \$USER | cut -d: -f7)
+    CONFIG_SHELL="\${LOGIN_SHELL_PATH##*/}"
 
-if [ ! -d "$PACKAGE_DIR" ] || [ ! -f "$PACKAGE_DIR/PKGBUILD" ]; then
-    echo "ERROR: Package directory '$PACKAGE_DIR' not found or is missing a PKGBUILD."
-    exit 1
-fi
-
-echo "--> Searching for GPG key for signing..."
-SIGNING_KEY_ID=$(gpg --list-secret-keys --with-colons "Kael OS Master Key" 2>/dev/null | awk -F: '$1 == "sec" { print $5 }' | head -n 1)
-if [ -z "$SIGNING_KEY_ID" ]; then
-    SIGNING_KEY_ID=$(gpg --list-secret-keys --with-colons 2>/dev/null | awk -F: '$1 == "sec" { print $5 }' | head -n 1)
-fi
-if [ -z "$SIGNING_KEY_ID" ]; then
-    echo "ERROR: Could not find any GPG secret key for signing."
-    exit 1
-fi
-echo "[SUCCESS] Using Master Key: $SIGNING_KEY_ID for signing."
-
-# Change to the package directory to build it
-cd "$PACKAGE_DIR"
-makepkg -sf --sign --key "$SIGNING_KEY_ID" --skippgpcheck --noconfirm
-
-PACKAGE_FILE=$(find . -name "*.pkg.tar.zst" -print -quit)
-if [ -z "$PACKAGE_FILE" ]; then
-    echo "ERROR: Build failed."
-    exit 1
-fi
-
-EXPANDED_REPO_DIR=$(eval echo $REPO_DIR)
-# We need to move the file from the package dir to the repo dir
-mv "$PACKAGE_FILE"* "$EXPANDED_REPO_DIR/"
-
-# Now, change to the repo directory to update it
-cd "$EXPANDED_REPO_DIR"
-
-repo-remove kael-os-repo.db.tar.gz "$(basename "$PACKAGE_FILE" .pkg.tar.zst)" 2>/dev/null || true
-repo-add kael-os-repo.db.tar.gz "$(basename "$PACKAGE_FILE")"
-
-git add .
-git commit -m "feat: Add/update package $PACKAGE_NAME"
-git push
-
-echo "--- Artifact published to the Athenaeum. ---"
-PUBLISH_PACKAGE_EOF
-}
-
-run_khws_ritual() {
-    print_header "Ritual of Insight: Forging 'khws'"
-    echo "This ritual packages the CachyOS 'chwd' source code as 'khws'"
-    echo "and publishes it to our Athenaeum."
-    echo ""
-
-    read -p "\$(echo -e "\$C_ORC_STEEL[PROMPT]\$C_RESET Source type (folder/archive) [folder]: ")" src_type
-    if [ -z "\$src_type" ]; then src_type="folder"; fi
-
-    if [ "\$src_type" != "folder" ] && [ "\$src_type" != "archive" ]; then
-        echo "Invalid source type. Aborting."
-        press_enter_to_continue
-        return
-    fi
+    echo "--- Installing Kael Forge TUI ---"
     
-    read -p "\$(echo -e "\$C_ORC_STEEL[PROMPT]\$C_RESET Full path to source \$src_type: ")" src_path
+    mkdir -p "\$INSTALL_DIR"
+    
+    # Write the main TUI script (which is embedded here) to the install path
+    echo "--> Forging the TUI executable..."
+    # The '-r' prevents backslash escapes from being interpreted by echo.
+    echo -r '${tuiScript}' > "\$INSTALL_PATH"
 
-    if [ -z "\$src_path" ]; then
-        echo "Source path is required. Aborting."
-        press_enter_to_continue
-        return
-    fi
+    chmod +x "\$INSTALL_PATH"
+    echo "--> TUI script created at \$INSTALL_PATH"
 
-    echo ""
-    echo "--- Preparing to Forge ---"
-    echo "Package: khws"
-    echo "Source Type: \$src_type"
-    echo "Source Path: \$src_path"
-    read -p "\$(echo -e "\$C_ORC_STEEL[PROMPT]\$C_RESET Does this look correct? [Y/n]: ")" confirm
-    if [ -z "\$confirm" ]; then confirm="Y"; fi
-    if [[ ! "\$confirm" =~ ^[Yy]$ ]]; then
-        echo "Aborted by user."
-        press_enter_to_continue
-        return
-    fi
-
-    echo "--> Preparing source files..."
-    mkdir -p "\$HOME/packages/khws/src"
-    if [ "\$src_type" = "folder" ]; then
-        if [ ! -d "\$src_path" ]; then echo "ERROR: Source directory not found."; press_enter_to_continue; return; fi
-        cp -r "\$src_path"/. "\$HOME/packages/khws/src/"
+    echo "--> Checking system PATH for \$INSTALL_DIR..."
+    if [[ ":\$PATH:" != *":\$INSTALL_DIR:"* ]]; then
+        echo "--> Directory not in PATH. Adding it to your shell profile."
+        
+        if [ "\$CONFIG_SHELL" = "fish" ]; then
+            if ! fish -c "contains \\\$INSTALL_DIR \\\$fish_user_paths"; then
+                fish -c "set -U fish_user_paths \\\$INSTALL_DIR \\\$fish_user_paths"
+                echo "--> Added to fish_user_paths. Please open a NEW terminal."
+            else
+                echo "--> Already in fish_user_paths. No changes needed."
+            fi
+        elif [ "\$CONFIG_SHELL" = "zsh" ] || [ "\$CONFIG_SHELL" = "bash" ]; then
+            PROFILE_FILE=""
+            if [ "\$CONFIG_SHELL" = "zsh" ]; then
+                PROFILE_FILE="\$HOME/.zshrc"
+            else
+                PROFILE_FILE="\$HOME/.bashrc"
+            fi
+            
+            if ! grep -q "Kael Forge TUI" "\$PROFILE_FILE" 2>/dev/null; then
+                echo -e '\\n# Add Kael Forge TUI to PATH\\nexport PATH="\$HOME/.local/bin:\$PATH"' >> "\$PROFILE_FILE"
+                echo "--> Added to \$PROFILE_FILE. Please run 'source \$PROFILE_FILE' or open a NEW terminal."
+            else
+                 echo "--> Configuration already present in \$PROFILE_FILE. No changes needed."
+            fi
+        else
+            echo "--> Unsupported shell: \$CONFIG_SHELL. Please add \$INSTALL_DIR to your PATH manually."
+        fi
     else
-        if [ ! -f "\$src_path" ]; then echo "ERROR: Source archive not found."; press_enter_to_continue; return; fi
-        tar -xvf "\$src_path" -C "\$HOME/packages/khws/src" --strip-components=1
-    fi
-    echo "[SUCCESS] Source files prepared."
-
-    echo "--> Scribing the recipe for 'khws'..."
-    cat > "\$HOME/packages/khws/PKGBUILD" << 'PKGBUILD_EOF'
-# Maintainer: The Architect & Kael <https://github.com/LeeTheOrc/Kael-OS>
-# Original work by: CachyOS <ptr1337@cachyos.org>
-pkgname=khws
-pkgver=0.3.3
-pkgrel=12
-pkgdesc="Kael Hardware Scry: Kael's hardware detection tool (based on CachyOS chwd)"
-arch=('x86_64')
-url="https://github.com/CachyOS/chwd"
-license=('GPL3')
-depends=('pciutils' 'dmidecode' 'hwinfo' 'mesa-utils' 'xorg-xrandr' 'vulkan-tools' 'libdrm')
-makedepends=('meson' 'ninja')
-source=('src')
-sha256sums=('SKIP')
-noextract=("src")
-
-build() {
-    cd "$srcdir/src"
-    meson setup _build --prefix=/usr --buildtype=release
-    ninja -C _build
-}
-
-package() {
-    cd "$srcdir/src"
-    DESTDIR="$pkgdir" ninja -C _build install
-}
-PKGBUILD_EOF
-
-    echo "[SUCCESS] Recipe has been scribed."
-
-    echo "--> Initiating the Publishing Rite..."
-    run_publish_package "khws"
-    
-    press_enter_to_continue
-}
-
-
-run_local_source_ritual() {
-    print_header "Ritual of Local Forging (Generic)"
-    read -p "Package Name: " pkgname
-    read -p "Description: " pkgdesc
-    read -p "Version [1.0]: " pkgver
-    if [ -z "\$pkgver" ]; then pkgver="1.0"; fi
-    read -p "Release [1]: " pkgrel
-    if [ -z "\$pkgrel" ]; then pkgrel="1"; fi
-    read -p "Source path (folder): " src_path
-
-    if [ -z "\$pkgname" ] || [ -z "\$src_path" ]; then
-        echo "Package name and source path are required."
-        press_enter_to_continue
-        return
+        echo "--> Directory is already in your PATH. No changes needed."
     fi
     
-    echo "Preparing files..."
-    mkdir -p "\$HOME/packages/\$pkgname/src"
-    cp -r "\$src_path"/. "\$HOME/packages/\$pkgname/src/"
-
-    cat > "\$HOME/packages/\$pkgname/PKGBUILD" << PKGBUILD_EOF
-# Maintainer: The Architect
-pkgname=\${pkgname}
-pkgver=\${pkgver}
-pkgrel=\${pkgrel}
-pkgdesc="\${pkgdesc}"
-arch=('any')
-license=('GPL3')
-source=('src')
-sha256sums=('SKIP')
-noextract=("src")
-
-build() {
-    cd "\$srcdir/src"
-    echo "Nothing to build."
-}
-
-package() {
-    cd "\$srcdir/src"
-    install -Dm 755 -t "\$pkgdir/usr/bin/" *
-}
-PKGBUILD_EOF
-
-    echo "PKGBUILD created. Now publishing..."
-    
-    run_publish_package "\$pkgname"
-    press_enter_to_continue
-}
-
-# --- MAIN MENU & LOOP ---
-
-show_menu() {
-    print_header "Main Menu"
-    echo -e "\$C_ORC_STEEL  [1]\$C_RESET Keystone Rituals (One-Time Setup)"
-    echo -e "\$C_ORC_STEEL  [2]\$C_RESET Ritual of Insight (Forge 'khws')"
-    echo -e "\$C_ORC_STEEL  [3]\$C_RESET Ritual of Local Forging (Generic)"
     echo ""
-    echo -e "\$C_GRAY  [q] Quit\$C_RESET"
-    echo ""
+    echo -e "✅ Installation Complete!"
+    echo "Run 'kael-forge' in a new terminal to start."
 }
 
-# --- SCRIPT ENTRY POINT ---
-check_for_updates
-
-while true; do
-    show_menu
-    read -p "\$(echo -e "\$C_ORC_STEEL[PROMPT]\$C_RESET Your choice: ")" choice
-    case \$choice in
-        1) run_keystone_rituals ;;
-        2) run_khws_ritual ;;
-        3) run_local_source_ritual ;;
-        q|Q) echo "May your forge burn ever bright!"; exit 0 ;;
-        *) echo "Invalid choice." ; press_enter_to_continue ;;
-    esac
-done
+install_tui
 `;
-
-const INSTALL_SCRIPT_RAW = `#!/bin/bash
-set -e
-INSTALL_DIR="\$HOME/.local/bin"
-INSTALL_PATH="\$INSTALL_DIR/kael-forge"
-# Determine the user's actual login shell, not the shell running the script.
-LOGIN_SHELL_PATH=\$(getent passwd \$USER | cut -d: -f7)
-CONFIG_SHELL=\$(basename "\$LOGIN_SHELL_PATH")
-
-echo "--- Installing Kael OS Forge TUI ---"
-echo "--> Detected user's login shell as '\$CONFIG_SHELL'..."
-
-# Create installation directory
-mkdir -p "\$INSTALL_DIR"
-
-# Write the TUI script content
-echo "--> Creating the kael-forge script..."
-cat > "\$INSTALL_PATH" << 'KAEL_TUI_INSTALLER_EOF'
-\${TUI_SCRIPT_RAW}
-KAEL_TUI_INSTALLER_EOF
-
-# Make it executable
-chmod +x "\$INSTALL_PATH"
-
-# Check and add to PATH if necessary by modifying the appropriate shell config file.
-echo "--> Checking shell configuration for PATH..."
-if [ "\$CONFIG_SHELL" = "fish" ]; then
-    # For fish, we use a universal variable which applies immediately to new shells.
-    echo "--> Configuring fish shell PATH..."
-    # We execute a fish command directly from our bash script.
-    # The 'if contains' check prevents adding the path if it's already there.
-    fish -c 'if not contains $HOME/.local/bin $fish_user_paths; set -U fish_user_paths $HOME/.local/bin $fish_user_paths; echo "--> Kael Forge path added to fish shell."; else echo "--> Kael Forge path already configured for fish."; end'
-    echo "--> Configuration complete. Please open a NEW terminal tab or window."
-else
-    # For bash/zsh, we add an export command if it's not already there.
-    PROFILE_FILE=""
-    if [ "\$CONFIG_SHELL" = "zsh" ]; then
-        PROFILE_FILE="\$HOME/.zshrc"
-    else
-        PROFILE_FILE="\$HOME/.bashrc"
-    fi
-    echo "--> Will check profile file: '\$PROFILE_FILE'"
-    touch "\$PROFILE_FILE"
-    if ! grep -q "export PATH=.*\$INSTALL_DIR" "\$PROFILE_FILE"; then
-        echo "Adding \$INSTALL_DIR to your PATH in \$PROFILE_FILE"
-        echo -e '\\n# Add Kael Forge TUI to PATH\\nexport PATH="\$INSTALL_DIR:\$PATH"' >> "\$PROFILE_FILE"
-        echo "--> Path updated. Please run 'source \$PROFILE_FILE' or restart your terminal."
-    else
-        echo "--> Kael Forge path seems to be already configured in \$PROFILE_FILE."
-    fi
-fi
-
-echo ""
-echo "✅ Installation Complete!"
-echo "Run 'kael-forge' to start the TUI."
-`;
-
-    return INSTALL_SCRIPT_RAW;
+    return installerScript;
 };

@@ -19,7 +19,7 @@ const CodeBlock: React.FC<{ children: React.ReactNode; lang?: string }> = ({ chi
 
     return (
         <div className="relative group my-2">
-            <pre className={`bg-forge-bg border border-forge-border rounded-lg p-3 text-xs text-forge-text-secondary font-mono pr-12 whitespace-pre-wrap break-words max-h-48 overflow-y-auto ${lang ? `language-${lang}` : ''}`}>
+            <pre className={`bg-forge-bg border border-forge-border rounded-lg p-3 text-xs text-forge-text-secondary font-mono pr-12 whitespace-pre-wrap break-words max-h-64 overflow-y-auto ${lang ? `language-${lang}` : ''}`}>
                 <code>{children}</code>
             </pre>
             <button 
@@ -33,152 +33,64 @@ const CodeBlock: React.FC<{ children: React.ReactNode; lang?: string }> = ({ chi
     );
 };
 
-const Stepper: React.FC<{ currentStep: number, steps: string[] }> = ({ currentStep, steps }) => (
-    <div className="flex items-center justify-between mb-6">
-        {steps.map((step, index) => {
-            const stepNumber = index + 1;
-            const isCompleted = currentStep > stepNumber;
-            const isActive = currentStep === stepNumber;
-            return (
-                <React.Fragment key={step}>
-                    <div className="flex flex-col items-center text-center">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
-                            isActive ? 'bg-dragon-fire text-black' : 
-                            isCompleted ? 'bg-orc-steel text-black' : 
-                            'bg-forge-border text-forge-text-secondary'
-                        }`}>
-                            {isCompleted ? '✓' : stepNumber}
-                        </div>
-                        <p className={`mt-2 text-xs font-semibold ${isActive || isCompleted ? 'text-forge-text-primary' : 'text-forge-text-secondary'}`}>{step}</p>
-                    </div>
-                    {index < steps.length - 1 && (
-                        <div className={`flex-1 h-0.5 mx-2 transition-colors ${isCompleted ? 'bg-orc-steel' : 'bg-forge-border'}`}></div>
-                    )}
-                </React.Fragment>
-            );
-        })}
-    </div>
-);
-
-const RadioGroup: React.FC<{label: string, name: string, options: {value: string, label: string}[], selected: string, onChange: (value: string) => void}> = ({label, name, options, selected, onChange}) => (
-    <div>
-        <label className="block text-sm font-medium text-forge-text-secondary mb-2">{label}</label>
-        <div className="flex gap-4">
-            {options.map(opt => (
-                <label key={opt.value} className="flex items-center gap-2 text-sm text-forge-text-primary cursor-pointer">
-                    <input
-                        type="radio"
-                        name={name}
-                        value={opt.value}
-                        checked={selected === opt.value}
-                        onChange={() => onChange(opt.value)}
-                        className="form-radio bg-forge-bg border-forge-border text-dragon-fire focus:ring-dragon-fire"
-                    />
-                    {opt.label}
-                </label>
-            ))}
-        </div>
-    </div>
-);
-
-const InputField: React.FC<{label: string; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; placeholder?: string}> = ({ label, value, onChange, placeholder }) => (
-    <div>
-        <label className="block text-sm font-medium text-forge-text-secondary mb-1">{label}</label>
-        <input
-            type="text"
-            value={value}
-            onChange={onChange}
-            placeholder={placeholder}
-            className="w-full bg-forge-bg border border-forge-border rounded-lg p-2 text-sm text-forge-text-primary focus:ring-1 focus:ring-dragon-fire transition-colors"
-        />
-    </div>
-);
-
-
-const PKGBUILD_CONTENT = `# Maintainer: The Architect & Kael <https://github.com/LeeTheOrc/Kael-OS>
+export const ChwdRitualModal: React.FC<ChwdRitualModalProps> = ({ onClose }) => {
+    
+    const PKGBUILD_CONTENT = `
+# Maintainer: The Architect & Kael <https://github.com/LeeTheOrc/Kael-OS>
 # Original work by: CachyOS <ptr1337@cachyos.org>
+
+_realname=chwd
 pkgname=khws
-pkgver=0.3.3
-pkgrel=12
+pkgver=1.16.1
+pkgrel=1
 pkgdesc="Kael Hardware Scry: Kael's hardware detection tool (based on CachyOS chwd)"
 arch=('x86_64')
-url="https://github.com/CachyOS/chwd"
+url="https://github.com/CachyOS/\${_realname}"
 license=('GPL3')
 depends=('pciutils' 'dmidecode' 'hwinfo' 'mesa-utils' 'xorg-xrandr' 'vulkan-tools' 'libdrm')
-makedepends=('meson' 'ninja')
-source=('src')
+makedepends=('rust' 'cargo' 'git')
+source=("\${_realname}::git+\${url}.git#tag=\${pkgver}")
 sha256sums=('SKIP')
-noextract=("src")
+
+prepare() {
+	cd "\${_realname}"
+	git submodule update --init
+}
 
 build() {
-    cd "$srcdir/src"
-    meson setup _build --prefix=/usr --buildtype=release
-    ninja -C _build
+    cd "\${_realname}"
+    cargo build --release --locked --all-features
 }
 
 package() {
-    cd "$srcdir/src"
-    DESTDIR="$pkgdir" ninja -C _build install
+    cd "\${_realname}"
+    install -Dm755 target/release/chwd "$pkgdir/usr/bin/khws"
+    install -Dm755 target/release/chwd-kernel "$pkgdir/usr/bin/khws-kernel"
+    install -Dm644 -t "$pkgdir/usr/share/licenses/\$pkgname/" LICENSE
 }
-`;
+`.trim();
 
+    const RITUAL_SCRIPT_RAW = `#!/bin/bash
+# Kael OS - Unified Ritual of Insight for 'khws'
+set -euo pipefail
 
-// Helper to create a shell-agnostic command
-const createUniversalCommand = (script: string) => {
-    // UTF-8 safe encoding
-    const encoded = btoa(unescape(encodeURIComponent(script.trim())));
-    return `echo "${encoded}" | base64 --decode | bash`;
-};
-
-export const ChwdRitualModal: React.FC<ChwdRitualModalProps> = ({ onClose }) => {
-    const [step, setStep] = useState(1);
-    const [sourceType, setSourceType] = useState<'folder' | 'archive'>('folder');
-    const [sourcePath, setSourcePath] = useState('');
-
-    const steps = ["Source", "Prepare", "Recipe", "Forge"];
-    
-    const getFinalCommand = () => {
-        if (!sourcePath) {
-            return "echo 'ERROR: Source path was not provided. Please go back and fill it in.'";
-        }
-        
-        // Shell-escape the sourcePath to prevent issues with spaces or special characters
-        const escapedSourcePath = "'" + sourcePath.replace(/'/g, "'\\''") + "'";
-
-        let prepCommand;
-        if (sourceType === 'folder') {
-            prepCommand = `
-echo "--> Preparing source files from folder..."
-# Check if source directory exists before copying
-if [ ! -d ${escapedSourcePath} ]; then
-    echo "ERROR: Source directory not found at ${escapedSourcePath}"
-    exit 1
-fi
-mkdir -p ~/packages/khws/src
-cp -r ${escapedSourcePath}/. ~/packages/khws/src/
-`;
-        } else {
-            prepCommand = `
-echo "--> Preparing source files from archive..."
-# Check if source file exists before extracting
-if [ ! -f ${escapedSourcePath} ]; then
-    echo "ERROR: Source archive not found at ${escapedSourcePath}"
-    exit 1
-fi
-mkdir -p ~/packages/khws/src
-tar -xvf ${escapedSourcePath} -C ~/packages/khws/src --strip-components=1
-`;
-        }
-
-        const finalScript = `#!/bin/bash
-set -e
 echo "--- Beginning the Ritual of Insight ---"
+echo "This incantation will forge the 'khws' recipe and publish it to the Athenaeum."
 
-# Step 1: Prepare the source files
-${prepCommand}
-echo "[SUCCESS] Source files prepared."
+# Ensure the packages directory exists.
+mkdir -p ~/packages
 
-# Step 2: Scribe the recipe
+# Step 1: Check for and forge the Unified Publisher Script if missing
+if [ ! -f "$HOME/packages/publish-package.sh" ]; then
+    echo "--> 'publish-package.sh' not found. Forging it now..."
+    # The script content is embedded here via Base64 to ensure integrity.
+    PUBLISHER_SCRIPT_B64='IyEvYmluL2Jhc2gKIyBLYWVsIE9TIC0gQXRoZW5hZXVtIFB1Ymxpc2hlciBTY3JpcHQgKHY1IC0gd2l0aCBwcmUtZmxpZ2h0IGNoZWNrcykKIyBGb3JnZXMgYSBwYWNrYWdlLCBzaWducyBpdCwgYW5kIHB1Ymxpc2hlcyBpdC4KCnNldCAtZXVvIHBpcGVmYWlsCgojIC0tLSBQUkUtRkxJR0hUIENIRUNLUyAtLS0KaWYgISBjb21tYW5kIC12IGdpdCAmPiAvZGV2L251bGw7IHRoZW4KICAgIGVjaG8gIkVSUk9SOiAnZ2l0JyBpcyBub3QgaW5zdGFsbGVkLiBQbGVhc2UgcnVuIFN0ZXAgMSBvZiB0aGUgS2V5c3RvbmUgUml0dWFsLiIgPiYyCiAgICBleGl0IDEKZmkKaWYgISBjb21tYW5kIC12IGdoICY+IC9kZXYvbnVsbDsgdGhlbgogICAgZWNobyAiRVJST1I6IEdpdEh1YiBDTEkgJ2doJyBpcyBub3QgaW5zdGFsbGVkLiBQbGVhc2UgcnVuIFN0ZXAgMSBvZiB0aGUgS2V5c3RvbmUgUml0dWFsLiIgPiYyCiAgICBleGl0IDEKZmkKaWYgISBnaCBhdXRoIHN0YXR1cyAmPiAvZGV2L251bGw7IHRoZW4KICAgIGVjaG8gIkVSUk9SOiBZb3UgYXJlIG5vdCBhdXRoZW50aWNhdGVkIHdpdGggR2l0SHViLiBQbGVhc2UgcnVuICdnaCBhdXRoIGxvZ2luJyBvciBTdGVwIDEgb2YgdGhlIEtleXN0b25lIFJpdHVhbC4iID4mMgogICAgZXhpdCAxCmZpCmlmICEgY29tbWFuZCAtdiByZXBvLWFkZCAmPiAvZGV2L251bGw7IHRoZW4KICAgIGVjaG8gIkVSUk9SOiAncmVwby1hZGQnIGlzIG5vdCBpbnN0YWxsZWQuIEl0IGlzIHBhcnQgb2YgJ3BhY21hbi1jb250cmliJy4gUGxlYXNlIHJ1biAnc3VkbyBwYWNtYW4gLVMgcGFjbWFuLWNvbnRyaWInLiIgPiYyCiAgICBleGl0IDEKZmkKCiMgLS0tIENPTkZJR1VSQVRJT04gLS0tClJFUE9fRElSPSJ+L2thZWwtb3MtcmVwbyIKUEFDS0FHRV9OQU1FPSQxCiMgLS0tIFNDUklQVCBTVEFSVCAtLS0KZWNobyAiLS0tIFByZXBhcmluZyB0aGUgRm9yZ2UgZm9yIHBhY2thZ2U6ICRQQUNLQUdFX05BTUUgLS0tIgoKIyAtLS0gVkFMSURBVElPTiAtLS0KaWYgWyAteiAiJFBBY2thZ2VOYW1lIiBdOyB0aGVuCiAgICBlY2hvICJFUlJPUjogWW91IG11c3Qgc3BlY2lmeSBhIHBhY2thZ2UgZGlyZWN0b3J5IHRvIGJ1aWxkLiIKICAgIGVjaG8gIlVzYWdlOiAuL3B1Ymxpc2gtcGFja2FnZS5zaCA8cGFja2FnZV9uYW1lPiIKICAgIGV4aXQgMQpmaQppZiBbICEgLWQgIiRQQUNLQUdFX05BTUUiIF0gfHwgWyAhIC1mICIkUEFDS0FHRV9OQU1FL1BLR0JVSUxEIiBdOyB0aGVuCiAgICBlY2hvICJFUlJPUjogRGlyZWN0b3J5ICckUEFDS0FHRV9OQU1FJyBkb2VzIG5vdCBleGlzdCBvciBkb2VzIG5vdCBjb250YWluIGEgUEtHQlVJTEQuIgogICAgZXhpdCAxCmZpCgojIC0tLSBBVVRPLVNJR05JTkcgTE9HSUMgLS0tCmVjaG8gIi0tPiBTZWFyY2hpbmcgZm9yIEdQRyBrZXkgZm9yIHNpZ25pbmcuLi4iCiMgRmlyc3QsIHRyeSB0byBmaW5kIHRoZSBzcGVjaWZpYyAnS2FlbCBPUyBNYXN0ZXIgS2V5Jy4KU0lHTklOR19LRVlfSUQ9JChncGcgLS1saXN0LXNlY3JldC1rZXlzIC0td2l0aC1jb2xvbnMgIkthZWwgT1MgTWFzdGVyIEtleSIgMj4vZGV2L251bGwgfCBhd2sgLUY6ICckMSA9PSAic2VjIiB7IHByaW50ICQ1IH0nIHwgaGVhZCAtbiAxKQoKIyBJZiBub3QgZm9undwgZmFsbCBidWNrIHRvIHRoZSBmaXJzdCBhdmFpbGFibGUgc2VjcmV0IGtleS4KaWYgWyAteiAiJFNJR05JTkdfS0VZX0lEIiBdOyB0aGVuCiAgICBlY2hvICItLT4gJ0thZWwgT1MgTWFzdGVyIEtleScgbm90IGZvdW5kLiBVc2luZyBmaXJzdCBhdmFpbGFibGUgc2VjcmV0IGtleS4iCiAgICBTSUdOSU5HX0tFWV9JRD0kKGdwZyAtLWxpc3Qtc2VjcmV0LWtleXMgLS13aXRoLWNvbG9ucyAyPi9kZXYvbnVsbCB8IGF3ayAtRjogJyQxID09ICJzZWMiIHsgcHJpbnQgJDUgfScgfCBoZWFkIC1uIDEpCmZpCgojIElmIHN0aWxsIG5vIGtleSwgdGhlbiB3ZSBjYW5ub3QgcHJvY2VlZC4KaWYgWyAteiAiJFNJR05JTkdfS0VZX0lEIiBdOyB0aGVuCiAgICBlY2hvICJFUlJPUjogQ291bGQgbm90IGZpbmQgYW55IEdQRyBzZWNyZXQga2V5IGZvciBzaWduaW5nLiBBYm9ydGluZy4iCiAgICBlY2hvICJQbGVhc2UgZW5zdXJlIHlvdSBoYXZlIGEgR1BHIGtleSBieSBydW5uaW5nIFN0ZXAgMiBvZiB0aGUgS2V5c3RvbmUgUml0dWFsLiIKICAgIGV4aXQgMQpmaQoKZWNobyAiW1NVQ0NFU1NdIFVzaW5nIE1hc3RlciBLZXk6ICRTSUdOSU5HX0tFWV9JRCBmb3Igc2lnbmluZy4iCgojIC0tLSBGT1JHSU5HIC0tLQplY2hvICItLT4gRW50ZXJpbmcgdGhlIGZvcmdlIGZvciBwYWNrYWdlOiAkUEFDS0FHRV9OQU1FLi4uIgpkZWNsYXJlIC1hIG1ha2Vwa2dfYXJncyAoXQptYWtlcGtnX2FyZ3MrPSgtc2YpCm1ha2Vwa2dfYXJncysoLS1zaWduKQptYWtlcGtnX2FyZ3MrPSgtLWtleikKbWFrZXBrZ19hcmdzKz0oIlNESUdOSU5HX0tFWV9JRCIpCm1ha2Vwa2dfYXJncysoLS1za2lwcGdwY2hlY2spCm1ha2Vwa2dfYXJncysoLS1ub25jb25maXJtKQoKY2QgIiRQQUNLQUdFX05BTUUiCgplY2hvICItLT4gRm9yZ2luZyBhbmQgc2lnbmluZyB0aGUgcGFja2FnZSAobWFrZXBrZykuLi4iCm1ha2Vwa2cg"\${mYWtlcGtnX2FyZ3N[@]}"CgpQQUNLQUdFX0ZJTEU9JChmaW5kIC4gLW5hbWUgIioucGtnLnRhci56c3QiIC1wcmludCAtcXVpdCkKaWYgWyAteiAiJFBBY2thZ2VGaWxlIiBdOyB0aGVuCiAgICBlY2hvICJFUlJPUjogQnVpbGQgZmFpbGVkLiBObyBwYWNrYWdlIGZpbGUgd2FzIGNyZWF0ZWQuIgogICAgZXhpdCAxCmZpCgojIC0tLSBQVUJMSVNISU5HIC0tLQpFWFBBTkRFRF9SRVBPX0RJUj0kKGV2YWwgZWNobyAkUkVQT19ESVIpCmVjaG8gIi0tPiBNb3ZpbmcgZm9yZ2VkIGFydGlmYWN0IHRvIHRoZSBBdGhlbmFldW06ICRFWFBBTkRFRF9SRVBPX0RJUiIKbXYgIiRQQUNLQUdFX0ZJTEUiKiAiJEVYUEFOREVEX1JFUE9fRElSIiAvICMgTW92ZSBib3RoIHRoZSBwYWNrYWdlIGFuZCBpdHMgLnNpZyBmaWxlCgpjZCAiJEVYUEFOREVEX1JFUE9fRElSIgplY2hvICItLT4gVXBkYXRpbmcgdGhlIEF0aGVuYWV1bSdzIGdyaW1vaXJlIChkYXRhYmFzZSkuLi4iCiMgUmVtb3ZlIG9sZCBwYWNrYWdlIGVudHJ5IGZpcnN0IHRvIHByZXZlbnQgZHVwbGljYXRlcy5yZXBvLXJlbW92ZSBrYWVsLW9zLXJlcG8uZGIudGFyLmd6ICIkKGJhc2VuYW1lICIkUEFDS0FHRV9GSUxFIiAucGtnLnRhci56c3QpIiAyPi9kZXYvbnVsbCB8fCB0cnVlCnJlcG8tYWRkIGthZWwtb3MtcmVwby5kYi50YXIuZ3ogIiQoYmFzZW5hbWUgIiRQQUNLQUdFX0ZJTEUiKSIKCiMgVXBkYXRlIHRoZSBwYWNrYWdlIHNvdXJjZXMgcmVwb3NpdG9yeSBpZiBpdCBleGlzdHMKaWYgWyAtZCAiLi4vJFBBY2thZ2VOYW1lLy5naXQiIF07IHRoZW4KICAgIGVjaG8gIi0tPiBVcGRhdGluZyBzb3VyY2UgcmVwb3NpdG9yeSBmb3IgJFBBY2thZ2VOYW1lLi4uIgogICAgY2QgIi4uLyRQQUNLQUdFX05BTUUiCiAgICBnaXQgcHVsbCBvcmlnaW4gbWFzdGVyCmZpCmVjaG8gIi0tLSBDb21taXR0aW5nIHRoZSBuZXcgYXJ0aWZhY3QgdG8gdGhlIEF0aGVuYWV1bSdzIGhpc3RvcnkuLi4iCmdpdCBhZGQgLgogICAgZ2l0IGNvbW1pdCAtbSAiZmVhdDogQWRkL3VwZGF0ZSBwYWNrYWdlICRQQUNLQUdFX05BTUUiCiAgICBnaXQgcHVzaAoKZWNobyAiLS0tIFRoZSBhcnRpZmFjdCBoYXMgYmVlbiBzdWNjZXNzZnVsbHkgcHVibGlzaGVkIHRvIHRoZSBBdGhlbmFldW0uIC0tLSI='
+    echo "$PUBLISHER_SCRIPT_B64" | base64 --decode > "$HOME/packages/publish-package.sh"
+    chmod +x "$HOME/packages/publish-package.sh"
+    echo "[SUCCESS] 'publish-package.sh' has been forged."
+fi
+
+# Step 2: Scribe the recipe for 'khws'
 echo "--> Scribing the recipe for 'khws'..."
 mkdir -p ~/packages/khws
 cat > ~/packages/khws/PKGBUILD << 'PKGBUILD_EOF'
@@ -189,109 +101,52 @@ echo "[SUCCESS] Recipe has been scribed."
 # Step 3: Initiate the Publishing Rite
 echo "--> Initiating the Publishing Rite..."
 cd ~/packages
-if [ -f "./publish-package.sh" ]; then
-    ./publish-package.sh khws
-else
-    echo "ERROR: 'publish-package.sh' not found in '~/packages'."
-    echo "Please perform the Keystone Ritual to create it."
-    exit 1
-fi
+./publish-package.sh khws
 
 echo "--- The Ritual of Insight is Complete ---"
-`;
-        return createUniversalCommand(finalScript);
-    };
+`.trim();
+
+    // UTF-8 safe encoding
+    const encodedScript = btoa(unescape(encodeURIComponent(RITUAL_SCRIPT_RAW)));
+    const fullCommand = `echo "${encodedScript}" | base64 --decode | bash`;
+
 
     return (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center animate-fade-in-fast" onClick={onClose}>
             <div className="bg-forge-panel border-2 border-forge-border rounded-lg shadow-2xl w-full max-w-2xl p-6 m-4 flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-center mb-4 flex-shrink-0">
-                    <h2 className="text-xl font-bold text-forge-text-primary font-display tracking-wider flex items-center gap-3">
+                     <h2 className="text-xl font-bold text-forge-text-primary flex items-center gap-2 font-display tracking-wider">
                         <EyeIcon className="w-5 h-5 text-dragon-fire" />
-                        The Ritual of Insight: Forging \`khws\`
+                        <span>Ritual of Insight (\`khws\`)</span>
                     </h2>
                     <button onClick={onClose} className="text-forge-text-secondary hover:text-forge-text-primary">
                         <CloseIcon className="w-5 h-5" />
                     </button>
                 </div>
+                <div className="overflow-y-auto pr-2 text-forge-text-secondary leading-relaxed space-y-4">
+                    <p>
+                        Architect, this grand incantation will forge our version of the CachyOS hardware detection tool, christen it <strong className="text-dragon-fire">`khws` (Kael Hardware Scry)</strong>, and publish it to our Athenaeum.
+                    </p>
+                    <p>
+                        This unified command performs all necessary steps: it ensures the publisher script exists, scribes the correct recipe for `khws`, and then immediately begins the rite of forging and publishing.
+                    </p>
+                    
+                    <h3 className="font-semibold text-lg text-orc-steel mt-4 mb-2">The Unified Incantation</h3>
+                    <p>
+                        Ensure you have completed <strong className="text-dragon-fire">Part I of the Keystone Rituals</strong> first to set up your forge and Athenaeum. Then, copy and run this single command.
+                    </p>
+                    <CodeBlock lang="bash">{fullCommand}</CodeBlock>
 
-                <Stepper currentStep={step} steps={steps} />
+                    <h3 className="font-semibold text-lg text-orc-steel mt-4 mb-2">On the Forged Realm</h3>
+                    <p>
+                        Once published, any Kael OS Realm can install this tool with a simple command:
+                    </p>
+                    <CodeBlock lang="bash">sudo pacman -S khws</CodeBlock>
+                    <p>
+                        And then run the hardware scan with:
+                    </p>
+                    <CodeBlock lang="bash">sudo khws -a</CodeBlock>
 
-                <div className="overflow-y-auto pr-2 flex-grow space-y-4">
-                     {step === 1 && (
-                        <div className="space-y-4 animate-fade-in">
-                             <p>Architect, this ritual will bestow upon our forge the gift of <strong className="text-dragon-fire">Insight</strong>. We will package our own version of the CachyOS Hardware Detection tool, naming it <strong className="text-orc-steel">khws (Kael Hardware Scry)</strong>, and publish it to our Athenaeum.</p>
-                            <div className="p-3 bg-forge-bg border border-forge-border rounded-lg text-sm">
-                                <h5 className="font-semibold text-dragon-fire mb-2">Prerequisites</h5>
-                                <p>First, you must have the source code for <strong className="font-mono text-xs">chwd</strong> on your machine. You can acquire it by running the <strong className="text-orc-steel">Athenaeum Scryer</strong> ritual for CachyOS, or by downloading it directly from their GitHub repository.</p>
-                            </div>
-                            <RadioGroup
-                                label="What is the source type?"
-                                name="sourceType"
-                                options={[{value: 'folder', label: 'A folder on my machine'}, {value: 'archive', label: 'A .zip or .tar.gz archive'}]}
-                                selected={sourceType}
-                                onChange={(val) => setSourceType(val as 'folder' | 'archive')}
-                            />
-                        </div>
-                    )}
-                    {step === 2 && (
-                         <div className="space-y-4 animate-fade-in">
-                            <p>Excellent. Now, tell me the location of the <strong className="font-mono text-xs">chwd</strong> source code. This path will be used in the final, unified command.</p>
-                            <InputField 
-                                label={`Full path to the source ${sourceType}`} 
-                                value={sourcePath} 
-                                onChange={(e) => setSourcePath(e.target.value)} 
-                                placeholder={`/home/architect/downloads/${sourceType === 'folder' ? 'chwd' : 'chwd-0.3.3.tar.gz'}`} 
-                            />
-                             {sourceType === 'archive' && <p className="text-xs text-forge-text-secondary/80">Note: The final command will use '--strip-components=1' which is a common spell to remove the top-level folder from inside the archive.</p>}
-                        </div>
-                    )}
-                    {step === 3 && (
-                         <div className="space-y-4 animate-fade-in">
-                            <p>The materials are in place. Now we must scribe the recipe—the <strong className="text-orc-steel">PKGBUILD</strong>. I have prepared it to work with the local source files you provided.</p>
-                            <CodeBlock lang="bash">{PKGBUILD_CONTENT}</CodeBlock>
-                        </div>
-                    )}
-                    {step === 4 && (
-                        <div className="space-y-4 animate-fade-in">
-                            <p>The ritual is nearly complete! I have forged the final, unified incantation. This single command will perform all the necessary steps:</p>
-                            <ul className="list-disc list-inside text-sm pl-4 space-y-1">
-                                <li>Prepare the source files from the path you provided.</li>
-                                <li>Scribe the PKGBUILD recipe into the correct directory.</li>
-                                <li>Initiate the Publishing Rite to build, sign, and upload the package.</li>
-                            </ul>
-                            <h4 className="font-semibold text-orc-steel">Final Unified Command:</h4>
-                            <p className="text-sm">Copy and run this in your terminal to complete the process.</p>
-                            <CodeBlock lang="bash">{getFinalCommand()}</CodeBlock>
-                            <p className="mt-2">Once this ritual is complete, the gift of Insight is ours. Every Realm forged from this moment on will contain this new power.</p>
-                        </div>
-                    )}
-                </div>
-
-                 <div className="pt-4 flex justify-between items-center flex-shrink-0">
-                    <button 
-                        onClick={() => setStep(s => s - 1)}
-                        disabled={step === 1}
-                        className="px-4 py-2 bg-forge-border text-forge-text-secondary rounded-md hover:bg-forge-panel transition-colors disabled:opacity-50"
-                    >
-                        Back
-                    </button>
-                    {step < steps.length ? (
-                        <button
-                            onClick={() => setStep(s => s + 1)}
-                            disabled={(step === 2 && sourcePath.trim() === '')}
-                            className="px-6 py-2 bg-dragon-fire text-black font-bold rounded-md hover:bg-yellow-400 transition-colors disabled:opacity-50"
-                        >
-                            Continue
-                        </button>
-                    ) : (
-                         <button
-                            onClick={onClose}
-                            className="px-6 py-2 bg-orc-steel text-black font-bold rounded-md hover:bg-green-400 transition-colors"
-                        >
-                            Finish
-                        </button>
-                    )}
                 </div>
             </div>
         </div>

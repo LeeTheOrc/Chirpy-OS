@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { CloseIcon, CopyIcon, KeyIcon } from './Icons';
 
@@ -38,7 +39,7 @@ set -e
 # This script installs tools, configures Git, logs into GitHub, and clones the repo.
 
 # Install tools
-sudo pacman -S git github-cli base-devel --noconfirm
+sudo pacman -S git github-cli base-devel pacman-contrib --noconfirm
 
 # IMPORTANT: Configure Git with your identity to prevent commit errors.
 # You can change these values to your own.
@@ -211,10 +212,28 @@ echo "[SUCCESS] Foundation laid. The Athenaeum is now live."
 `;
 
 const PUBLISHER_SCRIPT_RAW = `#!/bin/bash
-# Kael OS - Athenaeum Publisher Script (v4 - with skippgpcheck)
+# Kael OS - Athenaeum Publisher Script (v5 - with pre-flight checks)
 # Forges a package, signs it, and publishes it.
 
 set -euo pipefail
+
+# --- PRE-FLIGHT CHECKS ---
+if ! command -v git &> /dev/null; then
+    echo "ERROR: 'git' is not installed. Please run Step 1 of the Keystone Ritual." >&2
+    exit 1
+fi
+if ! command -v gh &> /dev/null; then
+    echo "ERROR: GitHub CLI 'gh' is not installed. Please run Step 1 of the Keystone Ritual." >&2
+    exit 1
+fi
+if ! gh auth status &> /dev/null; then
+    echo "ERROR: You are not authenticated with GitHub. Please run 'gh auth login' or Step 1 of the Keystone Ritual." >&2
+    exit 1
+fi
+if ! command -v repo-add &> /dev/null; then
+    echo "ERROR: 'repo-add' is not installed. It is part of 'pacman-contrib'. Please run 'sudo pacman -S pacman-contrib'." >&2
+    exit 1
+fi
 
 # --- CONFIGURATION ---
 REPO_DIR="~/kael-os-repo"
@@ -252,7 +271,7 @@ if [ -z "$SIGNING_KEY_ID" ]; then
     exit 1
 fi
 
-echo "[SUCCESS] Found signing key. Using Master Key ID: $SIGNING_KEY_ID"
+echo "[SUCCESS] Using Master Key: $SIGNING_KEY_ID for signing."
 
 # --- FORGING ---
 echo "--> Entering the forge for package: $PACKAGE_NAME..."
@@ -351,7 +370,7 @@ gpg --delete-key <KEY_ID>`}</CodeBlock>
                     <p>This grand ritual is performed only once per machine to establish our repository and its unique signature.</p>
 
                     <h4 className="font-semibold text-md text-forge-text-primary mt-3 mb-1">Step 1: Prepare the Forge</h4>
-                    <p>This incantation installs the necessary tools, declares your identity to Git, authenticates with GitHub, and clones a local copy of our Athenaeum.</p>
+                    <p>This incantation installs the necessary tools (including `pacman-contrib` for `repo-add`), declares your identity to Git, authenticates with GitHub, and clones a local copy of our Athenaeum.</p>
                     <CodeBlock lang="bash">{createUniversalCommand(PREPARE_FORGE_SCRIPT_RAW)}</CodeBlock>
 
                     <h4 className="font-semibold text-md text-forge-text-primary mt-3 mb-1">Step 2: Forge the Master Key & Foundational Recipes</h4>

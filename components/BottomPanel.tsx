@@ -2,8 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import type { LinkState } from '../types';
 import { 
     SendIcon, PaperClipIcon, SparklesIcon, BookOpenIcon, ScanIcon, KeyIcon, 
-    TransmuteIcon, VideoCameraIcon, EyeIcon, ForgeIcon, MagnifyingGlassIcon, 
-    RocketLaunchIcon, ScrollIcon, CodeBracketIcon, ShieldCheckIcon, PackageIcon, ComputerDesktopIcon
+    VideoCameraIcon, EyeIcon, ForgeIcon, MagnifyingGlassIcon, 
+    RocketLaunchIcon, ScrollIcon, ShieldCheckIcon, PackageIcon, ComputerDesktopIcon,
+    PaintBrushIcon, BroomIcon, LibraryIcon
 } from './Icons';
 
 type ModalType = 
@@ -78,32 +79,32 @@ export const BottomPanel: React.FC<BottomPanelProps> = ({
             {/* Toolbar Row */}
             <div className="flex items-center justify-between gap-2 border-b border-forge-border pb-3 mb-3 flex-wrap">
                 <div className="flex items-center gap-2 flex-wrap">
-                    {/* Primary Tools */}
+                    {/* Group 1: Core Workflow & Debugging */}
                     <TooltipButton title="Kael Codex" onClick={() => onOpenMenu('codex')} colorClass="text-cyan-400"><BookOpenIcon className="w-5 h-5" /></TooltipButton>
                     <TooltipButton title="Scry System Hardware" onClick={() => onOpenMenu('system-scan')} colorClass="text-blue-400"><ScanIcon className="w-5 h-5" /></TooltipButton>
-                    <TooltipButton title="The Forge on Your PC" onClick={() => onOpenMenu('tui-installer')} colorClass="text-green-400"><ComputerDesktopIcon className="w-5 h-5" /></TooltipButton>
-                    <TooltipButton title="Forge Dev Environment" onClick={() => onOpenMenu('forge-builder')} colorClass="text-orc-steel"><ForgeIcon className="w-5 h-5" /></TooltipButton>
-                    <TooltipButton title="Keystone Rituals" onClick={() => onOpenMenu('keystone')} colorClass="text-dragon-fire"><KeyIcon className="w-5 h-5" /></TooltipButton>
                     <TooltipButton title="Chronicler's Orb" onClick={() => onOpenMenu('chronicler')} colorClass="text-magic-purple"><VideoCameraIcon className="w-5 h-5" /></TooltipButton>
+                    <TooltipButton title="The Forge on Your PC (TUI)" onClick={() => onOpenMenu('tui-installer')} colorClass="text-green-400"><ComputerDesktopIcon className="w-5 h-5" /></TooltipButton>
                     
                     <div className="w-px h-6 bg-forge-border mx-1" />
                     
-                    {/* Forge Tools */}
-                    <TooltipButton title="The Sigil Crafter" onClick={() => onOpenMenu('sigil-crafter')} colorClass="text-forge-text-secondary"><CodeBracketIcon className="w-5 h-5" /></TooltipButton>
-                    <TooltipButton title="Ritual of Insight (`khws`)" onClick={() => onOpenMenu('chwd-ritual')} colorClass="text-forge-text-secondary"><EyeIcon className="w-5 h-5" /></TooltipButton>
-                    <TooltipButton title="Package from Local Source" onClick={() => onOpenMenu('local-source-ritual')} colorClass="text-forge-text-secondary"><PackageIcon className="w-5 h-5" /></TooltipButton>
-                   
-                    <div className="w-px h-6 bg-forge-border mx-1" />
-                    
-                    {/* Athenaeum Tools */}
-                    <TooltipButton title="Keyring Attunement" onClick={() => onOpenMenu('keyring-attunement')} colorClass="text-forge-text-secondary"><ShieldCheckIcon className="w-5 h-5" /></TooltipButton>
-                    <TooltipButton title="Athenaeum Scryer" onClick={() => onOpenMenu('athenaeum-scryer')} colorClass="text-forge-text-secondary"><BookOpenIcon className="w-5 h-5" /></TooltipButton>
-                    <TooltipButton title="Base64 Transmutation" onClick={() => onOpenMenu('housekeeping')} colorClass="text-forge-text-secondary"><TransmuteIcon className="w-5 h-5" /></TooltipButton>
+                    {/* Group 2: Athenaeum & Packaging */}
+                    <TooltipButton title="Keystone Rituals" onClick={() => onOpenMenu('keystone')} colorClass="text-dragon-fire"><KeyIcon className="w-5 h-5" /></TooltipButton>
+                    <TooltipButton title="Athenaeum Scryer" onClick={() => onOpenMenu('athenaeum-scryer')} colorClass="text-blue-400"><LibraryIcon className="w-5 h-5" /></TooltipButton>
+                    <TooltipButton title="Keyring Attunement" onClick={() => onOpenMenu('keyring-attunement')} colorClass="text-orc-steel"><ShieldCheckIcon className="w-5 h-5" /></TooltipButton>
+                    <TooltipButton title="Ritual of Insight (`khws`)" onClick={() => onOpenMenu('chwd-ritual')} colorClass="text-cyan-400"><EyeIcon className="w-5 h-5" /></TooltipButton>
+                    <TooltipButton title="Package from Local Source" onClick={() => onOpenMenu('local-source-ritual')} colorClass="text-green-400"><PackageIcon className="w-5 h-5" /></TooltipButton>
                     <TooltipButton title="Forge Inspector" onClick={() => onOpenMenu('forge-inspector')} colorClass="text-forge-text-secondary"><MagnifyingGlassIcon className="w-5 h-5" /></TooltipButton>
 
                     <div className="w-px h-6 bg-forge-border mx-1" />
 
-                    {/* Library */}
+                    {/* Group 3: Advanced Tools & Utilities */}
+                    <TooltipButton title="Forge Dev Environment" onClick={() => onOpenMenu('forge-builder')} colorClass="text-orc-steel"><ForgeIcon className="w-5 h-5" /></TooltipButton>
+                    <TooltipButton title="The Sigil Crafter" onClick={() => onOpenMenu('sigil-crafter')} colorClass="text-magic-purple"><PaintBrushIcon className="w-5 h-5" /></TooltipButton>
+                    <TooltipButton title="Housekeeping Rituals" onClick={() => onOpenMenu('housekeeping')} colorClass="text-forge-text-secondary"><BroomIcon className="w-5 h-5" /></TooltipButton>
+
+                    <div className="w-px h-6 bg-forge-border mx-1" />
+
+                    {/* Group 4: Library & Lore */}
                     <TooltipButton title="The Core Law" onClick={() => onOpenMenu('law')} colorClass="text-forge-text-secondary"><ScrollIcon className="w-5 h-5" /></TooltipButton>
                     <TooltipButton title="Level Up Manifesto" onClick={() => onOpenMenu('levelup')} colorClass="text-forge-text-secondary"><RocketLaunchIcon className="w-5 h-5" /></TooltipButton>
                     <TooltipButton title="Kael's Personality" onClick={() => onOpenMenu('personality')} colorClass="text-forge-text-secondary"><SparklesIcon className="w-5 h-5" /></TooltipButton>
