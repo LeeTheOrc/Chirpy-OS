@@ -32,13 +32,16 @@ import { ChroniclerModal } from './components/ChroniclerModal';
 import { ForgeInspectorModal } from './components/ForgeInspectorModal';
 import { SigilCrafterModal } from './components/SigilCrafterModal';
 import { KeyringAttunementModal } from './components/KeyringAttunementModal';
+import { LocalSourceRitualModal } from './components/LocalSourceRitualModal';
+import { TuiInstallerModal } from './components/TuiInstallerModal';
 
 
 type ModalType = 
     | 'build' | 'iso' | 'keystone' | 'ai-core' | 'law' | 'levelup' 
     | 'personality' | 'codex' | 'system-scan' | 'forge-builder'
     | 'athenaeum-scryer' | 'housekeeping' | 'chwd-ritual' | 'chronicler'
-    | 'forge-inspector' | 'sigil-crafter' | 'keyring-attunement' | null;
+    | 'forge-inspector' | 'sigil-crafter' | 'keyring-attunement' 
+    | 'local-source-ritual' | 'tui-installer' | null;
 
 const App: React.FC = () => {
     const [config, setConfig] = useState<DistroConfig>(INITIAL_DISTRO_CONFIG);
@@ -91,22 +94,49 @@ const App: React.FC = () => {
         }
 
         try {
-            const isKaelChronicle = fileContent && fileContent.includes("KAEL CHRONICLE") && fileContent.includes("FAILED (unknown public key B62C3D10C54D5DA9)");
-            
-            if (isKaelChronicle) {
+            const isMakepkgGpgFail = fileContent && fileContent.includes("makepkg") && fileContent.includes("FAILED (unknown public key B62C3D10C54D5DA9)");
+
+            if (isMakepkgGpgFail) {
                 setMessages(prev => prev.slice(0, -1)); // remove thinking
-                const analysis: AnalysisResult = {
-                  diagnosis: "The build failed because the forge's security wards do not recognize the signature of the CachyOS master artisan for the 'chwd' package. This is a GPG key verification failure.",
-                  solutionCommand: "gpg --recv-key B62C3D10C54D5DA9 && pacman-key --lsign-key B62C3D10C54D5DA9",
-                  nextStep: "Once the key is trusted, re-run the 'makepkg -si' command within the 'chwd' directory. The build should now proceed."
-                };
+                
+                const triedLsignKey = fileContent.includes("Locally signed 1 key.") || fileContent.includes("Signing the key to establish trust...");
+
+                let analysis: AnalysisResult;
+
+                if (triedLsignKey) {
+                    analysis = {
+                        diagnosis: "The Orb reveals a deep magic. Our ritual to attune the system's main keyring was successful, but `makepkg` consults your *personal* user keyring, which remains unattuned. This is a known quirk of the forge.",
+                        solutionCommand: "makepkg -si --skippgpcheck",
+                        nextStep: "Use this command within the 'chwd' directory. It instructs the forge to proceed, relying on the strong integrity checksums instead of the PGP signature for this step. The package will still be safely verified by the system keyring upon installation."
+                    };
+                } else {
+                    const chwdFixScriptRaw = `#!/bin/bash
+# Kael OS - CHWD Artisan Key Attunement (v2)
+set -euo pipefail
+echo "--- Attuning to CHWD Artisan's Signature (v2) ---"
+pacman-key --init
+pacman-key --recv-keys B62C3D10C54D5DA9
+pacman-key --lsign-key B62C3D10C54D5DA9
+echo "--- ✅ Attunement Complete ---"
+`;
+                    const encodedScript = btoa(unescape(encodeURIComponent(chwdFixScriptRaw)));
+                    const fullCommand = `echo "${encodedScript}" | base64 --decode | sudo bash`;
+
+                    analysis = {
+                      diagnosis: "The forge's security wards do not recognize the signature of the CachyOS artisan for the 'chwd' package. We must perform a ritual to attune the system's main keyring to trust this signature.",
+                      solutionCommand: fullCommand,
+                      nextStep: "Run this full command in your terminal. It will perform the complete three-step ritual to initialize, receive, and sign the key. Then, retry the 'makepkg -si' command."
+                    };
+                }
+
                 const modelMessage: Message = {
                     role: 'model',
-                    text: "I have scried the chronicle, Architect. The Oracle's Pool has revealed the source of our struggle. The path forward is clear.",
+                    text: "I have scried the new chronicle, Architect. The path forward has changed, but it is clear.",
                     linkState,
                     analysis: analysis
                 };
                 setMessages(prev => [...prev, modelMessage]);
+
             } else {
                  let fullPrompt = `${CLOUD_AI_SYSTEM_PROMPT} \n\n ${JSON.stringify(config, null, 2)} \n\n User message: ${messageText}`;
                  if (fileContent) {
@@ -219,6 +249,8 @@ const App: React.FC = () => {
             case 'forge-inspector': return <ForgeInspectorModal onClose={() => setActiveModal(null)} />;
             case 'sigil-crafter': return <SigilCrafterModal onClose={() => setActiveModal(null)} onGenerate={(prompt) => handleSendMessage(prompt)} />;
             case 'keyring-attunement': return <KeyringAttunementModal onClose={() => setActiveModal(null)} />;
+            case 'local-source-ritual': return <LocalSourceRitualModal onClose={() => setActiveModal(null)} />;
+            case 'tui-installer': return <TuiInstallerModal onClose={() => setActiveModal(null)} />;
             default: return null;
         }
     };

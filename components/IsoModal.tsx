@@ -59,8 +59,8 @@ mv /tmp/calamares-config/modules.conf /etc/calamares/modules.conf
 chmod +x /etc/calamares/scripts/*
 
 # 2. Setup the live user and autostart Calamares
-# We'll use the Architect's chosen username for the live session
-LIVE_USER="${config.username}"
+# We'll use a generic username for the live session
+LIVE_USER="architect"
 if ! id -u "$LIVE_USER" >/dev/null 2>&1; then
     useradd -m -G wheel -s /bin/bash "$LIVE_USER"
     # Set a blank password for easy login in the live environment

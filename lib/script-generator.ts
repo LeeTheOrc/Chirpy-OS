@@ -154,7 +154,7 @@ export const generateAICoreScript = (config: DistroConfig): string => {
     
     const packages = Array.from(packageList).join(' ');
 
-    const firewallRules = config.firewallRules.map(rule => `ufw allow ${rule.port}/${rule.protocol}`).join('\n        ');
+    const firewallRules = (config.firewallRules || []).map(rule => `ufw allow ${rule.port}/${rule.protocol}`).join('\n        ');
     const aiCoreScript = generateAiCoreSetupScript(config);
     
     return `#!/bin/bash

@@ -2,15 +2,16 @@ import React, { useState, useRef, useEffect } from 'react';
 import type { LinkState } from '../types';
 import { 
     SendIcon, PaperClipIcon, SparklesIcon, BookOpenIcon, ScanIcon, KeyIcon, 
-    WrenchScrewdriverIcon, VideoCameraIcon, EyeIcon, ForgeIcon, MagnifyingGlassIcon, 
-    RocketLaunchIcon, ScrollIcon, CodeBracketIcon, ShieldCheckIcon
+    TransmuteIcon, VideoCameraIcon, EyeIcon, ForgeIcon, MagnifyingGlassIcon, 
+    RocketLaunchIcon, ScrollIcon, CodeBracketIcon, ShieldCheckIcon, PackageIcon, ComputerDesktopIcon
 } from './Icons';
 
 type ModalType = 
     | 'build' | 'iso' | 'keystone' | 'ai-core' | 'law' | 'levelup' 
     | 'personality' | 'codex' | 'system-scan' | 'forge-builder'
     | 'athenaeum-scryer' | 'housekeeping' | 'chwd-ritual' | 'chronicler'
-    | 'forge-inspector' | 'sigil-crafter' | 'keyring-attunement' | null;
+    | 'forge-inspector' | 'sigil-crafter' | 'keyring-attunement' 
+    | 'local-source-ritual' | 'tui-installer' | null;
 
 interface BottomPanelProps {
     value: string;
@@ -80,6 +81,7 @@ export const BottomPanel: React.FC<BottomPanelProps> = ({
                     {/* Primary Tools */}
                     <TooltipButton title="Kael Codex" onClick={() => onOpenMenu('codex')} colorClass="text-cyan-400"><BookOpenIcon className="w-5 h-5" /></TooltipButton>
                     <TooltipButton title="Scry System Hardware" onClick={() => onOpenMenu('system-scan')} colorClass="text-blue-400"><ScanIcon className="w-5 h-5" /></TooltipButton>
+                    <TooltipButton title="The Forge on Your PC" onClick={() => onOpenMenu('tui-installer')} colorClass="text-green-400"><ComputerDesktopIcon className="w-5 h-5" /></TooltipButton>
                     <TooltipButton title="Forge Dev Environment" onClick={() => onOpenMenu('forge-builder')} colorClass="text-orc-steel"><ForgeIcon className="w-5 h-5" /></TooltipButton>
                     <TooltipButton title="Keystone Rituals" onClick={() => onOpenMenu('keystone')} colorClass="text-dragon-fire"><KeyIcon className="w-5 h-5" /></TooltipButton>
                     <TooltipButton title="Chronicler's Orb" onClick={() => onOpenMenu('chronicler')} colorClass="text-magic-purple"><VideoCameraIcon className="w-5 h-5" /></TooltipButton>
@@ -89,13 +91,14 @@ export const BottomPanel: React.FC<BottomPanelProps> = ({
                     {/* Forge Tools */}
                     <TooltipButton title="The Sigil Crafter" onClick={() => onOpenMenu('sigil-crafter')} colorClass="text-forge-text-secondary"><CodeBracketIcon className="w-5 h-5" /></TooltipButton>
                     <TooltipButton title="Ritual of Insight (`khws`)" onClick={() => onOpenMenu('chwd-ritual')} colorClass="text-forge-text-secondary"><EyeIcon className="w-5 h-5" /></TooltipButton>
+                    <TooltipButton title="Package from Local Source" onClick={() => onOpenMenu('local-source-ritual')} colorClass="text-forge-text-secondary"><PackageIcon className="w-5 h-5" /></TooltipButton>
                    
                     <div className="w-px h-6 bg-forge-border mx-1" />
                     
                     {/* Athenaeum Tools */}
                     <TooltipButton title="Keyring Attunement" onClick={() => onOpenMenu('keyring-attunement')} colorClass="text-forge-text-secondary"><ShieldCheckIcon className="w-5 h-5" /></TooltipButton>
                     <TooltipButton title="Athenaeum Scryer" onClick={() => onOpenMenu('athenaeum-scryer')} colorClass="text-forge-text-secondary"><BookOpenIcon className="w-5 h-5" /></TooltipButton>
-                    <TooltipButton title="Forge Housekeeping" onClick={() => onOpenMenu('housekeeping')} colorClass="text-forge-text-secondary"><WrenchScrewdriverIcon className="w-5 h-5" /></TooltipButton>
+                    <TooltipButton title="Base64 Transmutation" onClick={() => onOpenMenu('housekeeping')} colorClass="text-forge-text-secondary"><TransmuteIcon className="w-5 h-5" /></TooltipButton>
                     <TooltipButton title="Forge Inspector" onClick={() => onOpenMenu('forge-inspector')} colorClass="text-forge-text-secondary"><MagnifyingGlassIcon className="w-5 h-5" /></TooltipButton>
 
                     <div className="w-px h-6 bg-forge-border mx-1" />

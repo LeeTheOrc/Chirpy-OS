@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { CloseIcon, CopyIcon, ShieldCheckIcon } from './Icons';
 
@@ -33,8 +34,29 @@ const CodeBlock: React.FC<{ children: React.ReactNode; lang?: string }> = ({ chi
     );
 };
 
-const FULL_COMMAND = `sudo bash <<'EOF'
-#!/bin/bash
+const CHWD_FIX_SCRIPT_RAW = `#!/bin/bash
+# Kael OS - CHWD Artisan Key Attunement (v2)
+set -euo pipefail
+echo "--- Attuning to CHWD Artisan's Signature (v2) ---"
+echo "This will add the security key for the CachyOS developer who signed the 'chwd' package."
+
+# Step 1: Ensure the pacman keyring is initialized.
+echo "--> Initializing keyring..."
+pacman-key --init
+
+# Step 2: Receive the key directly into the pacman keyring.
+echo "--> Receiving key from keyserver..."
+pacman-key --recv-keys B62C3D10C54D5DA9
+
+# Step 3: Locally sign the key to establish trust.
+echo "--> Signing the key to establish trust..."
+pacman-key --lsign-key B62C3D10C54D5DA9
+
+echo "--- ✅ Attunement Complete ---"
+echo "The forge now trusts the artisan. You may retry building the 'chwd' package."
+`;
+
+const GENERAL_FIX_SCRIPT_RAW = `#!/bin/bash
 # Kael OS - Keyring Fix Script
 # Adds CachyOS and Chaotic-AUR repositories and keys to an existing system.
 
@@ -94,17 +116,23 @@ pacman -Syyu --noconfirm
 echo ""
 echo "--- ✅ System Trust Update Complete! ---"
 echo "Your system now trusts the CachyOS and Chaotic-AUR forges."
-EOF
 `;
 
 export const KeyringAttunementModal: React.FC<KeyringAttunementModalProps> = ({ onClose }) => {
+    // UTF-8 safe encoding
+    const encodedGeneralScript = btoa(unescape(encodeURIComponent(GENERAL_FIX_SCRIPT_RAW)));
+    const fullGeneralCommand = `echo "${encodedGeneralScript}" | base64 --decode | sudo bash`;
+
+    const encodedChwdScript = btoa(unescape(encodeURIComponent(CHWD_FIX_SCRIPT_RAW)));
+    const fullChwdCommand = `echo "${encodedChwdScript}" | base64 --decode | sudo bash`;
+
     return (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center animate-fade-in-fast" onClick={onClose}>
             <div className="bg-forge-panel border-2 border-forge-border rounded-lg shadow-2xl w-full max-w-2xl p-6 m-4 flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-center mb-4 flex-shrink-0">
                      <h2 className="text-xl font-bold text-forge-text-primary flex items-center gap-2 font-display tracking-wider">
                         <ShieldCheckIcon className="w-5 h-5 text-dragon-fire" />
-                        <span>Fix 'Untrusted Key' Errors</span>
+                        <span>Keyring Attunement Rituals</span>
                     </h2>
                     <button onClick={onClose} className="text-forge-text-secondary hover:text-forge-text-primary">
                         <CloseIcon className="w-5 h-5" />
@@ -112,20 +140,25 @@ export const KeyringAttunementModal: React.FC<KeyringAttunementModalProps> = ({ 
                 </div>
                 <div className="overflow-y-auto pr-2 text-forge-text-secondary leading-relaxed space-y-4">
                     <p>
-                        Are you seeing errors like "<strong className="text-dragon-fire">unknown public key</strong>" or "<strong className="text-dragon-fire">corrupted package</strong>" when trying to install software? This is a common security feature, and it's easy to fix.
+                        Architect, if you're encountering errors like "<strong className="text-dragon-fire">unknown public key</strong>" when forging artifacts, it means the forge doesn't trust the signature of the artisan. This ritual will attune your system to trust the necessary keys.
                     </p>
+
+                    <h3 className="font-semibold text-lg text-orc-steel mt-4 mb-2">Specific Key Attunement: `chwd` Artisan</h3>
                     <p>
-                        It just means your system doesn't know if it can trust where the software is coming from. This script will introduce your system to two trusted software sources: <strong className="text-orc-steel">CachyOS</strong> and the <strong className="text-orc-steel">Chaotic-AUR</strong>.
+                       If you are specifically trying to build the `chwd` package and encountered the `B62C3D10C54D5DA9` key error, use this targeted incantation. It is a more robust ritual that directly commands the system's Key Master to perform the full trust ceremony.
                     </p>
-                    
-                    <h3 className="font-semibold text-lg text-orc-steel mt-4 mb-2">The One-Step Fix</h3>
+                    <CodeBlock lang="bash">{fullChwdCommand}</CodeBlock>
+
+                    <div className="w-full h-px bg-forge-border my-6" />
+
+                    <h3 className="font-semibold text-lg text-orc-steel mt-4 mb-2">General Trust Update</h3>
                     <p>
-                       <strong className="text-dragon-fire">Copy the entire command block below and paste it into your terminal.</strong> It will ask for your password because it needs permission to update your system's list of trusted sources.
+                       This incantation is for general trust issues with popular repositories. It will introduce your system to two trusted software sources: <strong className="text-orc-steel">CachyOS</strong> and the <strong className="text-orc-steel">Chaotic-AUR</strong>. <strong className="text-dragon-fire">Copy the entire command block below and paste it into your terminal.</strong>
                     </p>
-                    <CodeBlock lang="bash">{FULL_COMMAND}</CodeBlock>
+                    <CodeBlock lang="bash">{fullGeneralCommand}</CodeBlock>
 
                     <p className="mt-2">
-                        After the script finishes, your system will be able to install and update software from these sources without any more trust issues.
+                        After these rituals, your system will be able to install and update software from these sources without any more trust issues.
                     </p>
                 </div>
             </div>

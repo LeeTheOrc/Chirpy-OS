@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { CloseIcon, CopyIcon, ForgeIcon } from './Icons';
 import { generateForgeBuilderScript } from '../lib/forge-builder-generator';
@@ -35,9 +36,9 @@ const CodeBlock: React.FC<{ children: React.ReactNode; lang?: string }> = ({ chi
 
 export const ForgeBuilderModal: React.FC<ForgeBuilderModalProps> = ({ onClose }) => {
     const forgeScript = generateForgeBuilderScript();
-    const fullScriptCommand = `cat > forge-ritual.sh << 'EOF'
-${forgeScript}
-EOF`;
+    // UTF-8 safe encoding
+    const encodedScript = btoa(unescape(encodeURIComponent(forgeScript)));
+    const fullScriptCommand = `echo "${encodedScript}" | base64 --decode | bash`;
 
     return (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center animate-fade-in-fast" onClick={onClose}>
@@ -87,14 +88,9 @@ iwctl
                         </div>
                     </details>
                     
-                    <h3 className="font-semibold text-lg text-orc-steel mt-4 mb-2">Step 2: Unleash the Full Script</h3>
-                    <p>This unified incantation will create the <strong className="text-dragon-fire">forge-ritual.sh</strong> script on your live system. <strong className="text-dragon-fire">Copy the entire block below and paste it into your terminal.</strong></p>
+                    <h3 className="font-semibold text-lg text-orc-steel mt-4 mb-2">Step 2: Begin the Ritual</h3>
+                    <p>This unified incantation will download and immediately execute the Forge Genesis script. The script will then guide you through the interactive installation. <strong className="text-dragon-fire">Copy the entire block below and paste it into your terminal.</strong></p>
                     <CodeBlock lang="bash">{fullScriptCommand}</CodeBlock>
-
-                     <h3 className="font-semibold text-lg text-orc-steel mt-4 mb-2">Step 3: Begin the Ritual</h3>
-                    <p>Now, make the script executable and run it to begin the interactive installation. The script will guide you through the rest of the process.</p>
-                    <CodeBlock lang="bash">{`chmod +x forge-ritual.sh
-./forge-ritual.sh`}</CodeBlock>
 
                     <p className="mt-2 text-xs italic">
                         For a better experience, you can optionally connect to the live environment via SSH from your main PC. This allows for easier copy-pasting of large command blocks. You would need to start the `sshd` service, set a temporary `passwd`, and find the machine's IP address with `ip a`.

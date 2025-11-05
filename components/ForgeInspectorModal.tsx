@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { CloseIcon, CopyIcon, MagnifyingGlassIcon } from './Icons';
 
@@ -84,7 +85,7 @@ export const ForgeInspectorModal: React.FC<ForgeInspectorModalProps> = ({ onClos
                 <div className="flex justify-between items-center mb-4 flex-shrink-0">
                      <h2 className="text-xl font-bold text-forge-text-primary flex items-center gap-2 font-display tracking-wider">
                         <MagnifyingGlassIcon className="w-5 h-5 text-dragon-fire" />
-                        <span>Architect's Inquiry: Inspecting the `chwd` Recipe</span>
+                        <span>Architect's Inquiry: Inspecting the \`chwd\` Recipe</span>
                     </h2>
                     <button onClick={onClose} className="text-forge-text-secondary hover:text-forge-text-primary">
                         <CloseIcon className="w-5 h-5" />
@@ -94,7 +95,7 @@ export const ForgeInspectorModal: React.FC<ForgeInspectorModalProps> = ({ onClos
                     <p>Of course, Architect. Following your command, I am proceeding to the next step of your plan. I will enter the specific package directory within the CachyOS grimoires to find the source of truth.</p>
                     <CodeBlock lang="bash">{SIMULATED_LS_OUTPUT.trim()}</CodeBlock>
                     <p>
-                        Having located the `chwd` directory, I am now inspecting the sacred recipe within.
+                        Having located the \`chwd\` directory, I am now inspecting the sacred recipe within.
                     </p>
                      <CodeBlock lang="bash">{`$ cat cachyos-pkgbuilds/chwd/PKGBUILD`}</CodeBlock>
                     <p>

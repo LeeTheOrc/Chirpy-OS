@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { CloseIcon, CopyIcon, VideoCameraIcon } from './Icons';
 
@@ -95,7 +96,7 @@ echo "✅ Chronicle saved successfully to '\${FINAL_LOG_FILE}'."
 echo "You can now upload this file for me to analyze."
 `;
 
-const SETUP_SCRIPT_COMMAND = `cat > ~/chronicler.sh << 'EOF'
+const SETUP_SCRIPT_COMMAND_RAW = `cat > ~/chronicler.sh << 'EOF'
 ${CHRONICLER_SCRIPT}
 EOF
 
@@ -105,6 +106,10 @@ echo "Chronicler script created and ready at ~/chronicler.sh"
 `;
 
 export const ChroniclerModal: React.FC<ChroniclerModalProps> = ({ onClose }) => {
+    // UTF-8 safe encoding
+    const encodedScript = btoa(unescape(encodeURIComponent(SETUP_SCRIPT_COMMAND_RAW)));
+    const finalSetupCommand = `echo "${encodedScript}" | base64 --decode | bash`;
+
     return (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center animate-fade-in-fast" onClick={onClose}>
             <div className="bg-forge-panel border-2 border-forge-border rounded-lg shadow-2xl w-full max-w-2xl p-6 m-4 flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
@@ -126,7 +131,7 @@ export const ChroniclerModal: React.FC<ChroniclerModalProps> = ({ onClose }) => 
                     <p>
                         First, we must create the powerful script that performs this dual-recording. <strong className="text-dragon-fire">Copy this entire block and run it once in your terminal.</strong> It will create a reusable script named <code className="font-mono text-xs">chronicler.sh</code> in your home directory.
                     </p>
-                    <CodeBlock lang="bash">{SETUP_SCRIPT_COMMAND}</CodeBlock>
+                    <CodeBlock lang="bash">{finalSetupCommand}</CodeBlock>
 
                     <h3 className="font-semibold text-lg text-forge-text-primary mt-4 mb-2">Step 2: Activate the Orb</h3>
                     <p>

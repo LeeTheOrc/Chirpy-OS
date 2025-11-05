@@ -17,16 +17,6 @@ const DetailInput: React.FC<{ label: string; name: keyof DistroConfig; value: st
     </div>
 );
 
-const DetailSelect: React.FC<{ label: string; name: keyof DistroConfig | 'continent'; value: string; onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void; options: {value: string, label: string}[]; tooltip?: string, disabled?: boolean }> = ({ label, name, value, onChange, options, tooltip, disabled }) => (
-     <div className="flex justify-between items-center py-2.5 border-b border-forge-border/50">
-        <label htmlFor={name} className="flex items-center gap-1.5 text-forge-text-secondary text-sm">{label}{tooltip && <Tooltip text={tooltip} />}</label>
-        <select id={name} name={name} value={value || ''} onChange={onChange} disabled={disabled} className="bg-transparent text-forge-text-primary font-medium text-sm text-right border-0 border-b-2 border-transparent focus:ring-0 focus:border-dragon-fire transition-all w-1/2 p-1 disabled:opacity-50 disabled:cursor-not-allowed [&>*]:bg-forge-panel">
-            {options.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-        </select>
-    </div>
-);
-
-
 interface DistroBlueprintFormProps {
   config: DistroConfig;
   onConfigChange: (newConfig: DistroConfig) => void;
@@ -36,52 +26,10 @@ interface DistroBlueprintFormProps {
   
 export const DistroBlueprintForm: React.FC<DistroBlueprintFormProps> = ({ config, onConfigChange, isLocked, onInitiateAICoreAttunement }) => {
     
-    // Find the initial continent based on the initial country
-    const findContinentByCountry = (countryName: string) => {
-        for (const continent in LOCATIONS_DATA) {
-            if (LOCATIONS_DATA[continent as keyof typeof LOCATIONS_DATA].some(c => c.name === countryName)) {
-                return continent;
-            }
-        }
-        return Object.keys(LOCATIONS_DATA)[0]; // Default to the first continent
-    };
-
-    const [selectedContinent, setSelectedContinent] = useState(() => findContinentByCountry(config.location));
-
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         const newConfig = { ...config, [name]: value };
         onConfigChange(newConfig);
-    };
-
-    const handleContinentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const newContinentName = e.target.value;
-        setSelectedContinent(newContinentName);
-
-        // Reset country and dependent fields to the first available in the new continent
-        const newCountries = LOCATIONS_DATA[newContinentName as keyof typeof LOCATIONS_DATA];
-        const firstCountry = newCountries[0];
-        onConfigChange({
-            ...config,
-            location: firstCountry.name,
-            timezone: firstCountry.timezones[0],
-            locale: firstCountry.locales[0],
-            keyboardLayout: firstCountry.keyboards[0],
-        });
-    };
-
-    const handleCountryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const newCountryName = e.target.value;
-        const selectedCountry = LOCATIONS_DATA[selectedContinent as keyof typeof LOCATIONS_DATA].find(c => c.name === newCountryName);
-        if (selectedCountry) {
-            onConfigChange({
-                ...config,
-                location: selectedCountry.name,
-                timezone: selectedCountry.timezones[0],
-                locale: selectedCountry.locales[0],
-                keyboardLayout: selectedCountry.keyboards[0],
-            });
-        }
     };
     
     const handleRepoToggle = (repo: 'cachy' | 'chaotic') => {
@@ -93,9 +41,6 @@ export const DistroBlueprintForm: React.FC<DistroBlueprintFormProps> = ({ config
         
         onConfigChange({ ...config, extraRepositories: ['kael-os', ...newOtherRepos] });
     };
-    
-    const countriesForSelectedContinent = LOCATIONS_DATA[selectedContinent as keyof typeof LOCATIONS_DATA] || [];
-    const currentLocationData = countriesForSelectedContinent.find(c => c.name === config.location) || countriesForSelectedContinent[0];
 
     return (
         <div className="p-5">
@@ -108,62 +53,24 @@ export const DistroBlueprintForm: React.FC<DistroBlueprintFormProps> = ({ config
                 tooltip="The network name for your OS. Can be overridden during installation." 
                 disabled={isLocked} 
             />
-            <DetailInput 
-                label="Master User" 
-                name="username" 
-                value={config.username || ''} 
-                onChange={handleChange} 
-                tooltip="Set your desired username. The Master Key (password) will be set during the secure, interactive installation." 
-                disabled={isLocked} 
-            />
+            <div className="flex justify-between items-center py-2.5 border-b border-forge-border/50">
+                <label className="flex items-center gap-1.5 text-forge-text-secondary text-sm">Master User
+                    <Tooltip text="The username is set during the interactive installation process." />
+                </label>
+                <span className="text-forge-text-primary font-medium text-sm italic">Set during installation</span>
+            </div>
             <div className="flex justify-between items-center py-2.5 border-b border-forge-border/50">
                 <label className="flex items-center gap-1.5 text-forge-text-secondary text-sm">Master Key
                     <Tooltip text="The password is created during the interactive installation process to ensure each Realm is secure from its genesis." />
                 </label>
                 <span className="text-forge-text-primary font-medium text-sm italic">Set during installation</span>
             </div>
-            
-            <DetailSelect 
-                label="Continent" 
-                name="continent" 
-                value={selectedContinent} 
-                onChange={handleContinentChange} 
-                options={Object.keys(LOCATIONS_DATA).map(c => ({ value: c, label: c }))} 
-                disabled={isLocked}
-            />
-            <DetailSelect 
-                label="Country" 
-                name="location" 
-                value={config.location} 
-                onChange={handleCountryChange}
-                options={countriesForSelectedContinent.map(c => ({ value: c.name, label: c.name }))}
-                disabled={isLocked}
-            />
-            <DetailSelect 
-                label="Timezone / City" 
-                name="timezone" 
-                value={config.timezone} 
-                onChange={handleChange}
-                options={currentLocationData?.timezones.map(tz => ({ value: tz, label: tz.split('/')[1].replace(/_/g, ' ') })) || []}
-                disabled={isLocked}
-            />
-             <DetailSelect 
-                label="Locale" 
-                name="locale" 
-                value={config.locale} 
-                onChange={handleChange}
-                options={currentLocationData?.locales.map(l => ({ value: l, label: l })) || []}
-                disabled={isLocked}
-            />
-            <DetailSelect 
-                label="Keyboard Layout" 
-                name="keyboardLayout" 
-                value={config.keyboardLayout} 
-                onChange={handleChange}
-                options={currentLocationData?.keyboards.map(k => ({ value: k, label: k })) || []}
-                disabled={isLocked}
-            />
-            
+             <div className="flex justify-between items-center py-2.5 border-b border-forge-border/50">
+                <label className="flex items-center gap-1.5 text-forge-text-secondary text-sm">Location & Keyboard
+                    <Tooltip text="Your region, language, and keyboard layout are all configured in the graphical installer." />
+                </label>
+                <span className="text-forge-text-primary font-medium text-sm italic">Set during installation</span>
+            </div>
             <div className="flex justify-between items-center py-2.5 border-b border-forge-border/50">
                 <label className="flex items-center gap-1.5 text-forge-text-secondary text-sm">Shell
                     <Tooltip text="Per the Core Philosophy, the Z Shell (zsh) is the immutable foundation for the terminal, enabling deep AI integration." />

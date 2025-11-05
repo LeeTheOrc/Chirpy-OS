@@ -1,3 +1,5 @@
+
+
 import React, { useState } from 'react';
 import { CloseIcon, CopyIcon, BookOpenIcon } from './Icons';
 
@@ -92,17 +94,19 @@ echo "All found PKGBUILDs from the $TARGET_FORGE forge have been saved to:"
 echo "$EXPANDED_DEST_DIR"
 `;
 
-const fullScryerCommand = (target: 'garuda' | 'cachyos') => `
-bash -c "$(cat << 'EOF_SCRY'
-#!/bin/bash
-# Kael OS - Athenaeum Scryer
-# Downloads all PKGBUILD files from a target forge for study.
-${scryerScriptBody}
-EOF_SCRY
-)" "bash" "${target}"
-`.trim();
+const fullScryerCommand = (target: 'garuda' | 'cachyos') => {
+    // We pass the script to bash and use "-s --" to pass arguments to the script itself.
+    const script = `
+        # Kael OS - Athenaeum Scryer
+        # Downloads all PKGBUILD files from a target forge for study.
+        ${scryerScriptBody}
+    `.trim();
+    const encodedScript = btoa(script);
+    return `echo "${encodedScript}" | base64 --decode | bash -s -- ${target}`;
+};
 
 export const AthenaeumScryerModal: React.FC<AthenaeumScryerModalProps> = ({ onClose }) => {
+    const setupCommand = `echo "c3VkbyBwYWNtYW4gLVMgZ2l0IGdpdGh1Yi1jbGkgLS1ub25jb25maXJtICYmIGdoIGF1dGggbG9naW4=" | base64 --decode | bash`;
 
     return (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center animate-fade-in-fast" onClick={onClose}>
@@ -127,7 +131,7 @@ export const AthenaeumScryerModal: React.FC<AthenaeumScryerModalProps> = ({ onCl
                     <h3 className="font-semibold text-lg text-orc-steel mt-4 mb-2">Step 1: Prepare Your Tools (One-Time Setup)</h3>
                     <p>Before you can scry, your Forge needs two tools: <code className="font-mono text-xs">git</code> and the <code className="font-mono text-xs">gh</code> (GitHub's command-line tool). You also need to log in to your GitHub account through the terminal. This provides a secure key to the Athenaeum.</p>
                     <p>Copy this single command and run it. It will install the tools and guide you through the GitHub login. <strong className="text-dragon-fire">You only need to do this once.</strong></p>
-                    <CodeBlock lang="bash">{`sudo pacman -S git github-cli --noconfirm && gh auth login`}</CodeBlock>
+                    <CodeBlock lang="bash">{setupCommand}</CodeBlock>
 
                     <h3 className="font-semibold text-lg text-orc-steel mt-4 mb-2">Step 2: Cast the Scrying Spell</h3>
                     <p>

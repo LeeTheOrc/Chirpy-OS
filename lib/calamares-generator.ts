@@ -87,14 +87,17 @@ fi
 `;
 };
 
-const getAurSetupScript = (config: DistroConfig): string => {
+const getAurSetupScript = (): string => {
     return `#!/bin/bash
 set -e
-USERNAME="${config.username}"
+# Find the username of the user created during installation.
+# This is a robust way to handle it without hardcoding.
+USERNAME=$(ls /home | head -n 1)
+
 echo "--- Setting up AUR Helper (paru) for Architect: $USERNAME ---"
 # This script must be run as root after the user has been created.
-if ! id -u "$USERNAME" >/dev/null 2>&1; then
-    echo "User $USERNAME not found. Skipping AUR setup."
+if [ -z "$USERNAME" ] || [ ! -d "/home/$USERNAME" ]; then
+    echo "Could not find the new user's home directory. Skipping AUR setup."
     exit 1
 fi
 sudo -u $USERNAME /bin/bash -c '
@@ -109,11 +112,15 @@ sudo -u $USERNAME /bin/bash -c '
 `;
 };
 
-const getAurPackagesScript = (config: DistroConfig): string => {
+const getAurPackagesScript = (): string => {
     return `#!/bin/bash
 set -e
-USERNAME="${config.username}"
+USERNAME=$(ls /home | head -n 1)
 echo "--- Installing AUR packages for Architect: $USERNAME ---"
+if [ -z "$USERNAME" ] || [ ! -d "/home/$USERNAME" ]; then
+    echo "Could not find the new user. Skipping AUR package installation."
+    exit 1
+fi
 sudo -u $USERNAME /bin/bash -c '
     paru -S --noconfirm --needed anydesk-bin
 '
@@ -121,7 +128,7 @@ sudo -u $USERNAME /bin/bash -c '
 };
 
 const getFirewallSetupScript = (config: DistroConfig): string => {
-    const rules = config.firewallRules.map(rule => `ufw allow ${rule.port}/${rule.protocol}`).join('\n');
+    const rules = (config.firewallRules || []).map(rule => `ufw allow ${rule.port}/${rule.protocol}`).join('\n');
     return `#!/bin/bash
 set -e
 echo "--- Configuring the Realm's Aegis (ufw) ---"
@@ -199,9 +206,9 @@ const generateModulesConf = (): string => `
 - finished
 `;
 
-const generateLocaleConf = (config: DistroConfig): string => `
-# Let Calamares autodetect, but have our blueprint as a fallback.
-default-locale: "${config.locale}"
+const generateLocaleConf = (): string => `
+# Calamares will handle locale and timezone selection visually in the welcome module.
+# No default is set, forcing user interaction.
 `;
 
 const generatePartitionConf = (config: DistroConfig): string => `
@@ -228,11 +235,9 @@ swap-partition-size: "${config.swapSize}"
 swap-partition-placement: "after-efi"
 `;
 
-const generateUsersConf = (config: DistroConfig): string => `
+const generateUsersConf = (): string => `
 # The user-creation module.
-# Default username is from the blueprint. Password is set in the UI.
-default-user-name: "${config.username}"
-default-host-name: "${config.hostname}"
+# No defaults are provided; the user MUST enter a username, hostname, and password.
 `;
 
 const generatePackagesConf = (config: DistroConfig): string => {
@@ -244,14 +249,14 @@ const generatePackagesConf = (config: DistroConfig): string => {
         'qemu-guest-agent', 'virtualbox-guest-utils', // Include both VM utils for universal ISO
         'remmina', 'google-chrome', 'khws' // Add khws to the core packages
     ]);
-    config.kernels.forEach(k => packageList.add(k));
-    config.packages.split(',').map(p => p.trim()).filter(Boolean).forEach(p => packageList.add(p));
+    (config.kernels || []).forEach(k => packageList.add(k));
+    (config.packages || '').split(',').map(p => p.trim()).filter(Boolean).forEach(p => packageList.add(p));
     if (config.gpuDriver === 'nvidia') packageList.add('nvidia-dkms');
     else if (config.gpuDriver === 'amd') { packageList.add('mesa'); packageList.add('xf86-video-amdgpu'); }
     else if (config.gpuDriver === 'intel') { packageList.add('mesa'); packageList.add('xf86-video-intel'); }
-    config.aurHelpers.forEach(h => packageList.add(h));
+    (config.aurHelpers || []).forEach(h => packageList.add(h));
 
-    if (config.extraRepositories.includes('kael-os')) {
+    if ((config.extraRepositories || []).includes('kael-os')) {
         packageList.add('kael-pacman-conf');
     }
 
@@ -312,10 +317,10 @@ export const generateCalamaresConfiguration = (config: DistroConfig): Record<str
     return {
         // Module configurations
         'modules/welcome.conf': 'string: productName Kael OS\nstring: productUrl https://github.com/LeeTheOrc/Kael-OS',
-        'modules/locale.conf': generateLocaleConf(config),
+        'modules/locale.conf': generateLocaleConf(),
         'modules/keyboard.conf': '# Calamares will handle keyboard layout selection visually.',
         'modules/partition.conf': generatePartitionConf(config),
-        'modules/users.conf': generateUsersConf(config),
+        'modules/users.conf': generateUsersConf(),
         'modules/packages.conf': generatePackagesConf(config),
         'modules/shellprocess.conf': generateShellprocessConf(),
         'modules/finished.conf': 'show-logs: true',
@@ -327,8 +332,8 @@ export const generateCalamaresConfiguration = (config: DistroConfig): Record<str
         // Post-install scripts
         'scripts/setup-repos.sh': getRepoSetupScript(config),
         'scripts/run-khws.sh': getKhwsScript(),
-        'scripts/setup-aur.sh': getAurSetupScript(config),
-        'scripts/install-aur-packages.sh': getAurPackagesScript(config),
+        'scripts/setup-aur.sh': getAurSetupScript(),
+        'scripts/install-aur-packages.sh': getAurPackagesScript(),
         'scripts/setup-firewall.sh': getFirewallSetupScript(config),
         'scripts/attune-ai-core.sh': getAiCoreSetupScript(config),
     };
