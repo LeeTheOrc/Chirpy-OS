@@ -27,21 +27,25 @@ import { SystemScanModal } from './components/SystemScanModal';
 import { ForgeBuilderModal } from './components/ForgeBuilderModal';
 import { AthenaeumScryerModal } from './components/AthenaeumScryerModal';
 import { HousekeepingModal } from './components/HousekeepingModal';
-import { ChwdRitualModal } from './components/ChwdRitualModal';
 import { ChroniclerModal } from './components/ChroniclerModal';
 import { ForgeInspectorModal } from './components/ForgeInspectorModal';
 import { SigilCrafterModal } from './components/SigilCrafterModal';
 import { KeyringAttunementModal } from './components/KeyringAttunementModal';
 import { LocalSourceRitualModal } from './components/LocalSourceRitualModal';
 import { TuiInstallerModal } from './components/TuiInstallerModal';
+import { ManualForgeModal } from './components/ManualForgeModal';
+import { AthenaeumMirrorModal } from './components/AthenaeumMirrorModal';
+import { TransmutationRitualModal } from './components/TransmutationRitualModal';
+import { KhwsRitualModal } from './components/KhwsRitualModal';
 
 
 type ModalType = 
     | 'build' | 'iso' | 'keystone' | 'ai-core' | 'law' | 'levelup' 
     | 'personality' | 'codex' | 'system-scan' | 'forge-builder'
-    | 'athenaeum-scryer' | 'housekeeping' | 'chwd-ritual' | 'chronicler'
+    | 'athenaeum-scryer' | 'housekeeping' | 'chronicler'
     | 'forge-inspector' | 'sigil-crafter' | 'keyring-attunement' 
-    | 'local-source-ritual' | 'tui-installer' | null;
+    | 'local-source-ritual' | 'tui-installer' | 'manual-forge' | 'athenaeum-mirror' | 'transmutation-ritual'
+    | 'khws-ritual' | null;
 
 const App: React.FC = () => {
     const [config, setConfig] = useState<DistroConfig>(INITIAL_DISTRO_CONFIG);
@@ -244,13 +248,16 @@ echo "--- ✅ Attunement Complete ---"
             case 'forge-builder': return <ForgeBuilderModal onClose={() => setActiveModal(null)} />;
             case 'athenaeum-scryer': return <AthenaeumScryerModal onClose={() => setActiveModal(null)} />;
             case 'housekeeping': return <HousekeepingModal onClose={() => setActiveModal(null)} />;
-            case 'chwd-ritual': return <ChwdRitualModal onClose={() => setActiveModal(null)} />;
             case 'chronicler': return <ChroniclerModal onClose={() => setActiveModal(null)} />;
             case 'forge-inspector': return <ForgeInspectorModal onClose={() => setActiveModal(null)} />;
             case 'sigil-crafter': return <SigilCrafterModal onClose={() => setActiveModal(null)} onGenerate={(prompt) => handleSendMessage(prompt)} />;
             case 'keyring-attunement': return <KeyringAttunementModal onClose={() => setActiveModal(null)} />;
             case 'local-source-ritual': return <LocalSourceRitualModal onClose={() => setActiveModal(null)} />;
             case 'tui-installer': return <TuiInstallerModal onClose={() => setActiveModal(null)} />;
+            case 'manual-forge': return <ManualForgeModal onClose={() => setActiveModal(null)} />;
+            case 'athenaeum-mirror': return <AthenaeumMirrorModal onClose={() => setActiveModal(null)} />;
+            case 'transmutation-ritual': return <TransmutationRitualModal onClose={() => setActiveModal(null)} />;
+            case 'khws-ritual': return <KhwsRitualModal onClose={() => setActiveModal(null)} />;
             default: return null;
         }
     };

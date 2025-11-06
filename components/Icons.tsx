@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 type IconProps = React.SVGProps<SVGSVGElement>;
@@ -484,5 +483,32 @@ export const LibraryIcon: React.FC<IconProps> = (props) => (
 export const TransmuteIcon: React.FC<IconProps> = (props) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M3 7.5 7.5 3m0 0L12 7.5M7.5 3v13.5m13.5 0L16.5 21m0 0L12 16.5m4.5 4.5V7.5" />
+  </svg>
+);
+
+export const DuplicateIcon: React.FC<IconProps> = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} {...props}>
+    <defs>
+      <linearGradient id="coolGrayGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stopColor="#a99ec3" />
+        <stop offset="100%" stopColor="#8d81ac" />
+      </linearGradient>
+    </defs>
+    <path stroke="url(#coolGrayGradient)" strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75" />
+    <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" d="M9.375 3.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-1.5a1.125 1.125 0 01-1.125-1.125v-9.75c0-.621.504-1.125 1.125-1.125h1.5z" />
+    <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" d="M12.375 3.375h6.75a1.125 1.125 0 011.125 1.125v9.75a1.125 1.125 0 01-1.125 1.125h-6.75" />
+  </svg>
+);
+
+export const BeakerIcon: React.FC<IconProps> = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} {...props}>
+    <defs>
+        <linearGradient id="magicPurpleGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#f380ff" />
+            <stop offset="100%" stopColor="#e040fb" />
+        </linearGradient>
+    </defs>
+    <path stroke="url(#magicPurpleGradient)" strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.25M9.75 3.104C11.22 2.237 13.09 1.5 15 1.5v5.714c0 .597-.237 1.17-.659 1.591L9.75 14.25M5 14.25h14" />
+    <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" d="M5 14.25a2.25 2.25 0 01-2.25-2.25v-1.5a2.25 2.25 0 012.25-2.25H19a2.25 2.25 0 012.25 2.25v1.5a2.25 2.25 0 01-2.25 2.25M5 14.25v3.375c0 .621.504 1.125 1.125 1.125h11.75c.621 0 1.125-.504 1.125-1.125v-3.375" />
   </svg>
 );

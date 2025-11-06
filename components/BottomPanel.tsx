@@ -4,15 +4,16 @@ import {
     SendIcon, PaperClipIcon, SparklesIcon, BookOpenIcon, ScanIcon, KeyIcon, 
     VideoCameraIcon, EyeIcon, ForgeIcon, MagnifyingGlassIcon, 
     RocketLaunchIcon, ScrollIcon, ShieldCheckIcon, PackageIcon, ComputerDesktopIcon,
-    PaintBrushIcon, BroomIcon, LibraryIcon
+    PaintBrushIcon, BroomIcon, LibraryIcon, WrenchScrewdriverIcon, DuplicateIcon, BeakerIcon
 } from './Icons';
 
 type ModalType = 
     | 'build' | 'iso' | 'keystone' | 'ai-core' | 'law' | 'levelup' 
     | 'personality' | 'codex' | 'system-scan' | 'forge-builder'
-    | 'athenaeum-scryer' | 'housekeeping' | 'chwd-ritual' | 'chronicler'
+    | 'athenaeum-scryer' | 'housekeeping' | 'chronicler'
     | 'forge-inspector' | 'sigil-crafter' | 'keyring-attunement' 
-    | 'local-source-ritual' | 'tui-installer' | null;
+    | 'local-source-ritual' | 'tui-installer' | 'manual-forge' | 'athenaeum-mirror' | 'transmutation-ritual'
+    | 'khws-ritual' | null;
 
 interface BottomPanelProps {
     value: string;
@@ -90,9 +91,12 @@ export const BottomPanel: React.FC<BottomPanelProps> = ({
                     {/* Group 2: Athenaeum & Packaging */}
                     <TooltipButton title="Keystone Rituals" onClick={() => onOpenMenu('keystone')} colorClass="text-dragon-fire"><KeyIcon className="w-5 h-5" /></TooltipButton>
                     <TooltipButton title="Athenaeum Scryer" onClick={() => onOpenMenu('athenaeum-scryer')} colorClass="text-blue-400"><LibraryIcon className="w-5 h-5" /></TooltipButton>
+                    <TooltipButton title="Athenaeum Mirroring" onClick={() => onOpenMenu('athenaeum-mirror')} colorClass="text-blue-400"><DuplicateIcon className="w-5 h-5" /></TooltipButton>
                     <TooltipButton title="Keyring Attunement" onClick={() => onOpenMenu('keyring-attunement')} colorClass="text-orc-steel"><ShieldCheckIcon className="w-5 h-5" /></TooltipButton>
-                    <TooltipButton title="Ritual of Insight (`khws`)" onClick={() => onOpenMenu('chwd-ritual')} colorClass="text-cyan-400"><EyeIcon className="w-5 h-5" /></TooltipButton>
+                    <TooltipButton title="The True Ritual of Insight (`khws`)" onClick={() => onOpenMenu('khws-ritual')} colorClass="text-blue-400"><EyeIcon className="w-5 h-5" /></TooltipButton>
+                    <TooltipButton title="Allied Forge Ritual" onClick={() => onOpenMenu('manual-forge')} colorClass="text-red-400"><WrenchScrewdriverIcon className="w-5 h-5" /></TooltipButton>
                     <TooltipButton title="Package from Local Source" onClick={() => onOpenMenu('local-source-ritual')} colorClass="text-green-400"><PackageIcon className="w-5 h-5" /></TooltipButton>
+                    <TooltipButton title="Ritual of Transmutation" onClick={() => onOpenMenu('transmutation-ritual')} colorClass="text-magic-purple"><BeakerIcon className="w-5 h-5" /></TooltipButton>
                     <TooltipButton title="Forge Inspector" onClick={() => onOpenMenu('forge-inspector')} colorClass="text-forge-text-secondary"><MagnifyingGlassIcon className="w-5 h-5" /></TooltipButton>
 
                     <div className="w-px h-6 bg-forge-border mx-1" />

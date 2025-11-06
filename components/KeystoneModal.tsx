@@ -190,13 +190,13 @@ echo "[SUCCESS] Using Master Key: $GPG_KEY_ID for signing."
 # Build, sign, and move the keyring package
 echo "--> Building kael-keyring..."
 cd ~/packages/kael-keyring
-makepkg -sf --sign --key "$GPG_KEY_ID" --skippgpcheck --noconfirm
+makepkg -sf --sign --key "$GPG_KEY_ID" --noconfirm
 mv *.pkg.tar.zst* ~/kael-os-repo/
 
 # Build, sign, and move the pacman config package
 echo "--> Building kael-pacman-conf..."
 cd ~/packages/kael-pacman-conf
-makepkg -sf --sign --key "$GPG_KEY_ID" --skippgpcheck --noconfirm
+makepkg -sf --sign --key "$GPG_KEY_ID" --noconfirm
 mv *.pkg.tar.zst* ~/kael-os-repo/
 
 # Navigate to the repository, add both packages, commit, and publish
@@ -212,7 +212,7 @@ echo "[SUCCESS] Foundation laid. The Athenaeum is now live."
 `;
 
 const PUBLISHER_SCRIPT_RAW = `#!/bin/bash
-# Kael OS - Athenaeum Publisher Script (v5 - with pre-flight checks)
+# Kael OS - Athenaeum Publisher Script (v6 - GPG verification enabled)
 # Forges a package, signs it, and publishes it.
 
 set -euo pipefail
@@ -226,7 +226,7 @@ if ! command -v gh &> /dev/null; then
     echo "ERROR: GitHub CLI 'gh' is not installed. Please run Step 1 of the Keystone Ritual." >&2
     exit 1
 fi
-if ! gh auth status &> /dev/null; then
+if ! gh auth status &>/dev/null; then
     echo "ERROR: You are not authenticated with GitHub. Please run 'gh auth login' or Step 1 of the Keystone Ritual." >&2
     exit 1
 fi
@@ -281,8 +281,8 @@ echo "--> Forging and signing the package (makepkg)..."
 # -s installs dependencies, -f forces build.
 # --sign tells makepkg to sign the resulting package.
 # --key specifies which key to use for signing.
-# --skippgpcheck avoids issues with verifying remote source signatures (we use sha256sum instead).
-makepkg -sf --sign --key "$SIGNING_KEY_ID" --skippgpcheck --noconfirm
+# --noconfirm avoids prompts. GPG verification is now ENABLED.
+makepkg -sf --sign --key "$SIGNING_KEY_ID" --noconfirm
 
 PACKAGE_FILE=$(find . -name "*.pkg.tar.zst" -print -quit)
 if [ -z "$PACKAGE_FILE" ]; then
@@ -301,10 +301,14 @@ echo "--> Updating the Athenaeum's grimoire (database)..."
 repo-remove kael-os-repo.db.tar.gz "$(basename "$PACKAGE_FILE" .pkg.tar.zst)" 2>/dev/null || true
 repo-add kael-os-repo.db.tar.gz "$(basename "$PACKAGE_FILE")"
 
-echo "--> Committing the new artifact to the Athenaeum's history..."
 git add .
-git commit -m "feat: Add/update package $PACKAGE_NAME"
-git push
+echo "--> Committing the new artifact to the Athenaeum's history..."
+if git diff --staged --quiet; then
+    echo "--> No changes detected. Skipping commit and push."
+else
+    git commit -m "feat: Add/update package $PACKAGE_NAME"
+    git push
+fi
 
 echo "--- The artifact has been successfully published to the Athenaeum. ---"
 `;
