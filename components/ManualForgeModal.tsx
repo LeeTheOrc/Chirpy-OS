@@ -32,129 +32,121 @@ const CodeBlock: React.FC<{ children: React.ReactNode; lang?: string }> = ({ chi
     );
 };
 
-const ALLIED_FORGE_SCRIPT_RAW = `#!/bin/bash
-# Kael OS - Ritual of the Allied Forge (v2)
+const PREPARE_FORGE_SCRIPT_RAW = `#!/bin/bash
+# Kael OS - Allied Forge Preparation
 set -euo pipefail
-
-# --- CONFIGURATION (Passed as argument) ---
-PACKAGE_NAME="$1"
-FORGE_REPO_URL="https://github.com/CachyOS/cachyos-pkgbuilds.git"
-FORGE_DIR_NAME="cachyos-pkgbuilds"
-
-# --- VALIDATION ---
-if [ -z "$PACKAGE_NAME" ]; then
-    echo "ERROR: No package name provided to the ritual." >&2
-    exit 1
-fi
-
-echo "--- Beginning the Ritual of the Allied Forge for '$PACKAGE_NAME' ---"
-
-# --- Step 1: Prepare the Forge and Recipes ---
-echo "--> Ensuring the allied forge recipes are present..."
-if [ -d "$HOME/$FORGE_DIR_NAME" ]; then
-    echo "--> Found local copy of recipes. Updating..."
-    cd "$HOME/$FORGE_DIR_NAME"
-    git pull
+echo "--- Preparing Forge and Attuning Key ---"
+# Clone/Update CachyOS Pkgbuilds Repo
+if [ -d "$HOME/cachyos-pkgbuilds" ]; then
+    echo "--> Found local CachyOS recipes. Updating..."
+    git -C "$HOME/cachyos-pkgbuilds" pull
 else
-    echo "--> Cloning allied forge recipes for the first time..."
-    cd "$HOME"
-    git clone "$FORGE_REPO_URL"
+    echo "--> Cloning CachyOS recipes for the first time..."
+    git clone https://github.com/CachyOS/cachyos-pkgbuilds.git "$HOME/cachyos-pkgbuilds"
 fi
+# Attune to CachyOS Key (for source verification)
+echo "--> Attuning to CachyOS artisan's signature..."
+gpg --recv-key B1B70BB1CD56047DEF31DE2EB62C3D10C54D5DA9 && gpg --lsign-key B1B70BB1CD56047DEF31DE2EB62C3D10C54D5DA9 || echo "Key already trusted or attunement failed, but proceeding..."
+echo "✅ Forge is ready."
+`;
 
-# --- Step 2: Navigate to the correct recipe and build ---
-PACKAGE_DIR="$HOME/$FORGE_DIR_NAME/$PACKAGE_NAME"
-if [ ! -d "$PACKAGE_DIR" ]; then
-    echo "ERROR: Recipe for '$PACKAGE_NAME' not found in the allied forge." >&2
-    exit 1
-fi
+const DOWNLOAD_PREPARE_SCRIPT_RAW = `#!/bin/bash
+# Kael OS - Download & Prepare Source
+set -euo pipefail
+PACKAGE_NAME="$1"
+PACKAGE_DIR="$HOME/cachyos-pkgbuilds/$PACKAGE_NAME"
+if [ ! -d "$PACKAGE_DIR" ]; then echo "ERROR: Recipe for '$PACKAGE_NAME' not found in '$HOME/cachyos-pkgbuilds'." >&2; exit 1; fi
 cd "$PACKAGE_DIR"
-echo "--> Entered forge for '$PACKAGE_NAME'."
+echo "--> Downloading sources, installing dependencies, and running prepare() for '$PACKAGE_NAME'..."
+makepkg -os
+echo "✅ Source is now ready for modification in '$PACKAGE_DIR/src/'"
+`;
 
+const FORGE_PUBLISH_SCRIPT_RAW = `#!/bin/bash
+# Kael OS - Forge & Publish Modified Source
+set -euo pipefail
+PACKAGE_NAME="$1"
+PACKAGE_DIR="$HOME/cachyos-pkgbuilds/$PACKAGE_NAME"
+if [ ! -d "$PACKAGE_DIR" ]; then echo "ERROR: Recipe for '$PACKAGE_NAME' not found." >&2; exit 1; fi
+cd "$PACKAGE_DIR"
 echo "--> Finding GPG Master Key..."
 SIGNING_KEY_ID=$(gpg --list-secret-keys --with-colons "Kael OS Master Key" 2>/dev/null | awk -F: '$1 == "sec" { print $5 }' | head -n 1 || gpg --list-secret-keys --with-colons 2>/dev/null | awk -F: '$1 == "sec" { print $5 }' | head -n 1)
 if [ -z "$SIGNING_KEY_ID" ]; then echo "ERROR: No GPG signing key found. Please run the Keystone Ritual." >&2; exit 1; fi
-echo "Using key: $SIGNING_KEY_ID"
-
-echo "--> Forging and signing the package (makepkg)..."
-makepkg -sf --sign --key "$SIGNING_KEY_ID" --noconfirm
-
-# --- Step 3: Publish the artifact ---
+echo "Using key: $SIGNING_KEY_ID for signing."
+echo "--> Building from modified source..."
+# -e: build from existing sources in src/
+# -f: overwrite existing package
+makepkg -ef --sign --key "$SIGNING_KEY_ID" --noconfirm
+# Publishing logic
 PACKAGE_FILE=$(find . -name "*.pkg.tar.zst" -print -quit)
-if [ -z "$PACKAGE_FILE" ]; then
-    echo "ERROR: Build failed. No package file was created."
-    exit 1
-fi
-echo "Found: $PACKAGE_FILE"
-
+if [ -z "$PACKAGE_FILE" ]; then echo "ERROR: Build failed." >&2; exit 1; fi
+REPO_DIR="$HOME/kael-os-repo"
 echo "--> Moving artifact to Athenaeum..."
-# Use a variable for the file glob to make it dynamic. The package name might not match the directory name.
-# We get the base name from the package file itself.
+mv "$PACKAGE_FILE"* "$REPO_DIR/"
+cd "$REPO_DIR"
+echo "--> Updating Athenaeum database..."
 PKG_BASE_NAME=$(basename "$PACKAGE_FILE" .pkg.tar.zst)
-mv \${PKG_BASE_NAME}*.pkg.tar.zst* ~/kael-os-repo/
-
-echo "--> Updating Athenaeum and publishing..."
-cd ~/kael-os-repo
-# Remove old package entry first to prevent duplicates
-repo-remove kael-os-repo.db.tar.gz "$PACKAGE_NAME" 2>/dev/null || true
-# Add the new one
-repo-add kael-os-repo.db.tar.gz \${PKG_BASE_NAME}.pkg.tar.zst
-
+repo-remove kael-os-repo.db.tar.gz "$PKG_BASE_NAME" 2>/dev/null || true
+repo-add kael-os-repo.db.tar.gz "$(basename "$PACKAGE_FILE")"
+echo "--> Committing and publishing..."
 git add .
-COMMIT_MSG="feat: Add/update \${PACKAGE_NAME} from official CachyOS pkgbuild"
 if git diff --staged --quiet; then
     echo "--> No changes to commit. Athenaeum is up to date."
 else
-    git commit -m "$COMMIT_MSG"
+    git commit -m "feat(manual-forge): Add/update package $PACKAGE_NAME"
     git push
 fi
-
-echo ""
-echo "--- Ritual Complete ---"
-echo "The artifact '$PACKAGE_NAME' has been successfully forged and published to the Athenaeum."
+echo "--- ✅ Ritual Complete. The artifact has been published. ---"
 `;
 
-const createUniversalCommandWithArg = (script: string, pkgName: string) => {
+const createUniversalCommand = (script: string, args: string = "") => {
     const encoded = btoa(unescape(encodeURIComponent(script.trim())));
-    return `echo "${encoded}" | base64 --decode | bash -s -- ${pkgName}`;
-}
+    return `echo "${encoded}" | base64 --decode | bash -s -- ${args}`;
+};
+
 
 export const ManualForgeModal: React.FC<ManualForgeModalProps> = ({ onClose }) => {
     const [pkgName, setPkgName] = useState('');
-    const [generatedCommand, setGeneratedCommand] = useState('');
-
-    const handleGenerate = () => {
-        if (!pkgName.trim()) return;
-        const command = createUniversalCommandWithArg(ALLIED_FORGE_SCRIPT_RAW, pkgName.trim());
-        setGeneratedCommand(command);
-    };
     
+    const prepareForgeCommand = createUniversalCommand(PREPARE_FORGE_SCRIPT_RAW);
+    const downloadPrepareCommand = pkgName.trim() ? createUniversalCommand(DOWNLOAD_PREPARE_SCRIPT_RAW, pkgName.trim()) : '';
+    const forgePublishCommand = pkgName.trim() ? createUniversalCommand(FORGE_PUBLISH_SCRIPT_RAW, pkgName.trim()) : '';
+
     return (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center animate-fade-in-fast" onClick={onClose}>
             <div className="bg-forge-panel border-2 border-forge-border rounded-lg shadow-2xl w-full max-w-2xl p-6 m-4 flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-center mb-4 flex-shrink-0">
                      <h2 className="text-xl font-bold text-forge-text-primary flex items-center gap-2 font-display tracking-wider">
                         <WrenchScrewdriverIcon className="w-5 h-5 text-dragon-fire" />
-                        <span>Ritual of the Allied Forge</span>
+                        <span>Ritual of the Allied Forge (Manual Build)</span>
                     </h2>
                     <button onClick={onClose} className="text-forge-text-secondary hover:text-forge-text-primary">
                         <CloseIcon className="w-5 h-5" />
                     </button>
                 </div>
-                <div className="overflow-y-auto pr-2 text-forge-text-secondary leading-relaxed space-y-4">
+                <div className="overflow-y-auto pr-2 text-forge-text-secondary leading-relaxed space-y-6">
                     <p>
-                        This automated ritual forges any artifact from a trusted allied forge (CachyOS) and publishes it directly to our Athenaeum.
+                        This is the master ritual for manually forging an artifact from an allied forge (CachyOS). This multi-step process gives you complete control, allowing you to download the source, make your own modifications, and then build and publish the final package.
                     </p>
+                    
+                    <div>
+                        <h3 className="font-semibold text-lg text-orc-steel">Step 1: Prepare the Forge & Recipes</h3>
+                        <p className="text-sm">
+                            This one-time setup clones the CachyOS package recipes and attunes your system to their signing key.
+                        </p>
+                        <CodeBlock lang="bash">{prepareForgeCommand}</CodeBlock>
+                    </div>
 
-                    <h3 className="font-semibold text-lg text-orc-steel mt-4 mb-2">Step 1: Name the Artifact</h3>
-                    <p>
-                        Enter the name of the package you wish to forge. This must match the directory name found in the{' '}
-                        <a href="https://github.com/CachyOS/cachyos-pkgbuilds" target="_blank" rel="noopener noreferrer" className="text-orc-steel underline hover:text-dragon-fire">
-                            CachyOS Pkgbuilds repository
-                        </a>.
-                    </p>
-                     <div className="flex items-end gap-2 my-4">
-                        <div className="flex-grow">
-                            <label htmlFor="pkg-name-input" className="block text-sm font-medium text-forge-text-secondary mb-1">Package Name</label>
+                    <div>
+                        <h3 className="font-semibold text-lg text-orc-steel">Step 2: Name the Artifact & Prepare Source</h3>
+                        <p className="text-sm">
+                            Enter the name of the package you wish to forge. This must match the directory name in the{' '}
+                            <a href="https://github.com/CachyOS/cachyos-pkgbuilds" target="_blank" rel="noopener noreferrer" className="text-orc-steel underline hover:text-dragon-fire">
+                                CachyOS Pkgbuilds repository
+                            </a>. Then, run the generated command.
+                        </p>
+                        <div className="my-2">
+                             <label htmlFor="pkg-name-input" className="block text-sm font-medium text-forge-text-secondary mb-1">Package Name</label>
                             <input
                                 id="pkg-name-input"
                                 type="text"
@@ -164,22 +156,33 @@ export const ManualForgeModal: React.FC<ManualForgeModalProps> = ({ onClose }) =
                                 className="w-full bg-forge-bg border border-forge-border rounded-lg p-2 text-sm text-forge-text-primary focus:ring-1 focus:ring-dragon-fire transition-colors"
                             />
                         </div>
-                        <button
-                            onClick={handleGenerate}
-                            disabled={!pkgName.trim()}
-                            className="px-4 py-2 bg-dragon-fire text-black font-bold rounded-md hover:bg-yellow-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                           Generate
-                        </button>
+                        {pkgName.trim() && (
+                            <div className="animate-fade-in">
+                                <CodeBlock lang="bash">{downloadPrepareCommand}</CodeBlock>
+                            </div>
+                        )}
+                    </div>
+                    
+                    <div>
+                        <h3 className="font-semibold text-lg text-orc-steel">Step 3: Modify the Source</h3>
+                        <p className="text-sm">
+                            The source code is now located in <code className="font-mono text-xs bg-forge-border px-1 rounded-sm">~/cachyos-pkgbuilds/{pkgName || '[package-name]'}/src/</code>. Navigate to this directory and make any changes you desire using your favorite text editor. You are now the artisan.
+                        </p>
                     </div>
 
-                    {generatedCommand && (
-                         <div className="animate-fade-in">
-                            <h3 className="font-semibold text-lg text-orc-steel mt-4 mb-2">Step 2: Cast the Incantation</h3>
-                            <p>Copy this single, powerful command and run it in your terminal. It will perform all necessary steps automatically.</p>
-                            <CodeBlock lang="bash">{generatedCommand}</CodeBlock>
-                        </div>
-                    )}
+                    <div>
+                        <h3 className="font-semibold text-lg text-orc-steel">Step 4: Forge & Publish the Artifact</h3>
+                        <p className="text-sm">
+                            Once your modifications are complete, run this final command. It will build the package from your modified source and publish it to our Athenaeum.
+                        </p>
+                         {pkgName.trim() ? (
+                            <div className="animate-fade-in">
+                                <CodeBlock lang="bash">{forgePublishCommand}</CodeBlock>
+                            </div>
+                        ) : (
+                            <p className="text-xs italic text-center text-forge-text-secondary/80 py-4">Enter a package name above to generate this command.</p>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>

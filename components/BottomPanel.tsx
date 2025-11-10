@@ -13,7 +13,8 @@ type ModalType =
     | 'athenaeum-scryer' | 'housekeeping' | 'chronicler'
     | 'forge-inspector' | 'sigil-crafter' | 'keyring-attunement' 
     | 'local-source-ritual' | 'tui-installer' | 'manual-forge' | 'athenaeum-mirror' | 'transmutation-ritual'
-    | 'khws-ritual' | null;
+    | 'khws-ritual'
+    | null;
 
 interface BottomPanelProps {
     value: string;
@@ -93,8 +94,8 @@ export const BottomPanel: React.FC<BottomPanelProps> = ({
                     <TooltipButton title="Athenaeum Scryer" onClick={() => onOpenMenu('athenaeum-scryer')} colorClass="text-blue-400"><LibraryIcon className="w-5 h-5" /></TooltipButton>
                     <TooltipButton title="Athenaeum Mirroring" onClick={() => onOpenMenu('athenaeum-mirror')} colorClass="text-blue-400"><DuplicateIcon className="w-5 h-5" /></TooltipButton>
                     <TooltipButton title="Keyring Attunement" onClick={() => onOpenMenu('keyring-attunement')} colorClass="text-orc-steel"><ShieldCheckIcon className="w-5 h-5" /></TooltipButton>
-                    <TooltipButton title="The True Ritual of Insight (`khws`)" onClick={() => onOpenMenu('khws-ritual')} colorClass="text-blue-400"><EyeIcon className="w-5 h-5" /></TooltipButton>
-                    <TooltipButton title="Allied Forge Ritual" onClick={() => onOpenMenu('manual-forge')} colorClass="text-red-400"><WrenchScrewdriverIcon className="w-5 h-5" /></TooltipButton>
+                    <TooltipButton title="Ritual of Insight (khws)" onClick={() => onOpenMenu('khws-ritual')} colorClass="text-blue-400"><EyeIcon className="w-5 h-5" /></TooltipButton>
+                    <TooltipButton title="Allied Forge Ritual (Manual)" onClick={() => onOpenMenu('manual-forge')} colorClass="text-red-400"><WrenchScrewdriverIcon className="w-5 h-5" /></TooltipButton>
                     <TooltipButton title="Package from Local Source" onClick={() => onOpenMenu('local-source-ritual')} colorClass="text-green-400"><PackageIcon className="w-5 h-5" /></TooltipButton>
                     <TooltipButton title="Ritual of Transmutation" onClick={() => onOpenMenu('transmutation-ritual')} colorClass="text-magic-purple"><BeakerIcon className="w-5 h-5" /></TooltipButton>
                     <TooltipButton title="Forge Inspector" onClick={() => onOpenMenu('forge-inspector')} colorClass="text-forge-text-secondary"><MagnifyingGlassIcon className="w-5 h-5" /></TooltipButton>

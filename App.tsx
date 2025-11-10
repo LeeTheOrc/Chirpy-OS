@@ -45,7 +45,8 @@ type ModalType =
     | 'athenaeum-scryer' | 'housekeeping' | 'chronicler'
     | 'forge-inspector' | 'sigil-crafter' | 'keyring-attunement' 
     | 'local-source-ritual' | 'tui-installer' | 'manual-forge' | 'athenaeum-mirror' | 'transmutation-ritual'
-    | 'khws-ritual' | null;
+    | 'khws-ritual'
+    | null;
 
 const App: React.FC = () => {
     const [config, setConfig] = useState<DistroConfig>(INITIAL_DISTRO_CONFIG);
