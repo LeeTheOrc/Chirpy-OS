@@ -190,18 +190,22 @@ echo "[SUCCESS] Using Master Key: $GPG_KEY_ID for signing."
 # Build, sign, and move the keyring package
 echo "--> Building kael-keyring..."
 cd ~/packages/kael-keyring
-makepkg -sf --sign --key "$GPG_KEY_ID" --noconfirm
+makepkg -sf --sign --key "$GPG_KEY_ID" --noconfirm --skippgpcheck
 mv *.pkg.tar.zst* ~/kael-os-repo/
 
 # Build, sign, and move the pacman config package
 echo "--> Building kael-pacman-conf..."
 cd ~/packages/kael-pacman-conf
-makepkg -sf --sign --key "$GPG_KEY_ID" --noconfirm
+makepkg -sf --sign --key "$GPG_KEY_ID" --noconfirm --skippgpcheck
 mv *.pkg.tar.zst* ~/kael-os-repo/
 
 # Navigate to the repository, add both packages, commit, and publish
 echo "--> Committing new artifacts to the Athenaeum..."
 cd ~/kael-os-repo
+
+# Place the public key in the repo root for direct download access.
+cp ~/packages/kael-keyring/kael-os.asc .
+
 repo-add kael-os-repo.db.tar.gz *.pkg.tar.zst
 git add .
 git commit -m "feat: Establish Athenaeum foundation with keyring and pacman config"

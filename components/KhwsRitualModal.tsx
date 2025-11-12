@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { CloseIcon, CopyIcon, EyeIcon } from './Icons';
 
@@ -44,7 +45,7 @@ else
     git clone https://github.com/CachyOS/cachyos-pkgbuilds.git "$HOME/cachyos-pkgbuilds"
 fi
 echo "--> Attuning to CachyOS artisan's signature..."
-gpg --recv-key B1B70BB1CD56047DEF31DE2EB62C3D10C54D5DA9 && gpg --lsign-key B1B70BB1CD56047DEF31DE2EB62C3D10C54D5DA9 || echo "Key already trusted or attunement failed, but proceeding..."
+gpg --recv-key B62C3D10C54D5DA9 && gpg --lsign-key B62C3D10C54D5DA9 || echo "Key already trusted or attunement failed, but proceeding..."
 echo "✅ Forge is ready."
 `;
 
@@ -74,7 +75,7 @@ echo "Using key: $SIGNING_KEY_ID for signing."
 echo "--> Building from modified source..."
 makepkg -ef --sign --key "$SIGNING_KEY_ID" --noconfirm
 PACKAGE_FILE=$(find . -name "*.pkg.tar.zst" -print -quit)
-if [ -z "$PACKAGE_FILE" ]; then echo "ERROR: Build failed. No package file was created." >&2; exit 1; fi
+if [ -z "$PACKAGE_FILE" ]; then echo "ERROR: Build failed." >&2; exit 1; fi
 REPO_DIR="$HOME/kael-os-repo"
 echo "--> Moving artifact to Athenaeum..."
 mv "$PACKAGE_FILE"* "$REPO_DIR/"

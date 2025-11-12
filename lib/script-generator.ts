@@ -146,19 +146,87 @@ WantedBy=timers.target
 export const generateAICoreScript = (config: DistroConfig): string => {
     
     const packageList = new Set<string>([
-        'git', 'ufw', 'networkmanager', 'ollama', 'remmina'
+        'git', 'ufw', 'networkmanager', 'ollama', 'remmina',
+        // Kael OS core components
+        'chwd', 'btrfs-progs', 'grub-btrfs', 'timeshift', 'zsh',
     ]);
     if (config.packages) config.packages.split(',').map(p => p.trim()).filter(Boolean).forEach(p => packageList.add(p));
     if (config.kernels) config.kernels.forEach(k => packageList.add(k));
     if (config.aurHelpers) config.aurHelpers.forEach(h => packageList.add(h));
-    
+    if (config.internalizedServices) {
+        config.internalizedServices.forEach(service => {
+            if (service.enabled) {
+                packageList.add(service.packageName);
+            }
+        });
+    }
     const packages = Array.from(packageList).join(' ');
 
     const firewallRules = (config.firewallRules || []).map(rule => `ufw allow ${rule.port}/${rule.protocol}`).join('\n        ');
+    
     const aiCoreScript = generateAiCoreSetupScript(config);
+
+    const repoSetupScript = `
+echo "--> Configuring external repositories..."
+
+# Function to add repo if not exists
+add_repo_if_not_exists() {
+    local repo_name="\$1"
+    local repo_conf="\$2"
+    if ! grep -q "^\\[\$repo_name\\]" /etc/pacman.conf; then
+        echo "Adding '\$repo_name' repository..."
+        echo -e "\$repo_conf" | tee -a /etc/pacman.conf > /dev/null
+    else
+        echo "'\$repo_name' repository already configured."
+    fi
+}
+
+# Kael OS Athenaeum
+echo "--> Attuning to the Kael OS Athenaeum..."
+KAEL_KEY_ID="8A7E40248B2A6582" # Kael OS Master Key ID
+KEY_URL="https://leetheorc.github.io/kael-os-repo/kael-os.asc"
+
+# Ensure the pacman keyring is initialized.
+pacman-key --init
+
+echo "Trusting the Master Key (\${KAEL_KEY_ID}) via direct download..."
+
+# Attempt to download the key directly from our own Athenaeum.
+if curl -sL "\$KEY_URL" | pacman-key --add -; then
+    echo "Key downloaded and added successfully."
+    pacman-key --lsign-key "\$KAEL_KEY_ID"
+    echo "Athenaeum key has been trusted."
+else
+    echo "WARNING: Failed to download the Master Key from \$KEY_URL."
+    echo "Attempting fallback to public keyserver..."
+    if pacman-key --recv-keys "\$KAEL_KEY_ID" --keyserver keys.openpgp.org; then
+        pacman-key --lsign-key "\$KAEL_KEY_ID"
+        echo "Athenaeum key has been trusted via fallback."
+    else
+        echo "FATAL: Could not retrieve key from direct download or keyserver."
+        echo "Please check your internet connection and repository status."
+        exit 1
+    fi
+fi
+
+# Now add the repository with signature checking required.
+add_repo_if_not_exists "kael-os" "\\n[kael-os]\\nSigLevel = Required\\nServer = https://leetheorc.github.io/kael-os-repo/\\n"
+`;
+    
+    let servicesEnableScript = '';
+    if (config.internalizedServices) {
+        config.internalizedServices.forEach(service => {
+            if (service.enabled && service.id === 'code-server') {
+                servicesEnableScript += `
+echo "--> Enabling Sovereign Service: ${service.name} for user \${USERNAME}..."
+systemctl enable --now code-server@\${USERNAME}.service
+`;
+            }
+        });
+    }
     
     return `#!/bin/bash
-# Kael AI System Attunement Script
+# Kael AI System Attunement Script v2.2
 # This script applies your blueprint to an existing Arch-based system.
 # It is NON-DESTRUCTIVE and will not partition disks.
 
@@ -167,62 +235,61 @@ clear
 
 echo "--- Kael AI System Attunement ---"
 echo "This script will attune this system to the blueprint's design."
-echo "It will install packages and configure system settings."
+echo "It will install packages and configure system services."
 read -p "Press [Enter] to continue or Ctrl+C to abort."
+
+${repoSetupScript}
 
 echo "--> Synchronizing package databases..."
 pacman -Syy
 
 echo "--> Installing core packages and dependencies..."
+# Install base-devel if not present for paru build, and pacman-contrib for other tools.
+pacman -S --noconfirm --needed base-devel pacman-contrib
 pacman -S --noconfirm --needed ${packages}
 
-echo "--> Configuring system settings..."
+echo "--> Preserving existing system settings (hostname, timezone, locale)..."
+# This script attunes the system without overwriting your core configuration.
 
-# Timezone
-echo "Setting timezone to ${config.timezone}..."
-timedatectl set-timezone ${config.timezone}
-
-# Locale
-echo "Setting locale to ${config.locale}..."
-echo '${config.locale} UTF-8' > /etc/locale.gen
-locale-gen
-echo 'LANG=${config.locale}' > /etc/locale.conf
-
-# Hostname
-if [ "$(hostname)" != "${config.hostname}" ]; then
-    echo "Setting hostname to ${config.hostname}..."
-    hostnamectl set-hostname ${config.hostname}
-fi
-
-# Firewall
-echo "Configuring firewall..."
-systemctl enable --now ufw
-ufw default deny incoming
-ufw default allow outgoing
-${firewallRules}
-ufw --force enable
+echo "--> Performing Hardware Attunement with CHWD..."
+echo "This will detect and install optimal drivers for your hardware."
+chwd -a --noconfirm
 
 # Architect (User) setup
-if ! id -u "${config.username}" >/dev/null 2>&1; then
-    echo "Creating user: ${config.username}"
-    useradd -m -G wheel -s /bin/zsh "${config.username}"
-    echo "Please set a password for ${config.username}:"
-    passwd "${config.username}"
+echo "--> Detecting and configuring the primary user..."
+if [ -n "\$SUDO_USER" ] && [ "\$SUDO_USER" != "root" ]; then
+    USERNAME="\$SUDO_USER"
+    echo "Detected primary user as '\$USERNAME' (from sudo). This account will be attuned."
 else
-    echo "User ${config.username} already exists."
-    usermod -aG wheel "${config.username}"
+    echo "Could not detect a standard user who ran sudo. Using '\${config.username}' from the blueprint."
+    USERNAME="${config.username}"
+fi
+
+# Ensure user exists and is configured correctly
+if ! id -u "\$USERNAME" >/dev/null 2>&1; then
+    echo "Creating user '\$USERNAME' as they do not exist on this system."
+    useradd -m -G wheel,video -s /bin/zsh "\$USERNAME"
+    echo "Please set a password for the new user '\$USERNAME':"
+    passwd "\$USERNAME"
+else
+    echo "User '\$USERNAME' already exists. Ensuring correct groups and shell."
+    usermod -aG wheel,video "\$USERNAME"
+    CURRENT_SHELL=\$(getent passwd "\$USERNAME" | cut -d: -f7)
+    if [ "\$CURRENT_SHELL" != "/bin/zsh" ]; then
+        chsh -s /bin/zsh "\$USERNAME"
+        echo "Set shell for '\$USERNAME' to /bin/zsh."
+    fi
 fi
 echo '%wheel ALL=(ALL:ALL) ALL' > /etc/sudoers.d/wheel
 
 ${aiCoreScript}
 
-echo "--> Setting up AUR Helper for ${config.username}..."
-sudo -u "${config.username}" /bin/bash -c '
+echo "--> Setting up AUR Helper for \$USERNAME..."
+sudo -u "\$USERNAME" /bin/bash -c '
     if ! command -v paru &> /dev/null; then
         echo "Installing paru..."
-        cd /home/"${config.username}"
-        git clone https://aur.archlinux.org/paru.git
-        chown -R "${config.username}":"${config.username}" paru
+        cd /tmp
+        git clone https://aur.archlinux.org/paru.git --depth=1
         cd paru
         makepkg -si --noconfirm
         cd ..
@@ -232,8 +299,8 @@ sudo -u "${config.username}" /bin/bash -c '
     fi
 '
 
-echo "--> Installing additional AUR packages for ${config.username}..."
-sudo -u "${config.username}" /bin/bash -c '
+echo "--> Installing additional AUR packages for \$USERNAME..."
+sudo -u "\$USERNAME" /bin/bash -c '
     if command -v paru &> /dev/null; then
         paru -S --noconfirm --needed anydesk-bin google-chrome
     else
@@ -244,10 +311,33 @@ sudo -u "${config.username}" /bin/bash -c '
 # Enable core services
 echo "--> Enabling essential services..."
 systemctl enable NetworkManager
-# Assuming SDDM from KDE Plasma
+systemctl enable bluetooth.service || echo "Bluetooth service not found, skipping."
+
+# Firewall
+echo "Configuring firewall..."
+systemctl enable --now ufw
+ufw default deny incoming
+ufw default allow outgoing
+${firewallRules}
+ufw --force enable
+
+# Display Manager
 if pacman -Qs sddm > /dev/null; then
+    echo "Enabling SDDM display manager..."
     systemctl enable sddm
 fi
+
+${servicesEnableScript}
+
+echo "--> Finalizing bootloader and BTRFS integration..."
+# Enable grub-btrfsd service for automatic snapshot detection on boot
+if pacman -Qs grub-btrfs > /dev/null; then
+    echo "Enabling grub-btrfs service..."
+    systemctl enable grub-btrfsd
+fi
+# Update GRUB to detect new kernels and add snapshot entries
+echo "Updating GRUB configuration..."
+grub-mkconfig -o /boot/grub/grub.cfg
 
 echo ""
 echo "--- Attunement Complete ---"
