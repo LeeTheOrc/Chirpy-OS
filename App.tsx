@@ -1,8 +1,10 @@
+
+
 import React, { useState, useEffect, useRef } from 'react';
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 
 import type { DistroConfig, Message, LinkState, AnalysisResult } from './types';
-import { INITIAL_DISTRO_CONFIG, COMMAND_SUGGESTIONS } from './constants';
+import { INITIAL_DISTRO_CONFIG, COMMAND_SUGGESTIONS, CODEX_SNIPPETS } from './constants';
 import { WELCOME_MESSAGE, CLOUD_AI_SYSTEM_PROMPT } from './kael-personality';
 import { generateAICoreScript } from './lib/script-generator';
 import { generateCalamaresConfiguration } from './lib/calamares-generator';
@@ -131,7 +133,7 @@ const App: React.FC = () => {
                     analysis = {
                         diagnosis: "The Orb reveals a deep magic. Our ritual to attune the system's main keyring was successful, but `makepkg` consults your *personal* user keyring, which remains unattuned. This is a known quirk of the forge.",
                         solutionCommand: "makepkg -si --skippgpcheck",
-                        nextStep: "Use this command within the 'chwd' directory. It instructs the forge to proceed, relying on the strong integrity checksums instead of the PGP signature for this step. The package will still be safely verified by the system keyring upon installation."
+                        nextStep: "Use this command within the 'khws' directory. It instructs the forge to proceed, relying on the strong integrity checksums instead of the PGP signature for this step. The package will still be safely verified by the system keyring upon installation."
                     };
                 } else {
                     const chwdFixScriptRaw = `#!/bin/bash
@@ -147,7 +149,7 @@ echo "--- ✅ Attunement Complete ---"
                     const fullCommand = `echo "${encodedScript}" | base64 --decode | sudo bash`;
 
                     analysis = {
-                      diagnosis: "The forge's security wards do not recognize the signature of the CachyOS artisan for the 'chwd' package. We must perform a ritual to attune the system's main keyring to trust this signature.",
+                      diagnosis: "The forge's security wards do not recognize the signature of the CachyOS artisan for the 'khws' package. We must perform a ritual to attune the system's main keyring to trust this signature.",
                       solutionCommand: fullCommand,
                       nextStep: "Run this full command in your terminal. It will perform the complete three-step ritual to initialize, receive, and sign the key. Then, retry the 'makepkg -si' command."
                     };
@@ -416,7 +418,7 @@ echo "ISO build complete! Located at '~/kael-iso-build/out/'."
             setForgeBuilderScript(script);
             setActiveModal('forge-builder');
         } else if (menu === 'tui-installer') {
-            const script = generateTuiInstallerScript();
+            const script = generateTuiInstallerScript(config);
             setTuiInstallerScript(script);
             setActiveModal('tui-installer');
         } else {
@@ -462,7 +464,7 @@ echo "ISO build complete! Located at '~/kael-iso-build/out/'."
             case 'law': return <LawModal onClose={() => setActiveModal(null)} />;
             case 'levelup': return <LevelUpModal onClose={() => setActiveModal(null)} />;
             case 'personality': return <PersonalityModal onClose={() => setActiveModal(null)} />;
-            case 'codex': return <CodexModal snippets={[{id: "1", title: "Manually Partition a Disk", content: "..."}]} onClose={() => setActiveModal(null)} />;
+            case 'codex': return <CodexModal snippets={CODEX_SNIPPETS} onClose={() => setActiveModal(null)} />;
             case 'system-scan': return <SystemScanModal onClose={() => setActiveModal(null)} onComplete={(report) => handleSendMessage(`Analyze this system report and suggest blueprint changes:\n${report}`)} />;
             case 'athenaeum-scryer': return <AthenaeumScryerModal onClose={() => setActiveModal(null)} />;
             case 'housekeeping': return <HousekeepingModal onClose={() => setActiveModal(null)} />;

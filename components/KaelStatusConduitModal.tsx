@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { CloseIcon, CopyIcon, SignalIcon } from './Icons';
 
@@ -33,7 +34,7 @@ const CodeBlock: React.FC<{ children: React.ReactNode; lang?: string }> = ({ chi
     );
 };
 
-const PYTHON_APP_SOURCE = `
+const PYTHON_APP_SOURCE = `#!/usr/bin/env python
 import sys
 import requests
 from PySide6.QtWidgets import QApplication, QSystemTrayIcon

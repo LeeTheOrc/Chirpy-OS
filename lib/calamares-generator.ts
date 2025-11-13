@@ -1,5 +1,3 @@
-
-
 // Kael AI - Calamares Configuration Grimoire Forger
 import type { DistroConfig } from '../types';
 
@@ -108,13 +106,13 @@ ufw --force enable
 `;
 };
 
-const getKhwsScript = (): string => {
+const getChwdScript = (): string => {
     return `#!/bin/bash
 set -e
-echo "--- Running the Ritual of Insight (khws) ---"
+echo "--- Running the Ritual of Insight (chwd) ---"
 # Automatically detect and install all relevant drivers.
 # The --quiet flag reduces verbosity for the installer log.
-khws -a --quiet
+chwd -a --quiet
 `;
 };
 
@@ -338,8 +336,8 @@ const generatePackagesConf = (config: DistroConfig): string => {
         'networkmanager', 'git', 'reflector', 'efibootmgr', 'grub',
         'ollama', 'xorg', 'plasma-meta', 'sddm', 'konsole', 'dolphin',
         'ufw', 'gufw', 'kaccounts-integration', 'kaccounts-providers', 'kio-gdrive',
-        'qemu-guest-agent', 'virtualbox-guest-utils', // Include both VM utils for universal ISO
-        'remmina', 'google-chrome', 'khws', 'kaelic-shell', 'python-prompt_toolkit',
+        'qemu-guest-agent', 'virtualbox-guest-utils',
+        'remmina', 'google-chrome', 'chwd', 'kaelic-shell', 'python-prompt_toolkit',
         'anydesk-bin'
     ]);
 
@@ -394,8 +392,8 @@ const generateShellprocessConf = (): string => `
         file: "/etc/calamares/scripts/setup-repos.sh"
         chrooted: true
     -   # Second job: run hardware detection
-        name: "khws"
-        file: "/etc/calamares/scripts/run-khws.sh"
+        name: "chwd"
+        file: "/etc/calamares/scripts/run-chwd.sh"
         chrooted: true
     -   # Third job: set default shell
         name: "shellsetup"
@@ -446,7 +444,7 @@ export const generateCalamaresConfiguration = (config: DistroConfig): Record<str
 
         // Post-install scripts
         'scripts/setup-repos.sh': getRepoSetupScript(config),
-        'scripts/run-khws.sh': getKhwsScript(),
+        'scripts/run-chwd.sh': getChwdScript(),
         'scripts/set-default-shell.sh': getShellSetupScript(),
         'scripts/setup-firewall.sh': getFirewallSetupScript(config),
         'scripts/attune-ai-core.sh': getAiCoreSetupScript(config),

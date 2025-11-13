@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { CloseIcon, CopyIcon, PackageIcon } from './Icons';
 
@@ -7,7 +8,6 @@ interface LocalSourceRitualModalProps {
 
 const CodeBlock: React.FC<{ children: React.ReactNode; lang?: string }> = ({ children, lang }) => {
     const [copied, setCopied] = useState(false);
-    
     const textToCopy = React.Children.toArray(children).join('');
 
     const handleCopy = () => {
@@ -81,36 +81,9 @@ const RadioGroup: React.FC<{label: string, name: string, options: {value: string
     </div>
 );
 
-const Stepper: React.FC<{ currentStep: number, steps: string[] }> = ({ currentStep, steps }) => (
-    <div className="flex items-center justify-between mb-6">
-        {steps.map((step, index) => {
-            const stepNumber = index + 1;
-            const isCompleted = currentStep > stepNumber;
-            const isActive = currentStep === stepNumber;
-            return (
-                <React.Fragment key={step}>
-                    <div className="flex flex-col items-center text-center">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
-                            isActive ? 'bg-dragon-fire text-black' : 
-                            isCompleted ? 'bg-orc-steel text-black' : 
-                            'bg-forge-border text-forge-text-secondary'
-                        }`}>
-                            {isCompleted ? '✓' : stepNumber}
-                        </div>
-                        <p className={`mt-2 text-xs font-semibold ${isActive || isCompleted ? 'text-forge-text-primary' : 'text-forge-text-secondary'}`}>{step}</p>
-                    </div>
-                    {index < steps.length - 1 && (
-                        <div className={`flex-1 h-0.5 mx-2 transition-colors ${isCompleted ? 'bg-orc-steel' : 'bg-forge-border'}`}></div>
-                    )}
-                </React.Fragment>
-            );
-        })}
-    </div>
-);
-
 
 export const LocalSourceRitualModal: React.FC<LocalSourceRitualModalProps> = ({ onClose }) => {
-    const [step, setStep] = useState(1);
+    const [generated, setGenerated] = useState(false);
     const [sourceType, setSourceType] = useState<'folder' | 'archive'>('folder');
     const [pkgName, setPkgName] = useState('');
     const [sourcePath, setSourcePath] = useState('');
@@ -121,19 +94,9 @@ export const LocalSourceRitualModal: React.FC<LocalSourceRitualModalProps> = ({ 
         arch: 'any',
         license: 'GPL3',
         buildCmds: '# No build commands needed by default\necho "Nothing to build."',
-        packageCmds: '# Example: copy an executable to /usr/bin\ninstall -Dm 755 -t "$pkgdir/usr/bin/" your-executable-file',
+        packageCmds: '# Example: copy an executable to /usr/bin/\ninstall -Dm 755 -t "$pkgdir/usr/bin/" your-executable-file',
     });
-
-    const steps = ["Source", "Prepare", "Recipe", "Forge"];
-
-    const getPrepCommand = () => {
-        if (!pkgName || !sourcePath) return "# Please fill in all fields";
-        if (sourceType === 'folder') {
-            return `mkdir -p ~/packages/${pkgName}/src\ncp -r ${sourcePath}/. ~/packages/${pkgName}/src/`;
-        } else {
-            return `mkdir -p ~/packages/${pkgName}/src\ntar -xvf ${sourcePath} -C ~/packages/${pkgName}/src --strip-components=1`;
-        }
-    };
+    const [error, setError] = useState('');
 
     const getPkgbuildContent = () => {
         return `# Maintainer: The Architect <your-email@example.com>
@@ -158,34 +121,64 @@ package() {
 }
 `;
     };
-    
-    const getFinalCommand = () => {
-        const pkgbuildContent = getPkgbuildContent();
-        const finalScript = `#!/bin/bash
-set -e
-echo "--> Scribing the recipe for '${pkgName}'..."
-mkdir -p ~/packages/${pkgName}
-cat > ~/packages/${pkgName}/PKGBUILD << 'PKGBUILD_EOF'
-${pkgbuildContent}
-PKGBUILD_EOF
-echo "[SUCCESS] Recipe has been scribed."
-echo "--> Initiating the Publishing Rite..."
-cd ~/packages
-if [ -f "./publish-package.sh" ]; then
-    ./publish-package.sh ${pkgName}
-else
-    echo "ERROR: 'publish-package.sh' not found in '~/packages'."
-    echo "Please create it using the Keystone Rituals guide."
-    exit 1
+
+    const generateScribeScript = () => {
+        const scribeScriptRaw = `#!/bin/bash
+set -euo pipefail
+
+PKG_NAME="${pkgName}"
+SOURCE_PATH="${sourcePath}"
+SOURCE_TYPE="${sourceType}"
+PKG_DIR="\$HOME/packages/\$PKG_NAME"
+
+echo "--- Scribing the recipe for '\$PKG_NAME' from local source ---"
+
+# --- Validation ---
+if [ "\$SOURCE_TYPE" == "folder" ] && [ ! -d "\$SOURCE_PATH" ]; then
+    echo "ERROR: Source folder '\$SOURCE_PATH' not found." >&2; exit 1;
 fi
+if [ "\$SOURCE_TYPE" == "archive" ] && [ ! -f "\$SOURCE_PATH" ]; then
+    echo "ERROR: Source archive '\$SOURCE_PATH' not found." >&2; exit 1;
+fi
+
+# --- File Operations ---
+echo "--> Preparing package directory at '\$PKG_DIR'..."
+mkdir -p "\$PKG_DIR/src"
+
+echo "--> Copying/Extracting source materials..."
+if [ "\$SOURCE_TYPE" == "folder" ]; then
+    cp -r "\$SOURCE_PATH/." "\$PKG_DIR/src/"
+else
+    # Assumes a single top-level directory in the archive, which is common.
+    tar -xvf "\$SOURCE_PATH" -C "\$PKG_DIR/src" --strip-components=1
+fi
+
+# --- Scribe PKGBUILD ---
+echo "--> Scribing the PKGBUILD recipe..."
+cat > "\$PKG_DIR/PKGBUILD" << 'PKGBUILD_EOF'
+${getPkgbuildContent()}
+PKGBUILD_EOF
+
+echo ""
+echo "✅ Recipe for '\$PKG_NAME' has been successfully scribed."
+echo "You may now inspect the files in '\$PKG_DIR' before publishing."
 `;
-        const encoded = btoa(unescape(encodeURIComponent(finalScript.trim())));
+        const encoded = btoa(unescape(encodeURIComponent(scribeScriptRaw.trim())));
         return `echo "${encoded}" | base64 --decode | bash`;
     };
 
-    const isStep1Complete = pkgName.trim() !== '';
-    const isStep2Complete = sourcePath.trim() !== '';
-    const isStep3Complete = pkgData.pkgdesc.trim() !== '';
+    const generatePublishScript = () => {
+        return `cd ~/packages && ./publish-package.sh ${pkgName}`;
+    };
+
+    const handleGenerate = () => {
+        if (!pkgName.trim() || !sourcePath.trim() || !pkgData.pkgdesc.trim()) {
+            setError('Please fill out the Package Name, Source Path, and Description before generating scripts.');
+            return;
+        }
+        setError('');
+        setGenerated(true);
+    };
 
     return (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center animate-fade-in-fast" onClick={onClose}>
@@ -199,36 +192,39 @@ fi
                         <CloseIcon className="w-5 h-5" />
                     </button>
                 </div>
-
-                <Stepper currentStep={step} steps={steps} />
                 
                 <div className="overflow-y-auto pr-2 flex-grow space-y-4">
-                    {step === 1 && (
+                    {generated ? (
                         <div className="space-y-4 animate-fade-in">
-                            <p>Greetings, Architect. Let's forge an artifact from local source code. First, tell me about the raw materials.</p>
-                            <InputField label="What is the package name?" value={pkgName} onChange={(e) => setPkgName(e.target.value)} placeholder="e.g., my-cool-script" />
+                             <p>The ritual is prepared! Perform these two incantations in order.</p>
+                             <div>
+                                <h3 className="font-semibold text-lg text-orc-steel">Step 1: The Scribe's Incantation</h3>
+                                <p className="text-sm mb-2">This command prepares the forge: it creates the package directory, copies your source code, and scribes the `PKGBUILD` recipe.</p>
+                                <CodeBlock lang="bash">{generateScribeScript()}</CodeBlock>
+                             </div>
+                             <div>
+                                <h3 className="font-semibold text-lg text-orc-steel">Step 2: The Publishing Rite</h3>
+                                <p className="text-sm mb-2">Once the recipe is scribed, this command invokes our standard publisher to build, sign, and upload your artifact to the Athenaeum.</p>
+                                <CodeBlock lang="bash">{generatePublishScript()}</CodeBlock>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="space-y-4 animate-fade-in">
+                            <p>Greetings, Architect. Let's forge an artifact from local source code. Fill out this grimoire, and I will generate the necessary incantations.</p>
+                            
+                            <h4 className="font-semibold text-md text-forge-text-primary pt-2">Source Materials</h4>
+                            <InputField label="Package Name" value={pkgName} onChange={(e) => setPkgName(e.target.value)} placeholder="e.g., my-cool-script" />
+                            <InputField label="Full Path to Source Code" value={sourcePath} onChange={(e) => setSourcePath(e.target.value)} placeholder={`/home/architect/downloads/${sourceType === 'folder' ? 'my-project' : 'my-project.tar.gz'}`} />
                             <RadioGroup
-                                label="What is the source type?"
+                                label="Source Type"
                                 name="sourceType"
-                                options={[{value: 'folder', label: 'A folder on my machine'}, {value: 'archive', label: 'A .zip or .tar.gz archive'}]}
+                                options={[{value: 'folder', label: 'Folder'}, {value: 'archive', label: '.zip or .tar.gz'}]}
                                 selected={sourceType}
                                 onChange={(val) => setSourceType(val as 'folder' | 'archive')}
                             />
-                        </div>
-                    )}
-                    {step === 2 && (
-                         <div className="space-y-4 animate-fade-in">
-                            <p>Excellent. Now, tell me the location of the source code so I can generate the correct incantation to move it into our forge.</p>
-                            <InputField label={`Full path to the source ${sourceType}`} value={sourcePath} onChange={(e) => setSourcePath(e.target.value)} placeholder={`/home/architect/downloads/${sourceType === 'folder' ? 'my-project' : 'my-project.tar.gz'}`} />
-                            <p className="text-sm">Run this command in your terminal to prepare the files:</p>
-                            <CodeBlock lang="bash">{getPrepCommand()}</CodeBlock>
-                             {sourceType === 'archive' && <p className="text-xs text-forge-text-secondary/80">Note: The '--strip-components=1' part is a common spell to remove the top-level folder from inside the archive, which is usually what you want.</p>}
-                        </div>
-                    )}
-                    {step === 3 && (
-                         <div className="space-y-4 animate-fade-in">
-                            <p>The materials are in place. Now we must scribe the recipe—the PKGBUILD. Fill in these details.</p>
-                             <InputField label="Description" value={pkgData.pkgdesc} onChange={(e) => setPkgData({...pkgData, pkgdesc: e.target.value})} placeholder="A short description of the package." />
+                            
+                            <h4 className="font-semibold text-md text-forge-text-primary pt-2">Recipe Details (PKGBUILD)</h4>
+                            <InputField label="Description" value={pkgData.pkgdesc} onChange={(e) => setPkgData({...pkgData, pkgdesc: e.target.value})} placeholder="A short description of the package." />
                             <div className="grid grid-cols-2 gap-4">
                                 <InputField label="Version" value={pkgData.pkgver} onChange={(e) => setPkgData({...pkgData, pkgver: e.target.value})} />
                                 <InputField label="Release" value={pkgData.pkgrel} onChange={(e) => setPkgData({...pkgData, pkgrel: e.target.value})} />
@@ -247,42 +243,27 @@ fi
                             <TextAreaField label="Package Commands" value={pkgData.packageCmds} onChange={(e) => setPkgData({...pkgData, packageCmds: e.target.value})} helpText="Commands to copy the built files into the final package." />
                         </div>
                     )}
-                     {step === 4 && (
-                         <div className="space-y-4 animate-fade-in">
-                            <p>The ritual is nearly complete! I have forged the final incantation. This single command will scribe the PKGBUILD and then immediately begin the Publishing Rite.</p>
-                            <h4 className="font-semibold text-orc-steel">Generated PKGBUILD Recipe:</h4>
-                            <CodeBlock lang="bash">{getPkgbuildContent()}</CodeBlock>
-                             <h4 className="font-semibold text-orc-steel">Final Unified Command:</h4>
-                            <p className="text-sm">Copy and run this in your terminal to complete the process.</p>
-                            <CodeBlock lang="bash">{getFinalCommand()}</CodeBlock>
-                        </div>
-                    )}
                 </div>
                 
-                <div className="pt-4 flex justify-between items-center flex-shrink-0">
-                    <button 
-                        onClick={() => setStep(s => s - 1)}
-                        disabled={step === 1}
-                        className="px-4 py-2 bg-forge-border text-forge-text-secondary rounded-md hover:bg-forge-panel transition-colors disabled:opacity-50"
-                    >
-                        Back
-                    </button>
-                    {step < 4 ? (
-                        <button
-                            onClick={() => setStep(s => s + 1)}
-                            disabled={(step === 1 && !isStep1Complete) || (step === 2 && !isStep2Complete) || (step === 3 && !isStep3Complete)}
-                            className="px-6 py-2 bg-dragon-fire text-black font-bold rounded-md hover:bg-yellow-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            Continue
-                        </button>
-                    ) : (
-                         <button
-                            onClick={onClose}
-                            className="px-6 py-2 bg-orc-steel text-black font-bold rounded-md hover:bg-green-400 transition-colors"
-                        >
-                            Finish
-                        </button>
-                    )}
+                <div className="pt-4 mt-4 border-t border-forge-border flex-shrink-0">
+                    {error && <p className="text-red-400 text-xs mb-2 text-center">{error}</p>}
+                    <div className="flex justify-end items-center">
+                        {generated ? (
+                            <button 
+                                onClick={() => setGenerated(false)}
+                                className="px-4 py-2 bg-forge-border text-forge-text-secondary rounded-md hover:bg-forge-panel transition-colors"
+                            >
+                                Back to Form
+                            </button>
+                        ) : (
+                            <button
+                                onClick={handleGenerate}
+                                className="px-6 py-2 bg-dragon-fire text-black font-bold rounded-md hover:bg-yellow-400 transition-colors"
+                            >
+                                Generate Ritual Scripts
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { CloseIcon, CopyIcon, ComputerDesktopIcon } from './Icons';
 
@@ -32,7 +33,7 @@ const CodeBlock: React.FC<{ children: React.ReactNode; lang?: string }> = ({ chi
     );
 };
 
-const PYTHON_APP_SOURCE = `
+const PYTHON_APP_SOURCE = `#!/usr/bin/env python
 import sys
 import json
 import webbrowser
@@ -180,11 +181,30 @@ class ManageKeysDialog(QDialog):
         self.parent().populate_keys_combo() # Update parent dialog
 
     def add_key(self):
-        link_label = QLabel('<a href="https://aistudio.google.com/app/apikey">Get your API key from Google AI Studio</a>')
+        dialog = AddKeyDialog(self)
+        
+        # Create a more descriptive instructions widget
+        instructions_widget = QWidget()
+        instructions_layout = QVBoxLayout(instructions_widget)
+        
+        info_label = QLabel("Kael Console uses your personal API key to access the Cloud Animus (Gemini). For security, please generate a key and add it manually.")
+        info_label.setWordWrap(True)
+        info_label.setStyleSheet("color: #a99ec3; padding-bottom: 5px;")
+        
+        link_label = QLabel('<a href="https://aistudio.google.com/app/apikey" style="color: #7aebbe; text-decoration: none;">1. Get your API key from Google AI Studio</a>')
         link_label.setOpenExternalLinks(True)
         
-        dialog = AddKeyDialog(self)
-        dialog.layout.insertRow(0, "Instructions:", link_label)
+        step2_label = QLabel("2. Give it a friendly name and paste the key below.")
+        step2_label.setStyleSheet("color: #a99ec3;")
+        
+        instructions_layout.addWidget(info_label)
+        instructions_layout.addWidget(link_label)
+        instructions_layout.addWidget(step2_label)
+        instructions_layout.setContentsMargins(0, 0, 0, 10)
+
+        # Add the widget to the dialog's form layout
+        dialog.layout.insertRow(0, instructions_widget)
+        
         if dialog.exec():
             name, key = dialog.get_data()
             if name and key:
@@ -322,7 +342,7 @@ class GeminiThread(QThread):
     def run(self):
         try:
             genai.configure(api_key=self.api_key)
-            model = genai.GenerativeModel('gemini-1.5-flash')
+            model = genai.GenerativeModel('gemini-2.5-flash')
             response = model.generate_content(self.prompt, stream=True)
             for chunk in response:
                 self.response_chunk.emit(chunk.text)
@@ -510,7 +530,7 @@ ${SVG_ICON_SOURCE}
 EOF_SVG
 
 echo "✅ All recipes and sigils for '$PKG_NAME' have been scribed to '$PKG_DIR'."
-`;
+`.trim();
 
     const encodedScript = btoa(unescape(encodeURIComponent(unifiedScript.trim())));
     const unifiedCommand = `echo "${encodedScript}" | base64 --decode | bash`;
