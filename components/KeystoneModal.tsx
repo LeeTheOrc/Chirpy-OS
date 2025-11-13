@@ -1,5 +1,3 @@
-
-
 import React, { useState } from 'react';
 import { CloseIcon, CopyIcon, KeyIcon } from './Icons';
 
@@ -34,29 +32,70 @@ const CodeBlock: React.FC<{ children: React.ReactNode; lang?: string }> = ({ chi
     );
 };
 
-const PREPARE_FORGE_SCRIPT_RAW = `
+const INITIAL_SETUP_SCRIPT_RAW = `
 set -e
-# This script installs tools, configures Git, logs into GitHub, and clones the repo.
+# This script installs tools, configures Git, and logs into GitHub.
 
-# Install tools
+echo "--> Installing essential forging tools..."
 sudo pacman -S git github-cli base-devel pacman-contrib --noconfirm
 
+echo "--> Configuring Git with your identity. You can change these later."
 # IMPORTANT: Configure Git with your identity to prevent commit errors.
-# You can change these values to your own.
 git config --global user.name "LeeTheOrc"
 git config --global user.email "leetheorc@gmail.com"
 
-# Log in to your GitHub account (this will open a browser)
+echo "--> Authenticating with GitHub..."
+# This will open a browser for you to log in.
 gh auth login
+
+echo "[SUCCESS] Initial setup complete. You are now authenticated."
+`;
+
+const REPO_SETUP_SCRIPT_RAW = `
+set -e
+# This script clones or updates the Athenaeum repository and prepares the branches.
 
 # Clone or update the Athenaeum repository
 if [ -d "$HOME/kael-os-repo" ]; then
-    echo "Athenaeum found locally. Updating..."
-    cd ~/kael-os-repo && git pull
+    echo "--> Athenaeum found locally. Updating and resetting..."
+    cd ~/kael-os-repo
+    # Fetch latest changes from remote and ensure we are on main
+    git fetch origin
+    git checkout main
+    # Force reset to origin/main to discard any local changes and prevent errors
+    git reset --hard origin/main
+    git pull origin main
 else
-    echo "Cloning the Athenaeum for the first time..."
+    echo "--> Cloning the Athenaeum for the first time..."
     cd ~ && git clone https://github.com/LeeTheOrc/kael-os-repo.git
+    cd ~/kael-os-repo
 fi
+
+# Set up the gh-pages branch for publishing artifacts
+echo "--> Configuring the 'gh-pages' branch for publishing..."
+
+# Unconditionally delete any stale local gh-pages branch to ensure a clean state
+git branch -D gh-pages 2>/dev/null || true
+
+# Attempt to switch to the remote-tracking branch. If it fails, create it.
+if git checkout -t origin/gh-pages 2>/dev/null; then
+    echo "--> Switched to existing remote 'gh-pages' branch and pulled latest changes."
+    git pull origin gh-pages
+else
+    echo "--> 'gh-pages' branch not found remotely. Creating a new orphan branch..."
+    git checkout --orphan gh-pages
+    git rm -rf .
+    echo "# Kael OS Athenaeum - Binary Artifacts" > README.md
+    git add README.md
+    git commit -m "initial: Create gh-pages branch for artifacts"
+    git push --set-upstream origin gh-pages
+fi
+
+# Switch back to main to be in a clean state for recipe management
+echo "--> Returning to 'main' branch for recipe management."
+git checkout main
+
+echo "[SUCCESS] Local Athenaeum clone is prepared and up to date."
 `;
 
 
@@ -140,8 +179,8 @@ echo "--> Forging recipe for kael-pacman-conf..."
 mkdir -p ~/packages/kael-pacman-conf
 cat > ~/packages/kael-pacman-conf/kael-os.conf << 'CONF_EOF'
 [kael-os]
-SigLevel = Required DatabaseOptional
-Server = https://leetheorc.github.io/kael-os-repo/$arch
+SigLevel = Optional TrustAll
+Server = https://leetheorc.github.io/kael-os-repo/
 CONF_EOF
 
 cat > ~/packages/kael-pacman-conf/PKGBUILD << 'PKGBUILD_EOF'
@@ -187,37 +226,58 @@ fi
 
 echo "[SUCCESS] Using Master Key: $GPG_KEY_ID for signing."
 
-# Build, sign, and move the keyring package
+# Build the packages first
 echo "--> Building kael-keyring..."
 cd ~/packages/kael-keyring
 makepkg -sf --sign --key "$GPG_KEY_ID" --noconfirm --skippgpcheck
-mv *.pkg.tar.zst* ~/kael-os-repo/
 
-# Build, sign, and move the pacman config package
 echo "--> Building kael-pacman-conf..."
 cd ~/packages/kael-pacman-conf
 makepkg -sf --sign --key "$GPG_KEY_ID" --noconfirm --skippgpcheck
-mv *.pkg.tar.zst* ~/kael-os-repo/
 
-# Navigate to the repository, add both packages, commit, and publish
+# Navigate to the repository and handle publishing
 echo "--> Committing new artifacts to the Athenaeum..."
 cd ~/kael-os-repo
 
-# Place the public key in the repo root for direct download access.
+echo "--> Switching to gh-pages branch for publishing..."
+git checkout gh-pages
+git pull origin gh-pages --rebase
+
+# Now, copy the artifacts into the gh-pages branch working directory
+echo "--> Placing forged artifacts into the Athenaeum..."
+mv ~/packages/kael-keyring/*.pkg.tar.zst* .
+mv ~/packages/kael-pacman-conf/*.pkg.tar.zst* .
 cp ~/packages/kael-keyring/kael-os.asc .
 
+# Remove old entries before adding to prevent duplicates after re-building
+PACKAGES_TO_UPDATE=("kael-keyring" "kael-pacman-conf")
+for pkg_name in "\${PACKAGES_TO_UPDATE[@]}"; do
+    if tar -tf kael-os-repo.db.tar.gz | grep -q "^$pkg_name-"; then
+        echo "--> Removing old entry for '$pkg_name'..."
+        repo-remove kael-os-repo.db.tar.gz "$pkg_name"
+    fi
+done
 repo-add kael-os-repo.db.tar.gz *.pkg.tar.zst
+
 git add .
-git commit -m "feat: Establish Athenaeum foundation with keyring and pacman config"
-git push
+
+if git diff --staged --quiet; then
+    echo "--> No new artifacts to commit. Athenaeum is up to date."
+else
+    git commit -m "feat: Establish/update Athenaeum foundation"
+    git push origin gh-pages
+fi
+
+echo "--> Returning to main branch..."
+git checkout main
 
 echo ""
 echo "[SUCCESS] Foundation laid. The Athenaeum is now live."
 `;
 
 const PUBLISHER_SCRIPT_RAW = `#!/bin/bash
-# Kael OS - Athenaeum Publisher Script (v6 - GPG verification enabled)
-# Forges a package, signs it, and publishes it.
+# Kael OS - Athenaeum Publisher Script (v10 - Dependency Hoarding)
+# Forges a package, signs it, and publishes it. Optionally includes dependencies.
 
 set -euo pipefail
 
@@ -239,9 +299,28 @@ if ! command -v repo-add &> /dev/null; then
     exit 1
 fi
 
-# --- CONFIGURATION ---
-REPO_DIR="~/kael-os-repo"
-PACKAGE_NAME=$1
+# --- CONFIGURATION & ARGUMENT PARSING ---
+REPO_DIR="$HOME/kael-os-repo"
+SCRIPT_DIR=$(pwd)
+WITH_DEPS=false
+PACKAGE_NAME=""
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+    key="$1"
+    case $key in
+        --with-deps)
+        WITH_DEPS=true
+        shift # past argument
+        ;;
+        *)    # unknown option, assume it's the package name
+        if [ -z "$PACKAGE_NAME" ]; then
+            PACKAGE_NAME="$1"
+        fi
+        shift # past argument
+        ;;
+    esac
+done
 
 # --- SCRIPT START ---
 echo "--- Preparing the Forge for package: $PACKAGE_NAME ---"
@@ -249,43 +328,36 @@ echo "--- Preparing the Forge for package: $PACKAGE_NAME ---"
 # --- VALIDATION ---
 if [ -z "$PACKAGE_NAME" ]; then
     echo "ERROR: You must specify a package directory to build."
-    echo "Usage: ./publish-package.sh <package_name>"
+    echo "Usage: ./publish-package.sh [--with-deps] <package_name>"
     exit 1
 fi
-if [ ! -d "$PACKAGE_NAME" ] || [ ! -f "$PACKAGE_NAME/PKGBUILD" ]; then
-    echo "ERROR: Directory '$PACKAGE_NAME' does not exist or does not contain a PKGBUILD."
+
+PACKAGE_DIR_ABS="$SCRIPT_DIR/$PACKAGE_NAME"
+
+if [ ! -d "$PACKAGE_DIR_ABS" ] || [ ! -f "$PACKAGE_DIR_ABS/PKGBUILD" ]; then
+    echo "ERROR: Directory '$PACKAGE_DIR_ABS' does not exist or does not contain a PKGBUILD."
     exit 1
 fi
 
 # --- AUTO-SIGNING LOGIC ---
 echo "--> Searching for GPG key for signing..."
-# First, try to find the specific 'Kael OS Master Key'.
 SIGNING_KEY_ID=$(gpg --list-secret-keys --with-colons "Kael OS Master Key" 2>/dev/null | awk -F: '$1 == "sec" { print $5 }' | head -n 1)
-
-# If not found, fall back to the first available secret key.
 if [ -z "$SIGNING_KEY_ID" ]; then
     echo "--> 'Kael OS Master Key' not found. Using first available secret key."
     SIGNING_KEY_ID=$(gpg --list-secret-keys --with-colons 2>/dev/null | awk -F: '$1 == "sec" { print $5 }' | head -n 1)
 fi
-
-# If still no key, then we cannot proceed.
 if [ -z "$SIGNING_KEY_ID" ]; then
-    echo "ERROR: Could not find any GPG secret key for signing. Aborting."
-    echo "Please ensure you have a GPG key by running Step 2 of the Keystone Ritual."
+    echo "ERROR: Could not find any GPG secret key for signing. Aborting." >&2
+    echo "Please ensure you have a GPG key by running Step 2 of the Keystone Ritual." >&2
     exit 1
 fi
-
 echo "[SUCCESS] Using Master Key: $SIGNING_KEY_ID for signing."
 
 # --- FORGING ---
 echo "--> Entering the forge for package: $PACKAGE_NAME..."
-cd "$PACKAGE_NAME"
+cd "$PACKAGE_DIR_ABS"
 
 echo "--> Forging and signing the package (makepkg)..."
-# -s installs dependencies, -f forces build.
-# --sign tells makepkg to sign the resulting package.
-# --key specifies which key to use for signing.
-# --noconfirm avoids prompts. GPG verification is now ENABLED.
 makepkg -sf --sign --key "$SIGNING_KEY_ID" --noconfirm
 
 PACKAGE_FILE=$(find . -name "*.pkg.tar.zst" -print -quit)
@@ -295,24 +367,80 @@ if [ -z "$PACKAGE_FILE" ]; then
 fi
 
 # --- PUBLISHING ---
-EXPANDED_REPO_DIR=$(eval echo $REPO_DIR)
-echo "--> Moving forged artifact to the Athenaeum: $EXPANDED_REPO_DIR"
-mv "$PACKAGE_FILE"* "$EXPANDED_REPO_DIR/" # Move both the package and its .sig file
+echo "--> Entering the Athenaeum: $REPO_DIR"
+if [ ! -d "$REPO_DIR" ]; then
+    echo "ERROR: Athenaeum directory '$REPO_DIR' not found." >&2
+    echo "Please run Step 2 of the Keystone Ritual to prepare the local clone." >&2
+    exit 1
+fi
+cd "$REPO_DIR"
 
-cd "$EXPANDED_REPO_DIR"
-echo "--> Updating the Athenaeum's grimoire (database)..."
-# Remove old package entry first to prevent duplicates
-repo-remove kael-os-repo.db.tar.gz "$(basename "$PACKAGE_FILE" .pkg.tar.zst)" 2>/dev/null || true
-repo-add kael-os-repo.db.tar.gz "$(basename "$PACKAGE_FILE")"
+echo "--> Switching to gh-pages branch for publishing..."
+git checkout gh-pages
+git pull origin gh-pages --rebase
 
-git add .
+echo "--> Moving forged artifact into the Athenaeum..."
+mv "$PACKAGE_DIR_ABS/$PACKAGE_FILE"* .
+
+# --- DEPENDENCY HOARDING (Optional) ---
+if [ "$WITH_DEPS" = true ]; then
+    echo "--> Initiating the Dependency Hoarding Rite..."
+    cd "$PACKAGE_DIR_ABS"
+    source PKGBUILD
+    ALL_DEPS=()
+    [ -n "\${depends-}" ] && ALL_DEPS+=("\${depends[@]}")
+    [ -n "\${makedepends-}" ] && ALL_DEPS+=("\${makedepends[@]}")
+    
+    COPIED_DEPS=()
+    echo "--> Searching pacman cache for dependencies..."
+    for dep in "\${ALL_DEPS[@]}"; do
+        dep_name=$(echo "$dep" | sed -e 's/[<>=!].*//')
+        dep_file=$(find /var/cache/pacman/pkg/ -name "$dep_name-*.pkg.tar.zst" | sort -V | tail -n 1)
+        if [ -n "$dep_file" ]; then
+            dep_filename=$(basename "$dep_file")
+            if [ ! -f "$REPO_DIR/$dep_filename" ]; then
+                echo "--> Hoarding: $dep_filename"
+                cp "$dep_file" "$REPO_DIR/"
+                COPIED_DEPS+=("$dep_filename")
+            else
+                echo "--> Dependency '$dep_filename' already in Athenaeum. Skipping."
+            fi
+        else
+            echo "--> NOTE: Dependency '$dep_name' not found in cache. It might be a base package, in a group, or already installed."
+        fi
+    done
+    cd "$REPO_DIR"
+    
+    if [ \${#COPIED_DEPS[@]} -gt 0 ]; then
+        echo "--> Hoarded \${#COPIED_DEPS[@]} new dependency artifacts."
+    else
+        echo "--> No new dependencies were hoarded from the cache."
+    fi
+fi
+
+# --- Intelligent Database Update ---
+PKG_BASE_NAME=$(basename "$PACKAGE_FILE" .pkg.tar.zst | sed 's/-\\([0-9]\\|\\.rev\\|\\.rc\\|\\.beta\\|\\.alpha\\|\\.pre\\).*//')
+echo "--> Updating Athenaeum database for '$PKG_BASE_NAME'..."
+
+if tar -tf kael-os-repo.db.tar.gz | grep -q "^$PKG_BASE_NAME-"; then
+    echo "--> Existing entry found for '$PKG_BASE_NAME'. Removing old version..."
+    repo-remove kael-os-repo.db.tar.gz "$PKG_BASE_NAME"
+fi
+
+echo "--> Adding new artifacts to the database..."
+repo-add kael-os-repo.db.tar.gz *.pkg.tar.zst
+
 echo "--> Committing the new artifact to the Athenaeum's history..."
+git add .
 if git diff --staged --quiet; then
     echo "--> No changes detected. Skipping commit and push."
 else
     git commit -m "feat: Add/update package $PACKAGE_NAME"
-    git push
+    git push origin gh-pages
 fi
+
+echo "--> Returning to main branch..."
+git checkout main
 
 echo "--- The artifact has been successfully published to the Athenaeum. ---"
 `;
@@ -336,6 +464,11 @@ chmod +x ~/packages/publish-package.sh
     const publishArtifactScript = `
         cd ~/packages && ./publish-package.sh your-package-name-here
     `.trim();
+
+    const publishWithDepsScript = `
+        cd ~/packages && ./publish-package.sh --with-deps your-package-name-here
+    `.trim();
+
 
     return (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center animate-fade-in-fast" onClick={onClose}>
@@ -374,14 +507,18 @@ gpg --delete-key <KEY_ID>`}</CodeBlock>
                         </div>
                     </details>
                     
-                    <h3 className="font-semibold text-lg text-orc-steel mt-4 mb-2">Part I: Seeding the Athenaeum (The First Ritual - One-Time Setup)</h3>
-                    <p>This grand ritual is performed only once per machine to establish our repository and its unique signature.</p>
+                    <h3 className="font-semibold text-lg text-orc-steel mt-4 mb-2">Part I: Seeding the Athenaeum</h3>
+                    <p>This grand ritual establishes our repository and its unique signature. The first step only needs to be performed once per machine.</p>
 
-                    <h4 className="font-semibold text-md text-forge-text-primary mt-3 mb-1">Step 1: Prepare the Forge</h4>
-                    <p>This incantation installs the necessary tools (including `pacman-contrib` for `repo-add`), declares your identity to Git, authenticates with GitHub, and clones a local copy of our Athenaeum.</p>
-                    <CodeBlock lang="bash">{createUniversalCommand(PREPARE_FORGE_SCRIPT_RAW)}</CodeBlock>
+                    <h4 className="font-semibold text-md text-forge-text-primary mt-3 mb-1">Step 1: Initial Forge Setup (One-Time)</h4>
+                    <p>This incantation installs the necessary tools, declares your identity to Git, and authenticates with GitHub. Run this once per machine.</p>
+                    <CodeBlock lang="bash">{createUniversalCommand(INITIAL_SETUP_SCRIPT_RAW)}</CodeBlock>
 
-                    <h4 className="font-semibold text-md text-forge-text-primary mt-3 mb-1">Step 2: Forge the Master Key & Foundational Recipes</h4>
+                    <h4 className="font-semibold text-md text-forge-text-primary mt-3 mb-1">Step 2: Prepare Local Athenaeum Clone</h4>
+                    <p>This clones a local copy of our Athenaeum or updates it if it already exists. Run this if you need to fetch the latest recipes from the remote repository.</p>
+                    <CodeBlock lang="bash">{createUniversalCommand(REPO_SETUP_SCRIPT_RAW)}</CodeBlock>
+
+                    <h4 className="font-semibold text-md text-forge-text-primary mt-3 mb-1">Step 3: Forge the Master Key & Foundational Recipes</h4>
                     <p>This powerful incantation combines several steps. It will first check if you have a "Kael OS Master Key".</p>
                     <ul className="list-disc list-inside text-sm pl-4 space-y-1">
                         <li>If the key is <strong className="text-orc-steel">found</strong>, it will use it.</li>
@@ -391,7 +528,7 @@ gpg --delete-key <KEY_ID>`}</CodeBlock>
                     <p>After ensuring a key exists, it will create the recipes for our two cornerstone packages: `kael-keyring` and `kael-pacman-conf`.</p>
                     <CodeBlock lang="bash">{createUniversalCommand(KEY_AND_RECIPE_SCRIPT_RAW)}</CodeBlock>
                     
-                     <h4 className="font-semibold text-md text-forge-text-primary mt-3 mb-1">Step 3: Publish the Foundational Artifacts</h4>
+                     <h4 className="font-semibold text-md text-forge-text-primary mt-3 mb-1">Step 4: Publish the Foundational Artifacts</h4>
                     <p>With the cornerstones forged, we now place them in the Athenaeum, properly signed with our Master Key.</p>
                     <CodeBlock lang="bash">{createUniversalCommand(PUBLISH_FOUNDATION_SCRIPT_RAW)}</CodeBlock>
                     <p className="text-orc-steel font-semibold">The Athenaeum is now live and its signature is trusted.</p>
@@ -415,6 +552,9 @@ gpg --delete-key <KEY_ID>`}</CodeBlock>
                      <h4 className="font-semibold text-md text-forge-text-primary mt-3 mb-1">Step 3: Publish an Artifact</h4>
                     <p>To publish any package, simply go to your <code className="font-mono text-xs">~/packages</code> directory and run the script with the package's folder name.</p>
                      <CodeBlock lang="bash">{createUniversalCommand(publishArtifactScript)}</CodeBlock>
+                    <p className="mt-2">For advanced usage, you can also hoard a package's dependencies into our Athenaeum by adding the <code className="font-mono text-xs text-dragon-fire">--with-deps</code> flag. Use this with caution, as it can greatly increase the repository size.</p>
+                     <CodeBlock lang="bash">{createUniversalCommand(publishWithDepsScript)}</CodeBlock>
+
                 </div>
             </div>
         </div>

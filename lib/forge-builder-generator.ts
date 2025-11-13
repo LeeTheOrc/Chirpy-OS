@@ -1,3 +1,5 @@
+
+
 export const generateForgeBuilderScript = (): string => {
     return `#!/bin/bash
 # Kael OS - The Forge Genesis Script
@@ -105,7 +107,7 @@ PACKAGES=(
     base base-devel linux-lts linux-lts-headers linux-firmware
     git lftp bc xmlto docbook-xsl kmod inetutils libelf
     networkmanager zsh plasma-meta konsole dolphin sddm
-    grub efibootmgr remmina ollama
+    grub efibootmgr remmina ollama curl
 )
 pacstrap /mnt "$\{PACKAGES[@]}"
 
@@ -141,6 +143,11 @@ info "[CHROOT] Awakening Local AI Core..."
 # Create the Kael system user
 useradd -m -G wheel -s /bin/bash kael
 passwd -l kael
+
+# Hide the 'kael' user from the login screen
+info "[CHROOT] Hiding 'kael' service user from SDDM..."
+mkdir -p /etc/sddm.conf.d
+echo -e "[Users]\\nHideUsers=kael" > /etc/sddm.conf.d/kael-hide.conf
 
 # Enable the Ollama service to start on boot
 systemctl enable ollama
@@ -202,10 +209,17 @@ grub-mkconfig -o /boot/grub/grub.cfg
 
 info "[CHROOT] Setting up extra repositories and AUR helper..."
 
+KEY_ID_CACHY="F3B607488DB35A47"
 info "--> Setting up CachyOS repository..."
-pacman-key --recv-keys F3B607488DB35A47 --keyserver keyserver.ubuntu.com
-pacman-key --lsign-key F3B607488DB35A47
-pacman -U --noconfirm 'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-keyring-20240331-1-any.pkg.tar.zst' 'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-mirrorlist-22-1-any.pkg.tar.zst' 'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-v3-mirrorlist-22-1-any.pkg.tar.zst' 'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-v4-mirrorlist-22-1-any.pkg.tar.zst'
+if (pacman-key --recv-keys "\$KEY_ID_CACHY" --keyserver hkp://keyserver.ubuntu.com || pacman-key --recv-keys "\$KEY_ID_CACHY" --keyserver hkp://keys.openpgp.org); then
+    echo "CachyOS key received from keyserver."
+elif (curl -sL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x\$KEY_ID_CACHY" | pacman-key --add - && pacman-key --updatedb); then
+    echo "CachyOS key received via direct HTTPS download."
+else
+    echo "FATAL: Could not retrieve CachyOS key." >&2; exit 1
+fi
+pacman-key --lsign-key "\$KEY_ID_CACHY"
+pacman -U --noconfirm --needed 'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-keyring-20240331-1-any.pkg.tar.zst' 'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-mirrorlist-22-1-any.pkg.tar.zst' 'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-v3-mirrorlist-22-1-any.pkg.tar.zst' 'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-v4-mirrorlist-22-1-any.pkg.tar.zst'
 cat << 'CACHY_EOF' >> /etc/pacman.conf
 
 [cachyos-v3]
@@ -218,10 +232,11 @@ Include = /etc/pacman.d/cachyos-v4-mirrorlist
 Include = /etc/pacman.d/cachyos-mirrorlist
 CACHY_EOF
 
+KEY_ID_CHAOTIC="3056513887B78AEB"
 info "--> Setting up Chaotic-AUR repository..."
-pacman-key --recv-key 3056513887B78AEB --keyserver keyserver.ubuntu.com
-pacman-key --lsign-key 3056513887B78AEB
-pacman -U --noconfirm 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst' 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst'
+pacman-key --recv-key "\$KEY_ID_CHAOTIC" --keyserver keyserver.ubuntu.com
+pacman-key --lsign-key "\$KEY_ID_CHAOTIC"
+pacman -U --noconfirm --needed 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst' 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst'
 grep -q "chaotic-aur" /etc/pacman.conf || echo -e "\\n[chaotic-aur]\\nInclude = /etc/pacman.d/chaotic-mirrorlist" >> /etc/pacman.conf
 
 info "--> Synchronizing repositories and installing core dev packages..."

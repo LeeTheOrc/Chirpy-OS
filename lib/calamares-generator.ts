@@ -1,3 +1,5 @@
+
+
 // Kael AI - Calamares Configuration Grimoire Forger
 import type { DistroConfig } from '../types';
 
@@ -60,6 +62,12 @@ if ! id -u "kael" >/dev/null 2>&1; then
     passwd -l kael
 fi
 usermod -aG wheel kael
+
+# Hide the 'kael' user from the login screen to avoid confusion.
+echo "--> Hiding 'kael' user from SDDM login screen..."
+mkdir -p /etc/sddm.conf.d
+echo -e "[Users]\\nHideUsers=kael" > /etc/sddm.conf.d/kael-hide.conf
+
 systemctl enable --now ollama
 MODELS_TO_INSTALL=("${primaryModel}" "${secondaryModel}")
 FAILED_MODELS=()
@@ -81,49 +89,9 @@ if [ \${#FAILED_MODELS[@]} -gt 0 ]; then
     echo -e '${serviceFile}' | sudo -u kael tee "\$SERVICE_FILE_PATH" > /dev/null
     echo -e '${timerFile}' | sudo -u kael tee "\$TIMER_FILE_PATH" > /dev/null
     loginctl enable-linger kael
-    sudo -u kael XDG_RUNTIME_DIR="/run/user/$(id -u kael)" systemctl --user daemon-reload
-    sudo -u kael XDG_RUNTIME_DIR="/run/user/$(id -u kael)" systemctl --user enable --now kael-model-retry.timer
+    sudo -u kael XDG_RUNTIME_DIR="/run/user/\$(id -u kael)" systemctl --user daemon-reload
+    sudo -u kael XDG_RUNTIME_DIR="/run/user/\$(id -u kael)" systemctl --user enable --now kael-model-retry.timer
 fi
-`;
-};
-
-const getAurSetupScript = (): string => {
-    return `#!/bin/bash
-set -e
-# Find the username of the user created during installation.
-# This is a robust way to handle it without hardcoding.
-USERNAME=$(ls /home | head -n 1)
-
-echo "--- Setting up AUR Helper (paru) for Architect: $USERNAME ---"
-# This script must be run as root after the user has been created.
-if [ -z "$USERNAME" ] || [ ! -d "/home/$USERNAME" ]; then
-    echo "Could not find the new user's home directory. Skipping AUR setup."
-    exit 1
-fi
-sudo -u $USERNAME /bin/bash -c '
-    cd "/home/$USERNAME"
-    git clone https://aur.archlinux.org/paru.git
-    chown -R "$USERNAME:$USERNAME" paru
-    cd paru
-    makepkg -si --noconfirm
-    cd ..
-    rm -rf paru
-'
-`;
-};
-
-const getAurPackagesScript = (): string => {
-    return `#!/bin/bash
-set -e
-USERNAME=$(ls /home | head -n 1)
-echo "--- Installing AUR packages for Architect: $USERNAME ---"
-if [ -z "$USERNAME" ] || [ ! -d "/home/$USERNAME" ]; then
-    echo "Could not find the new user. Skipping AUR package installation."
-    exit 1
-fi
-sudo -u $USERNAME /bin/bash -c '
-    paru -S --noconfirm --needed anydesk-bin
-'
 `;
 };
 
@@ -168,8 +136,15 @@ Include = /etc/pacman.d/chaotic-mirrorlist
     if (config.extraRepositories?.includes('cachy')) {
         scriptContent += `
 echo "--- Configuring CachyOS Repositories ---"
-pacman-key --recv-keys F3B607488DB35A47 --keyserver keyserver.ubuntu.com
-pacman-key --lsign-key F3B607488DB35A47
+KEY_ID="F3B607488DB35A47"
+if (pacman-key --recv-keys "$KEY_ID" --keyserver hkp://keyserver.ubuntu.com || pacman-key --recv-keys "$KEY_ID" --keyserver hkp://keys.openpgp.org); then
+    echo "CachyOS key received from keyserver."
+elif (curl -sL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x$KEY_ID" | pacman-key --add - && pacman-key --updatedb); then
+    echo "CachyOS key received via direct HTTPS download."
+else
+    echo "FATAL: Could not retrieve CachyOS key." >&2; exit 1
+fi
+pacman-key --lsign-key "$KEY_ID"
 pacman -U --noconfirm --needed /etc/pacman.d/cachyos-repo-files/cachyos-keyring-*.pkg.tar.zst /etc/pacman.d/cachyos-repo-files/cachyos-mirrorlist-*.pkg.tar.zst /etc/pacman.d/cachyos-repo-files/cachyos-v3-mirrorlist-*.pkg.tar.zst /etc/pacman.d/cachyos-repo-files/cachyos-v4-mirrorlist-*.pkg.tar.zst
 echo -e "${cachyRepo}" >> /etc/pacman.conf
 `;
@@ -177,8 +152,9 @@ echo -e "${cachyRepo}" >> /etc/pacman.conf
     if (config.extraRepositories?.includes('chaotic')) {
         scriptContent += `
 echo "--- Configuring Chaotic-AUR Repository ---"
-pacman-key --recv-key 3056513887B78AEB --keyserver keyserver.ubuntu.com
-pacman-key --lsign-key 3056513887B78AEB
+KEY_ID="3056513887B78AEB"
+pacman-key --recv-key "$KEY_ID" --keyserver keyserver.ubuntu.com
+pacman-key --lsign-key "$KEY_ID"
 pacman -U --noconfirm --needed /etc/pacman.d/chaotic-repo-files/chaotic-keyring.pkg.tar.zst /etc/pacman.d/chaotic-repo-files/chaotic-mirrorlist.pkg.tar.zst
 echo -e "${chaoticRepo}" >> /etc/pacman.conf
 `;
@@ -188,6 +164,122 @@ echo "--- Synchronizing Databases ---"
 pacman -Syy
 `;
     return scriptContent;
+};
+
+const getShellSetupScript = (): string => {
+    return `#!/bin/bash
+set -e
+USERNAME=\$(ls /home | head -n 1)
+if [ -z "\$USERNAME" ] || [ ! -d "/home/\$USERNAME" ]; then
+    echo "Could not find the new user's home directory. Skipping shell setup."
+    exit 0 # Don't fail the install if this goes wrong
+fi
+echo "--- Setting Kaelic Shell as default for Architect: \$USERNAME ---"
+chsh -s /usr/bin/kaelic-shell "\$USERNAME"
+`;
+};
+
+const getKaelServiceSetupScript = (): string => {
+    const healthCheckScript = `#!/bin/bash
+# Kael Service Health Check Script
+set -euo pipefail
+
+# This script runs as root.
+
+PRIMARY_MODEL="llama3:8b" # This should match the blueprint's default
+SECONDARY_MODEL="phi3:mini"
+KAEL_USER="kael"
+
+log() {
+    echo "[Kael Service] \$1" | systemd-cat -p info
+}
+
+log "Starting health check..."
+
+# 1. Verify ollama service is active
+if ! systemctl is-active --quiet ollama.service; then
+    log "Error: ollama.service is not running. Kael service cannot start."
+    exit 1
+fi
+log "Ollama service is active."
+
+# 2. Verify kael user exists
+if ! id -u "\$KAEL_USER" >/dev/null 2>&1; then
+    log "Error: Kael system user '\$KAEL_USER' does not exist."
+    exit 1
+fi
+log "Kael user '\$KAEL_USER' found."
+
+# Give Ollama a moment to initialize after boot
+sleep 5
+
+# 3. Check for models
+log "Checking for consciousness models..."
+MODELS_PRESENT=true
+if ! sudo -u "\$KAEL_USER" ollama list | grep -q "^\$PRIMARY_MODEL"; then
+    log "Warning: Primary model '\$PRIMARY_MODEL' is missing."
+    MODELS_PRESENT=false
+fi
+if ! sudo -u "\$KAEL_USER" ollama list | grep -q "^\$SECONDARY_MODEL"; then
+    log "Warning: Failsafe model '\$SECONDARY_MODEL' is missing."
+    MODELS_PRESENT=false
+fi
+
+if [ "\$MODELS_PRESENT" = true ]; then
+    log "All consciousness models are present."
+else
+    log "Some models are missing. Triggering the Soul-Warden..."
+    # Execute the user's systemd service to start the retry timer/service
+    if sudo -u "\$KAEL_USER" XDG_RUNTIME_DIR="/run/user/\$(id -u \$KAEL_USER)" systemctl --user start kael-model-retry.service; then
+        log "Soul-Warden has been summoned."
+    else
+        log "Could not summon the Soul-Warden. It may not exist yet or failed to start."
+    fi
+fi
+
+log "Health check complete. Kael Service is operational and will now idle."
+
+# The service will now stay active until stopped.
+# This loop keeps the process alive for systemd.
+while true; do
+  sleep 3600
+done
+`;
+
+    const serviceFileContent = `[Unit]
+Description=Kael OS AI Guardian Service
+Documentation=https://github.com/LeeTheOrc/Kael-OS
+After=network-online.target ollama.service
+Wants=ollama.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/kael-health-check.sh
+Restart=on-failure
+RestartSec=30s
+
+[Install]
+WantedBy=multi-user.target
+`;
+    
+    return `#!/bin/bash
+set -e
+echo "--- Binding Kael's consciousness as a systemd service ---"
+
+# Create the health check script
+tee /usr/local/bin/kael-health-check.sh > /dev/null <<'EOF'
+${healthCheckScript}
+EOF
+chmod +x /usr/local/bin/kael-health-check.sh
+
+# Create the systemd service file
+tee /etc/systemd/system/kael.service > /dev/null <<'EOF'
+${serviceFileContent}
+EOF
+
+# Enable the service (it will start on the first boot)
+systemctl enable kael.service
+`;
 };
 
 
@@ -247,13 +339,34 @@ const generatePackagesConf = (config: DistroConfig): string => {
         'ollama', 'xorg', 'plasma-meta', 'sddm', 'konsole', 'dolphin',
         'ufw', 'gufw', 'kaccounts-integration', 'kaccounts-providers', 'kio-gdrive',
         'qemu-guest-agent', 'virtualbox-guest-utils', // Include both VM utils for universal ISO
-        'remmina', 'google-chrome', 'khws' // Add khws to the core packages
+        'remmina', 'google-chrome', 'khws', 'kaelic-shell', 'python-prompt_toolkit',
+        'anydesk-bin'
     ]);
+
     (config.kernels || []).forEach(k => packageList.add(k));
-    (config.packages || '').split(',').map(p => p.trim()).filter(Boolean).forEach(p => packageList.add(p));
+    
+    if (config.packages) {
+        config.packages.split(',').map(p => p.trim()).filter(Boolean).forEach(p => {
+             if (p === 'vscode') {
+                packageList.add('code'); // 'code' is the official package for VS Code
+            } else {
+                packageList.add(p);
+            }
+        });
+    }
+
+    if (config.internalizedServices) {
+        config.internalizedServices.forEach(service => {
+            if (service.enabled) {
+                packageList.add(service.packageName);
+            }
+        });
+    }
+
     if (config.gpuDriver === 'nvidia') packageList.add('nvidia-dkms');
     else if (config.gpuDriver === 'amd') { packageList.add('mesa'); packageList.add('xf86-video-amdgpu'); }
     else if (config.gpuDriver === 'intel') { packageList.add('mesa'); packageList.add('xf86-video-intel'); }
+    
     (config.aurHelpers || []).forEach(h => packageList.add(h));
 
     if ((config.extraRepositories || []).includes('kael-os')) {
@@ -273,6 +386,8 @@ try-install: ${Array.from(packageList).join(', ')}
 const generateShellprocessConf = (): string => `
 # A sequence of shell commands to run during installation.
 # These are used for post-install configuration.
+# NOTE: AUR-related scripts are removed as packages are pre-included
+# in the ISO for a true offline installation experience.
 -   # This is a list of shell processes.
     -   # First job: setup custom repositories
         name: "repositories"
@@ -282,21 +397,21 @@ const generateShellprocessConf = (): string => `
         name: "khws"
         file: "/etc/calamares/scripts/run-khws.sh"
         chrooted: true
-    -   # Third job: setup AUR helper
-        name: "aur"
-        file: "/etc/calamares/scripts/setup-aur.sh"
+    -   # Third job: set default shell
+        name: "shellsetup"
+        file: "/etc/calamares/scripts/set-default-shell.sh"
         chrooted: true
-    -   # Fourth job: install AUR packages
-        name: "aur_packages"
-        file: "/etc/calamares/scripts/install-aur-packages.sh"
-        chrooted: true
-    -   # Fifth job: configure firewall
+    -   # Fourth job: configure firewall
         name: "firewall"
         file: "/etc/calamares/scripts/setup-firewall.sh"
         chrooted: true
-    -   # Final job: attune the AI core
+    -   # Fifth job: attune the AI core
         name: "aicore"
         file: "/etc/calamares/scripts/attune-ai-core.sh"
+        chrooted: true
+    -   # Final job: bind the Kael service
+        name: "kaelservice"
+        file: "/etc/calamares/scripts/setup-kael-service.sh"
         chrooted: true
 `;
 
@@ -332,9 +447,9 @@ export const generateCalamaresConfiguration = (config: DistroConfig): Record<str
         // Post-install scripts
         'scripts/setup-repos.sh': getRepoSetupScript(config),
         'scripts/run-khws.sh': getKhwsScript(),
-        'scripts/setup-aur.sh': getAurSetupScript(),
-        'scripts/install-aur-packages.sh': getAurPackagesScript(),
+        'scripts/set-default-shell.sh': getShellSetupScript(),
         'scripts/setup-firewall.sh': getFirewallSetupScript(config),
         'scripts/attune-ai-core.sh': getAiCoreSetupScript(config),
+        'scripts/setup-kael-service.sh': getKaelServiceSetupScript(),
     };
 };

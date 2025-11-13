@@ -34,12 +34,12 @@ export const DistroBlueprintForm: React.FC<DistroBlueprintFormProps> = ({ config
     
     const handleRepoToggle = (repo: 'cachy' | 'chaotic') => {
         if (isLocked) return;
-        const otherRepos = config.extraRepositories.filter(r => r !== 'kael-os' && (r === 'cachy' || r === 'chaotic'));
-        const newOtherRepos = otherRepos.includes(repo)
-            ? otherRepos.filter(r => r !== repo)
-            : [...otherRepos, repo];
+        const currentRepos = config.extraRepositories.filter(r => r !== 'kael-os');
+        const newRepos = currentRepos.includes(repo)
+            ? currentRepos.filter(r => r !== repo)
+            : [...currentRepos, repo];
         
-        onConfigChange({ ...config, extraRepositories: ['kael-os', ...newOtherRepos] });
+        onConfigChange({ ...config, extraRepositories: ['kael-os', ...newRepos] as DistroConfig['extraRepositories'] });
     };
 
     return (
@@ -73,9 +73,9 @@ export const DistroBlueprintForm: React.FC<DistroBlueprintFormProps> = ({ config
             </div>
             <div className="flex justify-between items-center py-2.5 border-b border-forge-border/50">
                 <label className="flex items-center gap-1.5 text-forge-text-secondary text-sm">Shell
-                    <Tooltip text="Per the Core Philosophy, the Z Shell (zsh) is the immutable foundation for the terminal, enabling deep AI integration." />
+                    <Tooltip text="Per the Core Philosophy, the Kaelic Shell is the immutable foundation for the terminal, enabling deep AI integration." />
                 </label>
-                <span className="text-forge-text-primary font-medium text-sm">Zsh</span>
+                <span className="text-forge-text-primary font-medium text-sm">Kaelic Shell</span>
             </div>
 
             <SectionHeader title="The Golem's Build" />

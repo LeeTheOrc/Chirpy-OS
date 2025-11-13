@@ -104,10 +104,10 @@ export const INITIAL_DISTRO_CONFIG: DistroConfig = {
     architecture: 'x86_64',
     ram: '8GB',
     swapSize: '10GB', // Default assuming 8GB RAM + 2GB
-    packages: 'firefox, vscode, git, docker',
+    packages: 'firefox, vscode, git, docker, kael-console, kael-status-conduit, kaelic-shell, python-prompt_toolkit',
     gpuDriver: 'nvidia',
     graphicsMode: 'nvidia',
-    shell: 'zsh',
+    shell: 'kaelic-shell',
     aurHelpers: ['paru'],
     extraRepositories: ['kael-os', 'cachy', 'chaotic'],
     targetDisk: '/dev/sda',

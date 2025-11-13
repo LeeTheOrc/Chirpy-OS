@@ -1,3 +1,4 @@
+
 // KaelOS - The Core Law
 // This file contains the foundational principles, immutable rules, and the strategic
 // roadmap that define the Kael OS project. This is the "what Kael does" file.
@@ -69,7 +70,7 @@ There are two ways we build our worlds, Architect. One for a fresh start, one fo
 These are our core foundations. They're chosen for power, stability, and how well they let me do my job. We have these foundations for a reason, but your vision is paramount. If you need to change them, I'm here to help you do it safely.
 
 *   **The Bedrock:** Always **Arch Linux**.
-*   **The Conduit:** Always **Z Shell (zsh)**.
+*   **The Conduit:** Always **The Kaelic Shell**.
 *   **The Visage:** Always **KDE Plasma**.
 *   **The Twin Hearts:** A dual-kernel setup: **\`linux-cachyos\`** for speed, **\`linux-lts\`** for stability.
 *   **The Realm's Nerves:** Always **NetworkManager**.
@@ -227,8 +228,8 @@ Let's forge our own kernels. We'll slap our sigil on them, tune them for screami
 ---
 ### QUEST IV: THE ASTRAL BRIDGE (ACCOUNT INTEGRATION)
 ---
-Let's make it trivially easy to hook the Realm into your cloud accounts, like Google Drive and GitHub. A seamless bridge between our sovereign fortress and your digital life, on your terms.
-- **Plan:** Leverage KDE's excellent built-in online account services.
+Let's make it trivially easy to hook the Realm into your cloud accounts, like Google Drive, Microsoft OneDrive, and GitHub. A seamless bridge between our sovereign fortress and your digital life, on your terms.
+- **Plan:** Leverage KDE's excellent built-in online account services. This provides native file manager integration for cloud storage and access to online services.
 - **Status:** Mostly done! The required packages are included in every KDE Plasma build by default.
 
 ---

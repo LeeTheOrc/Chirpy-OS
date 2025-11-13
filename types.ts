@@ -53,7 +53,7 @@ export interface DistroConfig {
   packages: string;
   gpuDriver: string;
   graphicsMode: 'integrated' | 'nvidia' | 'hybrid';
-  shell: 'zsh';
+  shell: 'zsh' | 'kaelic-shell';
   aurHelpers: ('paru')[];
   extraRepositories: ('kael-os' | 'cachy' | 'chaotic')[];
   // New properties for detailed installation

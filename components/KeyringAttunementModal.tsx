@@ -42,9 +42,10 @@ echo "--- Attuning to Artisan's Signature ---"
 echo "This will add the security key required to build certain packages."
 echo "Key ID: B62C3D10C54D5DA9"
 
-# Step 1: Ensure the pacman keyring is initialized.
-echo "--> Initializing keyring..."
+# Step 1: Ensure the pacman keyring is initialized and populated.
+echo "--> Initializing and populating keyring..."
 sudo pacman-key --init
+sudo pacman-key --populate archlinux
 
 # Step 2: Receive the key directly into the pacman keyring.
 echo "--> Receiving key from keyserver..."

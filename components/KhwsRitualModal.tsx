@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { CloseIcon, CopyIcon, EyeIcon } from './Icons';
 
@@ -80,10 +81,16 @@ REPO_DIR="$HOME/kael-os-repo"
 echo "--> Moving artifact to Athenaeum..."
 mv "$PACKAGE_FILE"* "$REPO_DIR/"
 cd "$REPO_DIR"
-echo "--> Updating Athenaeum database..."
-PKG_BASE_NAME=$(basename "$PACKAGE_FILE" .pkg.tar.zst | sed 's/-[0-9].*//')
-repo-remove kael-os-repo.db.tar.gz "$PKG_BASE_NAME" 2>/dev/null || true
+
+# --- Intelligent Database Update ---
+PKG_BASE_NAME=$(basename "$PACKAGE_FILE" .pkg.tar.zst | sed 's/-\\([0-9]\\|\\.rev\\|\\.rc\\|\\.beta\\|\\.alpha\\|\\.pre\\).*//')
+echo "--> Updating Athenaeum database for '$PKG_BASE_NAME'..."
+if tar -tf kael-os-repo.db.tar.gz | grep -q "^$PKG_BASE_NAME-"; then
+    echo "--> Existing entry found for '$PKG_BASE_NAME'. Removing old version..."
+    repo-remove kael-os-repo.db.tar.gz "$PKG_BASE_NAME"
+fi
 repo-add kael-os-repo.db.tar.gz "$(basename "$PACKAGE_FILE")"
+
 echo "--> Committing and publishing..."
 git add .
 if git diff --staged --quiet; then

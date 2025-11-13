@@ -431,6 +431,18 @@ export const ComputerDesktopIcon: React.FC<IconProps> = (props) => (
 
 // --- NEW ICONS ---
 
+export const ClockIcon: React.FC<IconProps> = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} {...props}>
+    <defs>
+        <linearGradient id="orcSteelGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#8cffcf" />
+            <stop offset="100%" stopColor="#7aebbe" />
+        </linearGradient>
+    </defs>
+    <path stroke="url(#orcSteelGradient)" strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+);
+
 export const PaintBrushIcon: React.FC<IconProps> = (props) => (
   <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} {...props}>
     <defs>
@@ -510,5 +522,42 @@ export const BeakerIcon: React.FC<IconProps> = (props) => (
     </defs>
     <path stroke="url(#magicPurpleGradient)" strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.25M9.75 3.104C11.22 2.237 13.09 1.5 15 1.5v5.714c0 .597-.237 1.17-.659 1.591L9.75 14.25M5 14.25h14" />
     <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" d="M5 14.25a2.25 2.25 0 01-2.25-2.25v-1.5a2.25 2.25 0 012.25-2.25H19a2.25 2.25 0 012.25 2.25v1.5a2.25 2.25 0 01-2.25 2.25M5 14.25v3.375c0 .621.504 1.125 1.125 1.125h11.75c.621 0 1.125-.504 1.125-1.125v-3.375" />
+  </svg>
+);
+
+export const ServerStackIcon: React.FC<IconProps> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} {...props}>
+        <defs>
+            <linearGradient id="coolGrayGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#a99ec3" />
+                <stop offset="100%" stopColor="#8d81ac" />
+            </linearGradient>
+        </defs>
+        <path stroke="url(#coolGrayGradient)" strokeLinecap="round" strokeLinejoin="round" d="M6.75 7.5l-.75 3.375a2.25 2.25 0 002.25 2.625h9.5a2.25 2.25 0 002.25-2.625l-.75-3.375m-13.5 0A2.25 2.25 0 016.75 5.25h10.5a2.25 2.25 0 012.25 2.25m-13.5 0H21M6.75 7.5v9m10.5-9v9m-1.5-9h-7.5" />
+    </svg>
+);
+
+export const SignalIcon: React.FC<IconProps> = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} {...props}>
+    <defs>
+      <linearGradient id="skyBlueGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stopColor="#52a9ff" />
+        <stop offset="100%" stopColor="#3b82f6" />
+      </linearGradient>
+    </defs>
+    <path stroke="url(#skyBlueGradient)" strokeLinecap="round" strokeLinejoin="round" d="M8.288 15.038a5.25 5.25 0 017.424 0M5.136 11.886a9.75 9.75 0 0113.728 0M1.984 8.734a14.25 14.25 0 0120.032 0M12 18.382a.375.375 0 110-.75.375.375 0 010 .75z" />
+  </svg>
+);
+
+export const ShellPromptIcon: React.FC<IconProps> = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} {...props}>
+    <defs>
+        <linearGradient id="orcSteelGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#8cffcf" />
+            <stop offset="100%" stopColor="#7aebbe" />
+        </linearGradient>
+    </defs>
+    <path stroke="url(#orcSteelGradient)" strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+    <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" d="M13.5 19.5h6" />
   </svg>
 );

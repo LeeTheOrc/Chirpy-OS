@@ -1,33 +1,5 @@
 import React, { useState } from 'react';
-import { CloseIcon, CopyIcon, DownloadIcon } from './Icons';
-
-const CodeBlock: React.FC<{ children: React.ReactNode; }> = ({ children }) => {
-    const [copied, setCopied] = useState(false);
-    const textToCopy = React.Children.toArray(children).join('');
-
-    const handleCopy = () => {
-        if (!textToCopy) return;
-        navigator.clipboard.writeText(textToCopy);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-    };
-
-    return (
-        <div className="relative group my-2">
-            <pre className="bg-forge-bg border border-forge-border rounded-lg p-3 text-xs text-forge-text-secondary font-mono pr-12 whitespace-pre-wrap break-words max-h-[40vh] overflow-y-auto">
-                <code>{children}</code>
-            </pre>
-            <button 
-                onClick={handleCopy} 
-                className="absolute top-2 right-2 p-1.5 bg-forge-panel/80 rounded-md text-forge-text-secondary hover:text-forge-text-primary transition-all opacity-0 group-hover:opacity-100 focus:opacity-100" 
-                aria-label="Copy code"
-            >
-                {copied ? <span className="text-xs font-sans">Copied!</span> : <CopyIcon className="w-4 h-4" />}
-            </button>
-        </div>
-    );
-};
-
+import { CloseIcon, CopyIcon } from './Icons';
 
 interface AICoreModalProps {
   script: string;
@@ -35,46 +7,45 @@ interface AICoreModalProps {
 }
 
 export const AICoreModal: React.FC<AICoreModalProps> = ({ script, onClose }) => {
-    const downloadScript = () => {
-        const blob = new Blob([script], { type: 'text/bash' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'attune-system.sh';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+    const [copied, setCopied] = useState(false);
+
+    // Unified command generation logic
+    const encodedScript = btoa(unescape(encodeURIComponent(script)));
+    const fullCommand = `echo "${encodedScript}" | base64 --decode | sudo bash`;
+
+    const handleCopy = () => {
+        navigator.clipboard.writeText(fullCommand);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
     };
 
     return (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center animate-fade-in-fast" onClick={onClose}>
-            <div className="bg-forge-panel border-2 border-forge-border rounded-lg shadow-2xl w-full max-w-2xl p-6 m-4 flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+            <div className="bg-forge-panel border-2 border-forge-border rounded-lg shadow-2xl w-full max-w-2xl p-6 m-4 flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-center mb-4 flex-shrink-0">
-                    <h2 className="text-xl font-bold text-forge-text-primary font-display tracking-wider">System Attunement Script</h2>
+                    <h2 className="text-xl font-bold text-forge-text-primary font-display tracking-wider">AI Core Attunement Script</h2>
                     <button onClick={onClose} className="text-forge-text-secondary hover:text-forge-text-primary">
                         <CloseIcon className="w-5 h-5" />
                     </button>
                 </div>
-                <div className="overflow-y-auto pr-2 text-forge-text-secondary leading-relaxed space-y-4">
-                    <p>This script is designed to apply your blueprint's configuration to an <strong className="text-dragon-fire">existing Arch Linux or CachyOS system</strong>. It is non-destructive and will not format any drives, but will install packages and change system settings.</p>
-
-                    <h3 className="font-semibold text-lg text-forge-text-primary mt-4 mb-2">How to Use:</h3>
-                    <ol className="list-decimal list-inside space-y-2 text-forge-text-secondary">
-                        <li>Save or download the script as <code className="bg-forge-border px-1 rounded-sm font-mono text-forge-text-secondary">attune-system.sh</code> on your target system.</li>
-                        <li>Open a terminal and make it executable: <code className="bg-forge-border px-1 rounded-sm font-mono text-forge-text-secondary">chmod +x attune-system.sh</code></li>
-                        <li>Run with root privileges: <code className="bg-forge-border px-1 rounded-sm font-mono text-forge-text-secondary">sudo ./attune-system.sh</code></li>
-                    </ol>
-                    <CodeBlock>{script}</CodeBlock>
-                    <div className="flex justify-center items-center gap-4 mt-6">
-                         <button
-                            onClick={downloadScript}
-                            className="bg-magic-purple hover:bg-purple-700 text-white font-bold py-2 px-6 rounded-lg transition-colors inline-flex items-center gap-2"
-                        >
-                            <DownloadIcon className="w-5 h-5" />
-                            Download attune-system.sh
-                        </button>
-                    </div>
+                <div className="text-sm text-forge-text-secondary mb-4">
+                    <p>This script will apply your blueprint to an existing Arch-based system, imbuing it with the Kael AI Local Core and all your chosen configurations.</p>
+                    <p className="mt-2 font-semibold text-dragon-fire">Copy this single, unified command and run it in your target system's terminal.</p>
+                </div>
+                <div className="relative group flex-grow">
+                     <pre className="bg-forge-bg border border-forge-border rounded-lg p-3 text-xs text-forge-text-secondary font-mono whitespace-pre-wrap break-words h-full overflow-y-auto pr-10">
+                        <code>{fullCommand}</code>
+                    </pre>
+                    <button 
+                        onClick={handleCopy} 
+                        className="absolute top-2 right-2 p-1.5 bg-forge-panel/80 rounded-md text-forge-text-secondary hover:text-forge-text-primary transition-all opacity-0 group-hover:opacity-100 focus:opacity-100" 
+                        aria-label="Copy command"
+                    >
+                        {copied ? <span className="text-xs font-sans">Copied!</span> : <CopyIcon className="w-4 h-4" />}
+                    </button>
+                </div>
+                <div className="mt-4 flex-shrink-0 text-right">
+                    <button onClick={onClose} className="px-4 py-2 bg-forge-border rounded-md text-sm font-semibold text-forge-text-primary hover:bg-forge-panel/50">Close</button>
                 </div>
             </div>
         </div>
