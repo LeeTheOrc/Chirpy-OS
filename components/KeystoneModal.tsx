@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { CloseIcon, CopyIcon, KeyIcon } from './Icons';
 
@@ -289,8 +288,8 @@ echo "[SUCCESS] Foundation laid. The Athenaeum is now live."
 `;
 
 const PUBLISHER_SCRIPT_RAW = `#!/bin/bash
-# Kael OS - Athenaeum Publisher Script (v15 - Cleansing Rite)
-# Forges a package, signs it, and publishes it. Optionally includes dependencies.
+# Kael OS - Unified Publisher Script (v17 - Resilient Forge)
+# Scribes the recipe, forges the package, signs it, and publishes it.
 
 set -euo pipefail
 
@@ -304,6 +303,7 @@ if ! command -v git &> /dev/null; then echo "ERROR: 'git' is not installed..." >
 if ! command -v gh &> /dev/null; then echo "ERROR: GitHub CLI 'gh' is not installed..." >&2; exit 1; fi
 if ! gh auth status &>/dev/null; then echo "ERROR: You are not authenticated with GitHub..." >&2; exit 1; fi
 if ! command -v repo-add &> /dev/null; then echo "ERROR: 'repo-add' is not installed..." >&2; exit 1; fi
+if ! command -v rsync &> /dev/null; then echo "ERROR: 'rsync' is not installed..." >&2; exit 1; fi
 
 # --- CONFIGURATION & ARGUMENT PARSING ---
 REPO_DIR="$HOME/kael-os-repo"
@@ -319,13 +319,47 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# --- SCRIPT START ---
-echo "--- Preparing the Forge for package: $PACKAGE_NAME ---"
-
 # --- VALIDATION ---
 if [ -z "$PACKAGE_NAME" ]; then echo "Usage: ./publish-package.sh [--with-deps] <package_name>" >&2; exit 1; fi
 PACKAGE_DIR_ABS="$SCRIPT_DIR/$PACKAGE_NAME"
 if [ ! -d "$PACKAGE_DIR_ABS" ] || [ ! -f "$PACKAGE_DIR_ABS/PKGBUILD" ]; then echo "ERROR: Directory '$PACKAGE_DIR_ABS' does not exist or does not contain a PKGBUILD." >&2; exit 1; fi
+
+# --- SCRIPT START ---
+echo "--- Beginning the Unified Rite for package: $PACKAGE_NAME ---"
+
+# --- PART 1: SCRIBE THE RECIPE ---
+echo ""
+echo "--> Entering the Athenaeum: $REPO_DIR"
+if [ ! -d "$REPO_DIR" ]; then echo "ERROR: Athenaeum directory '$REPO_DIR' not found." >&2; exit 1; fi
+cd "$REPO_DIR"
+echo "--> Switching to 'main' branch to scribe the recipe..."
+# Force checkout and clean to prevent errors from a dirty working directory
+git checkout -f main
+git clean -fd
+git pull origin main --rebase
+
+DEST_DIR="$REPO_DIR/packages/$PACKAGE_NAME"
+echo "--> Preparing destination: $DEST_DIR"
+mkdir -p "$DEST_DIR"
+
+echo "--> Copying recipe and all source files..."
+# Use rsync for robust copying, excluding git/build artifacts
+rsync -a --delete --exclude '.git' --exclude '*.pkg.tar.zst*' --exclude '*.log' --exclude 'src/' --exclude 'pkg/' "$PACKAGE_DIR_ABS/" "$DEST_DIR/"
+
+echo "--> Committing recipe to the Athenaeum's history..."
+git add .
+if git diff --staged --quiet; then
+    echo "--> Recipe for '$PACKAGE_NAME' is already up to date. No changes to commit to 'main'."
+else
+    git commit -m "recipe: Add/update source for $PACKAGE_NAME"
+    echo "--> Pushing recipe to the remote Athenaeum..."
+    git push origin main
+fi
+echo "--- ✅ Recipe has been successfully scribed. ---"
+echo ""
+
+# --- PART 2: FORGE THE ARTIFACT ---
+echo "--- Preparing the Forge for package: $PACKAGE_NAME ---"
 
 # --- AUTO-SIGNING LOGIC ---
 echo "--> Searching for GPG key for signing..."
@@ -343,20 +377,17 @@ cd "$PACKAGE_DIR_ABS"
 echo "--> Forging and signing the package (makepkg)..."
 makepkg -sf --sign --key "$SIGNING_KEY_ID" --noconfirm
 
-# Use --packagelist to get the absolute path to the created package file.
 PACKAGE_FILE_PATH=$(makepkg --packagelist | head -n 1)
-if [ -z "$PACKAGE_FILE_PATH" ] || [ ! -f "$PACKAGE_FILE_PATH" ]; then
-    echo "ERROR: Build failed or could not find created package file." >&2
-    exit 1
-fi
+if [ -z "$PACKAGE_FILE_PATH" ] || [ ! -f "$PACKAGE_FILE_PATH" ]; then echo "ERROR: Build failed or could not find created package file." >&2; exit 1; fi
 echo "--> Forged artifact at: $PACKAGE_FILE_PATH"
 
-# --- PUBLISHING ---
-echo "--> Entering the Athenaeum: $REPO_DIR"
-if [ ! -d "$REPO_DIR" ]; then echo "ERROR: Athenaeum directory '$REPO_DIR' not found." >&2; exit 1; fi
+# --- PART 3: PUBLISH THE ARTIFACT ---
+echo "--> Re-entering the Athenaeum to publish the artifact..."
 cd "$REPO_DIR"
 echo "--> Switching to gh-pages branch for publishing..."
-git checkout gh-pages
+# Force checkout and clean to prevent errors from a dirty working directory
+git checkout -f gh-pages
+git clean -fd
 
 echo "--> Performing a Cleansing Rite to synchronize with the remote Athenaeum..."
 git fetch origin gh-pages
@@ -371,7 +402,6 @@ FILES_TO_ADD_TO_DB+=("$(basename "$PACKAGE_FILE_PATH")")
 # --- DEPENDENCY HOARDING (Optional) ---
 if [ "$WITH_DEPS" = true ]; then
     echo "--> Initiating the Dependency Hoarding Rite..."
-    # cd back to the package directory to correctly source the PKGBUILD
     cd "$PACKAGE_DIR_ABS"
     source <(sed '/^\\s*\\(#\\|$\\)/d' PKGBUILD)
     ALL_DEPS=()
@@ -392,10 +422,9 @@ if [ "$WITH_DEPS" = true ]; then
                 echo "--> Dependency '$dep_filename' already in Athenaeum. Skipping."
             fi
         else
-            echo "--> NOTE: Dependency '$dep_name' not found in cache. It might be a base package, in a group, or already installed."
+            echo "--> NOTE: Dependency '$dep_name' not found in cache. It might be a base package or already installed."
         fi
     done
-    # Return to the repo directory for the final steps
     cd "$REPO_DIR"
     if [ \${#HOARDED_DEPS[@]} -gt 0 ]; then
         echo "--> Hoarded \${#HOARDED_DEPS[@]} new dependency artifacts."
@@ -427,9 +456,13 @@ else
     git commit -m "feat: Add/update package $PACKAGE_NAME"
     git push origin gh-pages
 fi
-echo "--> Returning to main branch..."
-git checkout main
-echo "--- The artifact has been successfully published to the Athenaeum. ---"
+
+# --- CLEANUP ---
+echo "--> Returning to main branch for a clean state..."
+git checkout -f main
+git clean -fd
+echo ""
+echo "--- ✅ The artifact has been successfully scribed and published. ---"
 `;
 
 // Helper to create a shell-agnostic command
@@ -520,27 +553,18 @@ gpg --delete-key <KEY_ID>`}</CodeBlock>
                     <CodeBlock lang="bash">{createUniversalCommand(PUBLISH_FOUNDATION_SCRIPT_RAW)}</CodeBlock>
                     <p className="text-orc-steel font-semibold">The Athenaeum is now live and its signature is trusted.</p>
 
-                    <h3 className="font-semibold text-lg text-orc-steel mt-4 mb-2">Part II: The Publishing Rite (Ongoing Workflow)</h3>
-                    <p>For all future packages, this simple rite is all you need.</p>
-
-                     <div className="p-3 bg-forge-bg border border-forge-border rounded-lg text-sm">
-                        <h5 className="font-semibold text-dragon-fire mb-2">A Note on Artisanship & Credit</h5>
-                        <p>When adapting a <code className="font-mono text-xs">PKGBUILD</code> from another forge, it is our custom to honor the original creators. Always include a line crediting their work, for example: <br /><code className="font-mono text-xs"># Original work by: CachyOS &lt;email@cachyos.org&gt;</code></p>
-                    </div>
-
-                    <h4 className="font-semibold text-md text-forge-text-primary mt-3 mb-1">Step 1: Trust Allied Forges (As Needed)</h4>
-                    <p>Before building a package from an ally like CachyOS, you must first trust their signature so \`makepkg\` can verify the source files.</p>
-                    <CodeBlock lang="bash">{createUniversalCommand('gpg --recv-key F3B607488DB35A47 && gpg --lsign-key F3B607488DB35A47')}</CodeBlock>
-
-                     <h4 className="font-semibold text-md text-forge-text-primary mt-3 mb-1">Step 2: Forge the Unified Publisher Script</h4>
-                    <p>This powerful script automates the entire process of building, signing with our Master Key, and publishing. Create it once with this command:</p>
+                    <h3 className="font-semibold text-lg text-orc-steel mt-4 mb-2">Part II: The Unified Publishing Rite</h3>
+                    <p>For all future packages, this simple rite is all you need. It scribes the source and publishes the artifact in one go.</p>
+                    
+                    <h4 className="font-semibold text-md text-forge-text-primary mt-3 mb-1">Step 1: Forge the Unified Publisher Script</h4>
+                    <p>This powerful script automates the entire process. Create it once with this command:</p>
                     <CodeBlock lang="bash">{createUniversalCommand(publisherCreationScript)}</CodeBlock>
                     
-                     <h4 className="font-semibold text-md text-forge-text-primary mt-3 mb-1">Step 3: Publish an Artifact</h4>
-                    <p>To publish any package, simply go to your <code className="font-mono text-xs">~/packages</code> directory and run the script with the package's folder name.</p>
-                     <CodeBlock lang="bash">{createUniversalCommand(publishArtifactScript)}</CodeBlock>
-                    <p className="mt-2">For advanced usage, you can also hoard a package's dependencies into our Athenaeum by adding the <code className="font-mono text-xs text-dragon-fire">--with-deps</code> flag. Use this with caution, as it can greatly increase the repository size.</p>
-                     <CodeBlock lang="bash">{createUniversalCommand(publishWithDepsScript)}</CodeBlock>
+                    <h4 className="font-semibold text-md text-forge-text-primary mt-3 mb-1">Step 2: Publish an Artifact</h4>
+                    <p>To publish any package, simply go to your <code className="font-mono text-xs">~/packages</code> directory and run the script with the package's folder name. This single command handles everything.</p>
+                    <CodeBlock lang="bash">{createUniversalCommand(publishArtifactScript)}</CodeBlock>
+                    <p className="mt-2">For advanced usage, you can also hoard a package's dependencies into our Athenaeum by adding the <code className="font-mono text-xs text-dragon-fire">--with-deps</code> flag. Use this with caution.</p>
+                    <CodeBlock lang="bash">{createUniversalCommand(publishWithDepsScript)}</CodeBlock>
 
                 </div>
             </div>
