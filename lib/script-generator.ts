@@ -1,4 +1,5 @@
 
+
 import type { DistroConfig } from '../types';
 
 const generateAiCoreSetupScript = (config: DistroConfig): string => {
