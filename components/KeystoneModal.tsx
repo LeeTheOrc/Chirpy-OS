@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { CloseIcon, CopyIcon, KeyIcon } from './Icons';
 
@@ -55,10 +56,15 @@ const REPO_SETUP_SCRIPT_RAW = `
 set -e
 # This script clones or updates the Athenaeum repository and prepares the branches.
 
+# --- CWD Safety ---
+ORIGINAL_CWD=$(pwd -P)
+# Ensure we return to a safe directory on exit, error, or interrupt
+trap 'cd "$ORIGINAL_CWD" || cd "$HOME"' EXIT
+
 # Clone or update the Athenaeum repository
 if [ -d "$HOME/kael-os-repo" ]; then
     echo "--> Athenaeum found locally. Updating and resetting..."
-    cd ~/kael-os-repo
+    cd "$HOME/kael-os-repo"
     # Fetch latest changes from remote and ensure we are on main
     git fetch origin
     git checkout main
@@ -67,8 +73,10 @@ if [ -d "$HOME/kael-os-repo" ]; then
     git pull origin main
 else
     echo "--> Cloning the Athenaeum for the first time..."
-    cd ~ && git clone https://github.com/LeeTheOrc/kael-os-repo.git
-    cd ~/kael-os-repo
+    # cd to home first to ensure clone happens there
+    cd "$HOME"
+    git clone https://github.com/LeeTheOrc/kael-os-repo.git
+    cd "$HOME/kael-os-repo"
 fi
 
 # Set up the gh-pages branch for publishing artifacts
@@ -206,38 +214,38 @@ echo "[SUCCESS] Foundational recipes have been forged in ~/packages/"
 const PUBLISH_FOUNDATION_SCRIPT_RAW = `
 set -e
 
+# --- CWD Safety ---
+ORIGINAL_CWD=$(pwd -P)
+# Ensure we return to a safe directory on exit, error, or interrupt
+trap 'cd "$ORIGINAL_CWD" || cd "$HOME"' EXIT
+
 # Find your Master Key ID to use for signing
 echo "--> Searching for GPG key for signing..."
-# First, try to find the specific 'Kael OS Master Key'.
 GPG_KEY_ID=$(gpg --list-secret-keys --with-colons "Kael OS Master Key" 2>/dev/null | awk -F: '$1 == "sec" { print $5 }' | head -n 1)
-
-# If not found, fall back to the first available secret key.
 if [ -z "$GPG_KEY_ID" ]; then
     echo "--> 'Kael OS Master Key' not found. Using first available secret key."
     GPG_KEY_ID=$(gpg --list-secret-keys --with-colons 2>/dev/null | awk -F: '$1 == "sec" { print $5 }' | head -n 1)
 fi
-
-# If still no key, then we cannot proceed.
 if [ -z "$GPG_KEY_ID" ]; then
     echo "ERROR: Could not find any GPG secret key for signing. Aborting."
-    echo "Please run Step 2 to create a key."
     exit 1
 fi
-
 echo "[SUCCESS] Using Master Key: $GPG_KEY_ID for signing."
 
 # Build the packages first
 echo "--> Building kael-keyring..."
-cd ~/packages/kael-keyring
+cd "$HOME/packages/kael-keyring"
 makepkg -sf --sign --key "$GPG_KEY_ID" --noconfirm --skippgpcheck
+KEYRING_PKG_FILE_PATH=$(makepkg --packagelist | head -n 1)
 
 echo "--> Building kael-pacman-conf..."
-cd ~/packages/kael-pacman-conf
+cd "$HOME/packages/kael-pacman-conf"
 makepkg -sf --sign --key "$GPG_KEY_ID" --noconfirm --skippgpcheck
+CONF_PKG_FILE_PATH=$(makepkg --packagelist | head -n 1)
 
 # Navigate to the repository and handle publishing
 echo "--> Committing new artifacts to the Athenaeum..."
-cd ~/kael-os-repo
+cd "$HOME/kael-os-repo"
 
 echo "--> Switching to gh-pages branch for publishing..."
 git checkout gh-pages
@@ -245,9 +253,9 @@ git pull origin gh-pages --rebase
 
 # Now, copy the artifacts into the gh-pages branch working directory
 echo "--> Placing forged artifacts into the Athenaeum..."
-mv ~/packages/kael-keyring/*.pkg.tar.zst* .
-mv ~/packages/kael-pacman-conf/*.pkg.tar.zst* .
-cp ~/packages/kael-keyring/kael-os.asc .
+mv "$KEYRING_PKG_FILE_PATH"* .
+mv "$CONF_PKG_FILE_PATH"* .
+cp "$HOME/packages/kael-keyring/kael-os.asc" .
 
 # Remove old entries before adding to prevent duplicates after re-building
 PACKAGES_TO_UPDATE=("kael-keyring" "kael-pacman-conf")
@@ -257,7 +265,12 @@ for pkg_name in "\${PACKAGES_TO_UPDATE[@]}"; do
         repo-remove kael-os-repo.db.tar.gz "$pkg_name"
     fi
 done
-repo-add kael-os-repo.db.tar.gz *.pkg.tar.zst
+# Use the basename of the absolute paths for repo-add
+repo-add kael-os-repo.db.tar.gz "$(basename "$KEYRING_PKG_FILE_PATH")" "$(basename "$CONF_PKG_FILE_PATH")"
+
+# Create a hard copy of the database for pacman compatibility with GitHub Pages
+echo "--> Creating pacman DB copy for compatibility..."
+cp kael-os-repo.db.tar.gz kael-os-repo.db
 
 git add .
 
@@ -276,49 +289,33 @@ echo "[SUCCESS] Foundation laid. The Athenaeum is now live."
 `;
 
 const PUBLISHER_SCRIPT_RAW = `#!/bin/bash
-# Kael OS - Athenaeum Publisher Script (v10 - Dependency Hoarding)
+# Kael OS - Athenaeum Publisher Script (v15 - Cleansing Rite)
 # Forges a package, signs it, and publishes it. Optionally includes dependencies.
 
 set -euo pipefail
 
+# --- CWD Safety ---
+ORIGINAL_CWD=$(pwd -P)
+# Ensure we return to a safe directory on exit, error, or interrupt
+trap 'cd "$ORIGINAL_CWD" || cd "$HOME"' EXIT
+
 # --- PRE-FLIGHT CHECKS ---
-if ! command -v git &> /dev/null; then
-    echo "ERROR: 'git' is not installed. Please run Step 1 of the Keystone Ritual." >&2
-    exit 1
-fi
-if ! command -v gh &> /dev/null; then
-    echo "ERROR: GitHub CLI 'gh' is not installed. Please run Step 1 of the Keystone Ritual." >&2
-    exit 1
-fi
-if ! gh auth status &>/dev/null; then
-    echo "ERROR: You are not authenticated with GitHub. Please run 'gh auth login' or Step 1 of the Keystone Ritual." >&2
-    exit 1
-fi
-if ! command -v repo-add &> /dev/null; then
-    echo "ERROR: 'repo-add' is not installed. It is part of 'pacman-contrib'. Please run 'sudo pacman -S pacman-contrib'." >&2
-    exit 1
-fi
+if ! command -v git &> /dev/null; then echo "ERROR: 'git' is not installed..." >&2; exit 1; fi
+if ! command -v gh &> /dev/null; then echo "ERROR: GitHub CLI 'gh' is not installed..." >&2; exit 1; fi
+if ! gh auth status &>/dev/null; then echo "ERROR: You are not authenticated with GitHub..." >&2; exit 1; fi
+if ! command -v repo-add &> /dev/null; then echo "ERROR: 'repo-add' is not installed..." >&2; exit 1; fi
 
 # --- CONFIGURATION & ARGUMENT PARSING ---
 REPO_DIR="$HOME/kael-os-repo"
-SCRIPT_DIR=$(pwd)
+SCRIPT_DIR=$( cd -- "$( dirname -- "\${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 WITH_DEPS=false
 PACKAGE_NAME=""
 
-# Parse arguments
 while [[ $# -gt 0 ]]; do
     key="$1"
     case $key in
-        --with-deps)
-        WITH_DEPS=true
-        shift # past argument
-        ;;
-        *)    # unknown option, assume it's the package name
-        if [ -z "$PACKAGE_NAME" ]; then
-            PACKAGE_NAME="$1"
-        fi
-        shift # past argument
-        ;;
+        --with-deps) WITH_DEPS=true; shift ;;
+        *) if [ -z "$PACKAGE_NAME" ]; then PACKAGE_NAME="$1"; fi; shift ;;
     esac
 done
 
@@ -326,18 +323,9 @@ done
 echo "--- Preparing the Forge for package: $PACKAGE_NAME ---"
 
 # --- VALIDATION ---
-if [ -z "$PACKAGE_NAME" ]; then
-    echo "ERROR: You must specify a package directory to build."
-    echo "Usage: ./publish-package.sh [--with-deps] <package_name>"
-    exit 1
-fi
-
+if [ -z "$PACKAGE_NAME" ]; then echo "Usage: ./publish-package.sh [--with-deps] <package_name>" >&2; exit 1; fi
 PACKAGE_DIR_ABS="$SCRIPT_DIR/$PACKAGE_NAME"
-
-if [ ! -d "$PACKAGE_DIR_ABS" ] || [ ! -f "$PACKAGE_DIR_ABS/PKGBUILD" ]; then
-    echo "ERROR: Directory '$PACKAGE_DIR_ABS' does not exist or does not contain a PKGBUILD."
-    exit 1
-fi
+if [ ! -d "$PACKAGE_DIR_ABS" ] || [ ! -f "$PACKAGE_DIR_ABS/PKGBUILD" ]; then echo "ERROR: Directory '$PACKAGE_DIR_ABS' does not exist or does not contain a PKGBUILD." >&2; exit 1; fi
 
 # --- AUTO-SIGNING LOGIC ---
 echo "--> Searching for GPG key for signing..."
@@ -346,52 +334,50 @@ if [ -z "$SIGNING_KEY_ID" ]; then
     echo "--> 'Kael OS Master Key' not found. Using first available secret key."
     SIGNING_KEY_ID=$(gpg --list-secret-keys --with-colons 2>/dev/null | awk -F: '$1 == "sec" { print $5 }' | head -n 1)
 fi
-if [ -z "$SIGNING_KEY_ID" ]; then
-    echo "ERROR: Could not find any GPG secret key for signing. Aborting." >&2
-    echo "Please ensure you have a GPG key by running Step 2 of the Keystone Ritual." >&2
-    exit 1
-fi
+if [ -z "$SIGNING_KEY_ID" ]; then echo "ERROR: Could not find any GPG secret key for signing." >&2; exit 1; fi
 echo "[SUCCESS] Using Master Key: $SIGNING_KEY_ID for signing."
 
 # --- FORGING ---
 echo "--> Entering the forge for package: $PACKAGE_NAME..."
 cd "$PACKAGE_DIR_ABS"
-
 echo "--> Forging and signing the package (makepkg)..."
 makepkg -sf --sign --key "$SIGNING_KEY_ID" --noconfirm
 
-PACKAGE_FILE=$(find . -name "*.pkg.tar.zst" -print -quit)
-if [ -z "$PACKAGE_FILE" ]; then
-    echo "ERROR: Build failed. No package file was created."
+# Use --packagelist to get the absolute path to the created package file.
+PACKAGE_FILE_PATH=$(makepkg --packagelist | head -n 1)
+if [ -z "$PACKAGE_FILE_PATH" ] || [ ! -f "$PACKAGE_FILE_PATH" ]; then
+    echo "ERROR: Build failed or could not find created package file." >&2
     exit 1
 fi
+echo "--> Forged artifact at: $PACKAGE_FILE_PATH"
 
 # --- PUBLISHING ---
 echo "--> Entering the Athenaeum: $REPO_DIR"
-if [ ! -d "$REPO_DIR" ]; then
-    echo "ERROR: Athenaeum directory '$REPO_DIR' not found." >&2
-    echo "Please run Step 2 of the Keystone Ritual to prepare the local clone." >&2
-    exit 1
-fi
+if [ ! -d "$REPO_DIR" ]; then echo "ERROR: Athenaeum directory '$REPO_DIR' not found." >&2; exit 1; fi
 cd "$REPO_DIR"
-
 echo "--> Switching to gh-pages branch for publishing..."
 git checkout gh-pages
-git pull origin gh-pages --rebase
+
+echo "--> Performing a Cleansing Rite to synchronize with the remote Athenaeum..."
+git fetch origin gh-pages
+git reset --hard origin/gh-pages
 
 echo "--> Moving forged artifact into the Athenaeum..."
-mv "$PACKAGE_DIR_ABS/$PACKAGE_FILE"* .
+mv "$PACKAGE_FILE_PATH"* . # The glob '*' handles the associated .sig file
+
+FILES_TO_ADD_TO_DB=()
+FILES_TO_ADD_TO_DB+=("$(basename "$PACKAGE_FILE_PATH")")
 
 # --- DEPENDENCY HOARDING (Optional) ---
 if [ "$WITH_DEPS" = true ]; then
     echo "--> Initiating the Dependency Hoarding Rite..."
+    # cd back to the package directory to correctly source the PKGBUILD
     cd "$PACKAGE_DIR_ABS"
-    source PKGBUILD
+    source <(sed '/^\\s*\\(#\\|$\\)/d' PKGBUILD)
     ALL_DEPS=()
-    [ -n "\${depends-}" ] && ALL_DEPS+=("\${depends[@]}")
-    [ -n "\${makedepends-}" ] && ALL_DEPS+=("\${makedepends[@]}")
-    
-    COPIED_DEPS=()
+    if declare -p depends &>/dev/null && [ \${#depends[@]} -gt 0 ]; then ALL_DEPS+=("\${depends[@]}"); fi
+    if declare -p makedepends &>/dev/null && [ \${#makedepends[@]} -gt 0 ]; then ALL_DEPS+=("\${makedepends[@]}"); fi
+    HOARDED_DEPS=()
     echo "--> Searching pacman cache for dependencies..."
     for dep in "\${ALL_DEPS[@]}"; do
         dep_name=$(echo "$dep" | sed -e 's/[<>=!].*//')
@@ -401,7 +387,7 @@ if [ "$WITH_DEPS" = true ]; then
             if [ ! -f "$REPO_DIR/$dep_filename" ]; then
                 echo "--> Hoarding: $dep_filename"
                 cp "$dep_file" "$REPO_DIR/"
-                COPIED_DEPS+=("$dep_filename")
+                HOARDED_DEPS+=("$dep_filename")
             else
                 echo "--> Dependency '$dep_filename' already in Athenaeum. Skipping."
             fi
@@ -409,27 +395,30 @@ if [ "$WITH_DEPS" = true ]; then
             echo "--> NOTE: Dependency '$dep_name' not found in cache. It might be a base package, in a group, or already installed."
         fi
     done
+    # Return to the repo directory for the final steps
     cd "$REPO_DIR"
-    
-    if [ \${#COPIED_DEPS[@]} -gt 0 ]; then
-        echo "--> Hoarded \${#COPIED_DEPS[@]} new dependency artifacts."
+    if [ \${#HOARDED_DEPS[@]} -gt 0 ]; then
+        echo "--> Hoarded \${#HOARDED_DEPS[@]} new dependency artifacts."
+        FILES_TO_ADD_TO_DB+=("\${HOARDED_DEPS[@]}")
     else
         echo "--> No new dependencies were hoarded from the cache."
     fi
 fi
 
 # --- Intelligent Database Update ---
-PKG_BASE_NAME=$(basename "$PACKAGE_FILE" .pkg.tar.zst | sed 's/-\\([0-9]\\|\\.rev\\|\\.rc\\|\\.beta\\|\\.alpha\\|\\.pre\\).*//')
-echo "--> Updating Athenaeum database for '$PKG_BASE_NAME'..."
-
-if tar -tf kael-os-repo.db.tar.gz | grep -q "^$PKG_BASE_NAME-"; then
-    echo "--> Existing entry found for '$PKG_BASE_NAME'. Removing old version..."
-    repo-remove kael-os-repo.db.tar.gz "$PKG_BASE_NAME"
+echo "--> Updating Athenaeum database for '$PACKAGE_NAME'..."
+if tar -tf kael-os-repo.db.tar.gz | grep -q "^$PACKAGE_NAME-"; then
+    echo "--> Existing entry found for '$PACKAGE_NAME'. Removing old version..."
+    repo-remove kael-os-repo.db.tar.gz "$PACKAGE_NAME"
 fi
+echo "--> Adding new artifact(s) to the database..."
+repo-add kael-os-repo.db.tar.gz "\${FILES_TO_ADD_TO_DB[@]}"
 
-echo "--> Adding new artifacts to the database..."
-repo-add kael-os-repo.db.tar.gz *.pkg.tar.zst
+# Create a hard copy of the database for pacman compatibility with GitHub Pages
+echo "--> Creating pacman DB copy for compatibility..."
+cp kael-os-repo.db.tar.gz kael-os-repo.db
 
+# --- GIT ---
 echo "--> Committing the new artifact to the Athenaeum's history..."
 git add .
 if git diff --staged --quiet; then
@@ -438,10 +427,8 @@ else
     git commit -m "feat: Add/update package $PACKAGE_NAME"
     git push origin gh-pages
 fi
-
 echo "--> Returning to main branch..."
 git checkout main
-
 echo "--- The artifact has been successfully published to the Athenaeum. ---"
 `;
 

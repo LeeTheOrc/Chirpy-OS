@@ -1,3 +1,4 @@
+
 import type { DistroConfig } from '../types';
 
 const generateAiCoreSetupScript = (config: DistroConfig): string => {
@@ -159,44 +160,52 @@ EOF_TIMER
 
 export const generateAICoreScript = (config: DistroConfig): string => {
     
-    const repoPackageList = new Set<string>([
+    const baseRepoPackages = new Set<string>([
         'git', 'ufw', 'networkmanager', 'ollama', 'remmina',
-        // Kael OS core components
-        'chwd', 'btrfs-progs', 'grub-btrfs', 'timeshift',
-        'kaelic-shell', 'python-prompt_toolkit',
+        'btrfs-progs', 'grub-btrfs', 'timeshift', 'python-prompt_toolkit',
     ]);
-    const aurPackageList = new Set<string>([
+    const kaelRepoPackages = new Set<string>([
+        'chwd',
+    ]);
+    const aurPackagesSet = new Set<string>([
         'anydesk-bin', 'google-chrome'
     ]);
 
+    // Process packages from blueprint config
     if (config.packages) {
         config.packages.split(',').map(p => p.trim()).filter(Boolean).forEach(p => {
-            // 'vscode' is an alias for 'code' which is in the official repos.
-            if (p === 'vscode') {
-                 repoPackageList.add('code');
+            // Check if it's a known Kael package first
+            if (['kael-console', 'kael-status-conduit', 'kaelic-shell'].includes(p)) {
+                kaelRepoPackages.add(p);
+            } else if (p === 'vscode') {
+                baseRepoPackages.add('code');
             } else {
-                 repoPackageList.add(p);
-            }
-        });
-    }
-    if (config.kernels) config.kernels.forEach(k => repoPackageList.add(k));
-    if (config.aurHelpers) config.aurHelpers.forEach(h => repoPackageList.add(h));
-    
-    if (config.internalizedServices) {
-        config.internalizedServices.forEach(service => {
-            if (service.enabled) {
-                // 'code-server' is an AUR package, so it must be separated.
-                if (service.packageName === 'code-server') {
-                    aurPackageList.add(service.packageName);
-                } else {
-                    repoPackageList.add(service.packageName);
+                // Avoid adding Kael packages to the base list if they were missed above
+                if (!kaelRepoPackages.has(p)) {
+                    baseRepoPackages.add(p);
                 }
             }
         });
     }
 
-    const packages = Array.from(repoPackageList).join(' ');
-    const aurPackages = Array.from(aurPackageList).join(' ');
+    if (config.kernels) config.kernels.forEach(k => baseRepoPackages.add(k));
+    if (config.aurHelpers) config.aurHelpers.forEach(h => baseRepoPackages.add(h));
+    
+    if (config.internalizedServices) {
+        config.internalizedServices.forEach(service => {
+            if (service.enabled) {
+                if (service.packageName === 'code-server') {
+                    aurPackagesSet.add(service.packageName);
+                } else {
+                    baseRepoPackages.add(service.packageName);
+                }
+            }
+        });
+    }
+
+    const basePackagesStr = Array.from(baseRepoPackages).join(' ');
+    const kaelPackagesArrStr = Array.from(kaelRepoPackages).join(' ');
+    const aurPackagesStr = Array.from(aurPackagesSet).join(' ');
 
     const firewallRules = (config.firewallRules || []).map(rule => `ufw allow ${rule.port}/${rule.protocol}`).join('\n        ');
     
@@ -400,7 +409,7 @@ echo "Kael is now bound to the Realm's core."
 `;
     
     return `#!/bin/bash
-# Kael AI System Attunement Script v2.7
+# Kael AI System Attunement Script v2.9
 # This script applies your blueprint to an existing Arch-based system.
 # It is designed to be as non-destructive as possible.
 
@@ -418,12 +427,18 @@ ${repoSetupScript}
 echo "--> Synchronizing package databases..."
 pacman -Syy
 
+echo "--> Performing a full system upgrade to prevent dependency conflicts..."
+pacman -Syu --noconfirm
+
+echo "--> Installing core packages and dependencies..."
+# Install prerequisite tools
+pacman -S --noconfirm --needed base-devel pacman-contrib curl
+
 echo "--> Checking for potential package conflicts..."
-# Create a mutable array of packages. Note the expansion to handle the string as an array.
-PACKAGES_TO_INSTALL=(${packages})
+CORE_PACKAGES=(${basePackagesStr})
 
 # Handle timeshift vs cachyos-snapper-support conflict
-if [[ " \${PACKAGES_TO_INSTALL[@]} " =~ " timeshift " ]] && pacman -Q cachyos-snapper-support &>/dev/null; then
+if [[ " \${CORE_PACKAGES[@]} " =~ " timeshift " ]] && pacman -Q cachyos-snapper-support &>/dev/null; then
     echo "Conflict detected: 'timeshift' from your blueprint conflicts with 'cachyos-snapper-support' which is already installed."
     read -p "Do you want to remove 'cachyos-snapper-support' to install 'timeshift'? [y/N] " -n 1 -r
     echo
@@ -433,25 +448,40 @@ if [[ " \${PACKAGES_TO_INSTALL[@]} " =~ " timeshift " ]] && pacman -Q cachyos-sn
     else
         # Remove timeshift from the array by creating a new array without it
         TEMP_PACKAGES=()
-        for pkg in "\${PACKAGES_TO_INSTALL[@]}"; do
+        for pkg in "\${CORE_PACKAGES[@]}"; do
             [[ \$pkg == "timeshift" ]] || TEMP_PACKAGES+=("\$pkg")
         done
-        PACKAGES_TO_INSTALL=("\${TEMP_PACKAGES[@]}")
+        CORE_PACKAGES=("\${TEMP_PACKAGES[@]}")
         echo "Skipping installation of 'timeshift'."
     fi
 fi
 
-echo "--> Installing core packages and dependencies..."
-# Install base-devel if not present for paru build, and pacman-contrib for other tools.
-pacman -S --noconfirm --needed base-devel pacman-contrib curl
-# Use the potentially modified package list
-if [ \${#PACKAGES_TO_INSTALL[@]} -gt 0 ]; then
-    pacman -S --noconfirm --needed \${PACKAGES_TO_INSTALL[@]}
+echo "--> Installing core system packages..."
+if [ \${#CORE_PACKAGES[@]} -gt 0 ]; then
+    pacman -S --noconfirm --needed "\${CORE_PACKAGES[@]}"
+else
+    echo "No core packages to install."
 fi
 
+echo "--> Installing Kael OS packages from the Athenaeum..."
+KAEL_PACKAGES_TO_CHECK=(${kaelPackagesArrStr})
+FOUND_KAEL_PACKAGES=()
+for pkg in "\${KAEL_PACKAGES_TO_CHECK[@]}"; do
+    # Use 'pacman -Ssq' to quietly search for an exact package match
+    if pacman -Ssq "^\$pkg\$" >/dev/null; then
+        FOUND_KAEL_PACKAGES+=("\$pkg")
+    else
+        echo "--> WARNING: Kael package '\$pkg' not found in the Athenaeum. Skipping."
+        echo "    Please forge and publish this artifact using the Keystone Rituals."
+    fi
+done
 
-echo "--> Preserving existing system settings (hostname, timezone, locale)..."
-# This script attunes the system without overwriting your core configuration.
+if [ \${#FOUND_KAEL_PACKAGES[@]} -gt 0 ]; then
+    echo "--> Installing found Kael Core packages: \${FOUND_KAEL_PACKAGES[*]}"
+    pacman -S --noconfirm --needed "\${FOUND_KAEL_PACKAGES[@]}"
+else
+    echo "No Kael packages were found to install from the Athenaeum."
+fi
 
 echo "--> Performing Hardware Attunement with CHWD..."
 echo "This will detect optimal drivers for your hardware."
@@ -516,8 +546,8 @@ sudo -u "\$USERNAME" /bin/bash -c '
     fi
 
     echo "--> Installing AUR packages..."
-    if [ -n "${aurPackages}" ]; then
-        paru -S --noconfirm --needed ${aurPackages}
+    if [ -n "${aurPackagesStr}" ]; then
+        paru -S --noconfirm --needed ${aurPackagesStr}
     else
         echo "No AUR packages to install."
     fi

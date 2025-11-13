@@ -47,6 +47,8 @@ import { KaelicShellModal } from './components/KaelicShellModal';
 import { AlliedForgesModal } from './components/AlliedForgesModal';
 import { HoardingRitualModal } from './components/HoardingRitualModal';
 import { ChronoShiftModal } from './components/ChronoShiftModal';
+import { AthenaeumAttunementModal } from './components/AthenaeumAttunementModal';
+import { AthenaeumVerifierModal } from './components/AthenaeumVerifierModal';
 
 
 export type ModalType = 
@@ -58,6 +60,7 @@ export type ModalType =
     | 'khws-ritual' | 'kael-service' | 'ai-core' | 'iso'
     | 'forge-builder' | 'tui-installer' | 'kael-console' | 'kael-status-conduit'
     | 'kaelic-shell' | 'allied-forges' | 'hoarding-ritual' | 'chrono-shift'
+    | 'athenaeum-attunement' | 'athenaeum-verifier'
     | null;
 
 const App: React.FC = () => {
@@ -483,6 +486,8 @@ echo "ISO build complete! Located at '~/kael-iso-build/out/'."
             case 'allied-forges': return <AlliedForgesModal onClose={() => setActiveModal(null)} />;
             case 'hoarding-ritual': return <HoardingRitualModal onClose={() => setActiveModal(null)} />;
             case 'chrono-shift': return <ChronoShiftModal onClose={() => setActiveModal(null)} />;
+            case 'athenaeum-attunement': return <AthenaeumAttunementModal onClose={() => setActiveModal(null)} />;
+            case 'athenaeum-verifier': return <AthenaeumVerifierModal onClose={() => setActiveModal(null)} />;
             default: return null;
         }
     };

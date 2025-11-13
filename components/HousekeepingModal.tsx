@@ -175,6 +175,22 @@ export const HousekeepingModal: React.FC<HousekeepingModalProps> = ({ onClose })
                         <p className="text-xs text-red-400">WARNING: This will remove your local package builds AND your local clone of the Athenaeum repository (`kael-os-repo`). You will need to re-run Step 1 of the Keystone Ritual to clone it again.</p>
                         <CodeBlock>find ~/packages -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} + && rm -rf ~/kael-os-repo</CodeBlock>
                     </div>
+
+                    <div className="w-full h-px bg-forge-border my-6" />
+
+                    {/* Athenaeum Reset Section */}
+                    <div>
+                        <h3 className="font-semibold text-lg text-orc-steel mb-2">Athenaeum Reset Rituals</h3>
+                        <p className="text-sm mb-4">Use these if your local Athenaeum clone is out of sync or corrupted, and you want to start fresh with the remote repository on GitHub.</p>
+                        
+                        <h4 className="font-semibold text-md text-forge-text-primary mt-3 mb-1">Soft Reset (Recommended)</h4>
+                        <p className="text-xs">This will <strong className="text-dragon-fire">delete your local clone</strong> of the <code className="font-mono text-xs">kael-os-repo</code>. Your package recipes in <code className="font-mono text-xs">~/packages</code> and your GPG keys will be untouched. After this, you can safely re-run the Keystone Ritual from Part I, Step 2.</p>
+                        <CodeBlock>rm -rf ~/kael-os-repo</CodeBlock>
+                        
+                        <h4 className="font-semibold text-md text-forge-text-primary mt-3 mb-1">Hard Reset (Destructive)</h4>
+                        <p className="text-xs text-red-400">WARNING: This performs the soft reset AND deletes all your local package recipes and your exported public key. This is a complete reset. Only use this if you want to start the entire Keystone Ritual over from scratch.</p>
+                        <CodeBlock>rm -rf ~/kael-os-repo ~/packages ~/kael-os.asc</CodeBlock>
+                    </div>
                 </div>
             </div>
         </div>

@@ -5,7 +5,7 @@ import {
     VideoCameraIcon, EyeIcon, ForgeIcon, MagnifyingGlassIcon, 
     RocketLaunchIcon, ScrollIcon, ShieldCheckIcon, PackageIcon, ComputerDesktopIcon,
     PaintBrushIcon, BroomIcon, LibraryIcon, WrenchScrewdriverIcon, DuplicateIcon, BeakerIcon, ServerStackIcon, TerminalIcon,
-    SignalIcon, ShellPromptIcon, Cog6ToothIcon, ClockIcon
+    SignalIcon, ShellPromptIcon, Cog6ToothIcon, ClockIcon, TowerIcon
 } from './Icons';
 import { CommandSuggestions } from './CommandSuggestions';
 
@@ -18,6 +18,7 @@ type ModalType =
     | 'khws-ritual' | 'kael-service'
     | 'forge-builder' | 'tui-installer' | 'kael-console' | 'kael-status-conduit'
     | 'kaelic-shell' | 'allied-forges' | 'hoarding-ritual' | 'chrono-shift'
+    | 'athenaeum-attunement' | 'athenaeum-verifier'
     | null;
 
 
@@ -89,6 +90,8 @@ export const BottomPanel: React.FC<BottomPanelProps> = ({ value, onChange, onSen
                     <TooltipButton title="Kael Status Conduit (Tray Icon)" onClick={() => onOpenMenu('kael-status-conduit')} colorClass="text-blue-400"><SignalIcon className="w-5 h-5" /></TooltipButton>
                      <div className="w-px h-6 bg-forge-border/50 mx-1" />
                     <TooltipButton title="Keystone Rituals" onClick={() => onOpenMenu('keystone')} colorClass="text-dragon-fire"><KeyIcon className="w-5 h-5" /></TooltipButton>
+                    <TooltipButton title="Athenaeum Verifier" onClick={() => onOpenMenu('athenaeum-verifier')} colorClass="text-orc-steel"><ShieldCheckIcon className="w-5 h-5" /></TooltipButton>
+                    <TooltipButton title="Attune to Athenaeum" onClick={() => onOpenMenu('athenaeum-attunement')} colorClass="text-blue-400"><TowerIcon className="w-5 h-5" /></TooltipButton>
                     <TooltipButton title="Attune Allied Forges" onClick={() => onOpenMenu('allied-forges')} colorClass="text-blue-400"><LibraryIcon className="w-5 h-5" /></TooltipButton>
                     <TooltipButton title="Scry Allied Forges" onClick={() => onOpenMenu('athenaeum-scryer')} colorClass="text-cyan-400"><BookOpenIcon className="w-5 h-5" /></TooltipButton>
                     <TooltipButton title="Athenaeum Mirroring" onClick={() => onOpenMenu('athenaeum-mirror')} colorClass="text-blue-400"><DuplicateIcon className="w-5 h-5" /></TooltipButton>

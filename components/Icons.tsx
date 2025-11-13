@@ -561,3 +561,16 @@ export const ShellPromptIcon: React.FC<IconProps> = (props) => (
     <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" d="M13.5 19.5h6" />
   </svg>
 );
+
+// New Icon for Athenaeum Attunement
+export const TowerIcon: React.FC<IconProps> = (props) => (
+  <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} {...props}>
+    <defs>
+      <linearGradient id="skyBlueGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stopColor="#52a9ff" />
+        <stop offset="100%" stopColor="#3b82f6" />
+      </linearGradient>
+    </defs>
+    <path stroke="url(#skyBlueGradient)" strokeLinecap="round" strokeLinejoin="round" d="M3 21h18M5 21V9.75a.75.75 0 01.41-.665l.38-.21a.75.75 0 00.41-.665V3.75A.75.75 0 017 3h10a.75.75 0 01.75.75v4.32a.75.75 0 00.41.665l.38.21a.75.75 0 01.41.665V21M9 9h6v12H9V9z" />
+  </svg>
+);

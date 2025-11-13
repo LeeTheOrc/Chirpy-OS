@@ -131,10 +131,10 @@ license=('GPL3')
 depends=('pyside6' 'python-requests')
 source=("$pkgname.py"
         "$pkgname.desktop"
-        "icons/kael-conduit-ok.svg"
-        "icons/kael-conduit-local.svg"
-        "icons/kael-conduit-cloud.svg"
-        "icons/kael-conduit-error.svg")
+        "kael-conduit-ok.svg"
+        "kael-conduit-local.svg"
+        "kael-conduit-cloud.svg"
+        "kael-conduit-error.svg")
 sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
 
 package() {
@@ -143,7 +143,7 @@ package() {
     
     # Install the icons to a custom Kael OS path
     install -d "$pkgdir/usr/share/icons/kael-os"
-    install -Dm644 "$srcdir/icons/"*.svg "$pkgdir/usr/share/icons/kael-os/"
+    install -Dm644 "$srcdir/"kael-conduit-*.svg "$pkgdir/usr/share/icons/kael-os/"
     
     # Install the autostart file
     install -Dm644 "$srcdir/$pkgname.desktop" "$pkgdir/etc/xdg/autostart/$pkgname.desktop"
@@ -183,10 +183,9 @@ set -euo pipefail
 
 PKG_NAME="kael-status-conduit"
 PKG_DIR="$HOME/packages/$PKG_NAME"
-ICONS_DIR="$PKG_DIR/icons"
 
 echo "--- Scribing recipes and sigils for '$PKG_NAME' ---"
-mkdir -p "$ICONS_DIR"
+mkdir -p "$PKG_DIR"
 
 # --- Scribe kael-status-conduit.py ---
 cat > "$PKG_DIR/kael-status-conduit.py" << 'EOF_PY'
@@ -204,19 +203,19 @@ ${DESKTOP_FILE_SOURCE}
 EOF_DESKTOP
 
 # --- Scribe icons ---
-cat > "$ICONS_DIR/kael-conduit-ok.svg" << 'EOF_OK_SVG'
+cat > "$PKG_DIR/kael-conduit-ok.svg" << 'EOF_OK_SVG'
 ${ICON_OK_SVG}
 EOF_OK_SVG
 
-cat > "$ICONS_DIR/kael-conduit-local.svg" << 'EOF_LOCAL_SVG'
+cat > "$PKG_DIR/kael-conduit-local.svg" << 'EOF_LOCAL_SVG'
 ${ICON_LOCAL_SVG}
 EOF_LOCAL_SVG
 
-cat > "$ICONS_DIR/kael-conduit-cloud.svg" << 'EOF_CLOUD_SVG'
+cat > "$PKG_DIR/kael-conduit-cloud.svg" << 'EOF_CLOUD_SVG'
 ${ICON_CLOUD_SVG}
 EOF_CLOUD_SVG
 
-cat > "$ICONS_DIR/kael-conduit-error.svg" << 'EOF_ERROR_SVG'
+cat > "$PKG_DIR/kael-conduit-error.svg" << 'EOF_ERROR_SVG'
 ${ICON_ERROR_SVG}
 EOF_ERROR_SVG
 
