@@ -37,7 +37,6 @@ import { LocalSourceRitualModal } from './components/LocalSourceRitualModal';
 import { ManualForgeModal } from './components/ManualForgeModal';
 import { AthenaeumMirrorModal } from './components/AthenaeumMirrorModal';
 import { TransmutationRitualModal } from './components/TransmutationRitualModal';
-import { KhwsRitualModal } from './components/KhwsRitualModal';
 import { KaelServiceModal } from './components/KaelServiceModal';
 import { AICoreModal } from './components/AICoreModal';
 import { IsoModal } from './components/IsoModal';
@@ -59,7 +58,7 @@ export type ModalType =
     | 'athenaeum-scryer' | 'housekeeping' | 'chronicler'
     | 'forge-inspector' | 'sigil-crafter' | 'keyring-attunement' 
     | 'local-source-ritual' | 'manual-forge' | 'athenaeum-mirror' | 'transmutation-ritual'
-    | 'khws-ritual' | 'kael-service' | 'ai-core' | 'iso'
+    | 'kael-service' | 'ai-core' | 'iso'
     | 'forge-builder' | 'tui-installer' | 'kael-console' | 'kael-status-conduit'
     | 'kaelic-shell' | 'allied-forges' | 'hoarding-ritual' | 'chrono-shift'
     | 'athenaeum-attunement' | 'athenaeum-verifier'
@@ -120,88 +119,43 @@ const App: React.FC = () => {
         }
 
         try {
-            const isMakepkgGpgFail = fileContent && fileContent.includes("makepkg") && fileContent.includes("FAILED (unknown public key B62C3D10C54D5DA9)");
+            let fullPrompt = `${CLOUD_AI_SYSTEM_PROMPT} \n\n ${JSON.stringify(config, null, 2)} \n\n User message: ${messageText}`;
+            if (fileContent) {
+                fullPrompt += `\n\nAttached file content:\n${fileContent}`;
+            }
+            
+            const response: GenerateContentResponse = await ai.models.generateContent({
+                model: 'gemini-2.5-flash',
+                contents: fullPrompt,
+            });
+            
+            const responseText = response.text;
+            
+            setMessages(prev => prev.slice(0, -1));
 
-            if (isMakepkgGpgFail) {
-                setMessages(prev => prev.slice(0, -1)); // remove thinking
-                
-                const triedLsignKey = fileContent.includes("Locally signed 1 key.") || fileContent.includes("Signing the key to establish trust...");
-
-                let analysis: AnalysisResult;
-
-                if (triedLsignKey) {
-                    analysis = {
-                        diagnosis: "The Orb reveals a deep magic. Our ritual to attune the system's main keyring was successful, but `makepkg` consults your *personal* user keyring, which remains unattuned. This is a known quirk of the forge.",
-                        solutionCommand: "makepkg -si --skippgpcheck",
-                        nextStep: "Use this command within the 'khws' directory. It instructs the forge to proceed, relying on the strong integrity checksums instead of the PGP signature for this step. The package will still be safely verified by the system keyring upon installation."
+            const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/);
+            if (jsonMatch && jsonMatch[1]) {
+                try {
+                    const newConfigPart = JSON.parse(jsonMatch[1]);
+                    setConfig(prev => ({ ...prev, ...newConfigPart }));
+                    const confirmationMessage: Message = {
+                        role: 'model',
+                        text: `Understood, Architect. I've updated the blueprint with your changes.`,
+                        linkState,
                     };
-                } else {
-                    const chwdFixScriptRaw = `#!/bin/bash
-# Kael OS - CHWD Artisan Key Attunement (v2)
-set -euo pipefail
-echo "--- Attuning to CHWD Artisan's Signature (v2) ---"
-pacman-key --init
-pacman-key --recv-keys B62C3D10C54D5DA9
-pacman-key --lsign-key B62C3D10C54D5DA9
-echo "--- ✅ Attunement Complete ---"
-`;
-                    const encodedScript = btoa(unescape(encodeURIComponent(chwdFixScriptRaw)));
-                    const fullCommand = `echo "${encodedScript}" | base64 --decode | sudo bash`;
-
-                    analysis = {
-                      diagnosis: "The forge's security wards do not recognize the signature of the CachyOS artisan for the 'khws' package. We must perform a ritual to attune the system's main keyring to trust this signature.",
-                      solutionCommand: fullCommand,
-                      nextStep: "Run this full command in your terminal. It will perform the complete three-step ritual to initialize, receive, and sign the key. Then, retry the 'makepkg -si' command."
+                    setMessages(prev => [...prev, confirmationMessage]);
+                } catch (e) {
+                    console.error("Failed to parse JSON from AI response:", e);
+                    const errorMessage: Message = {
+                        role: 'model',
+                        text: "I tried to update the blueprint but couldn't understand the configuration. Could you clarify?",
+                        linkState,
                     };
+                    setMessages(prev => [...prev, errorMessage]);
                 }
-
-                const modelMessage: Message = {
-                    role: 'model',
-                    text: "I have scried the new chronicle, Architect. The path forward has changed, but it is clear.",
-                    linkState,
-                    analysis: analysis
-                };
-                setMessages(prev => [...prev, modelMessage]);
-
             } else {
-                 let fullPrompt = `${CLOUD_AI_SYSTEM_PROMPT} \n\n ${JSON.stringify(config, null, 2)} \n\n User message: ${messageText}`;
-                 if (fileContent) {
-                    fullPrompt += `\n\nAttached file content:\n${fileContent}`;
-                 }
-                 
-                const response: GenerateContentResponse = await ai.models.generateContent({
-                    model: 'gemini-2.5-flash',
-                    contents: fullPrompt,
-                });
-                
-                const responseText = response.text;
-                
-                setMessages(prev => prev.slice(0, -1));
-
-                const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/);
-                if (jsonMatch && jsonMatch[1]) {
-                    try {
-                        const newConfigPart = JSON.parse(jsonMatch[1]);
-                        setConfig(prev => ({ ...prev, ...newConfigPart }));
-                        const confirmationMessage: Message = {
-                            role: 'model',
-                            text: `Understood, Architect. I've updated the blueprint with your changes.`,
-                            linkState,
-                        };
-                        setMessages(prev => [...prev, confirmationMessage]);
-                    } catch (e) {
-                        console.error("Failed to parse JSON from AI response:", e);
-                        const errorMessage: Message = {
-                            role: 'model',
-                            text: "I tried to update the blueprint but couldn't understand the configuration. Could you clarify?",
-                            linkState,
-                        };
-                        setMessages(prev => [...prev, errorMessage]);
-                    }
-                } else {
-                     const modelMessage: Message = { role: 'model', text: responseText, linkState };
-                     setMessages(prev => [...prev, modelMessage]);
-                }
+                    const modelMessage: Message = { role: 'model', text: responseText, linkState };
+                    setMessages(prev => [...prev, modelMessage]);
             }
         } catch (error) {
             console.error("Error communicating with AI:", error);
@@ -263,7 +217,7 @@ chown -R "$LIVE_USER:$LIVE_USER" "/home/$LIVE_USER/.config"
         // This includes live environment tools AND all packages for the final system.
         const packageList = new Set<string>([
             // Live ISO tools
-            'archiso', 'calamares', 'kpmcore',
+            'archiso', 'calamares', 'kpmcore', 'chwd',
 
             // Base system packages for installation, from calamares-generator.ts
             'base', 'base-devel', 'linux-firmware', 'sof-firmware',
@@ -271,7 +225,7 @@ chown -R "$LIVE_USER:$LIVE_USER" "/home/$LIVE_USER/.config"
             'ollama', 'xorg', 'plasma-meta', 'sddm', 'konsole', 'dolphin',
             'ufw', 'gufw', 'kaccounts-integration', 'kaccounts-providers', 'kio-gdrive',
             'qemu-guest-agent', 'virtualbox-guest-utils',
-            'remmina', 'google-chrome', 'khws', 'kaelic-shell', 'python-prompt_toolkit',
+            'remmina', 'google-chrome', 'kaelic-shell', 'python-prompt_toolkit',
             'anydesk-bin'
         ]);
 
@@ -367,39 +321,42 @@ if [ "$HAS_KAEL" = "true" ] || [ "$HAS_CACHY" = "true" ] || [ "$HAS_CHAOTIC" = "
         echo "--> Attuning to the Kael OS Athenaeum..."
         if (pacman-key --recv-keys "$KAEL_KEY_ID" --keyserver hkp://keyserver.ubuntu.com || pacman-key --recv-keys "$KAEL_KEY_ID" --keyserver hkp://keys.openpgp.org); then
             echo "Kael OS key received from keyserver."
-        elif (pacman-key --delete "$KAEL_KEY_ID" 2>/dev/null || true) && curl -sL "$KEY_URL" | pacman-key --add -; then
-            echo "Keyserver failed. Key purged and re-added successfully via direct HTTPS."
-            pacman-key --updatedb
         else
-            error "Could not retrieve Kael OS key. Attunement failed."
+            echo "Keyserver failed, attempting direct download..."
+            TMP_KEY_FILE=$(mktemp)
+            trap 'rm -f "$TMP_KEY_FILE"' EXIT
+            if curl -sL "$KEY_URL" -o "$TMP_KEY_FILE"; then
+                if ! pacman-key --add "$TMP_KEY_FILE"; then
+                    error "Failed to add downloaded Kael OS key."
+                fi
+            else
+                error "Failed to download Kael OS key."
+            fi
         fi
+        echo "--> Signing Kael OS key..."
+        pacman-key --updatedb
+        pacman-key --lsign-key "$KAEL_KEY_ID" || error "Failed to sign Kael OS key."
         grep -q "kael-os" /etc/pacman.conf || echo -e "\\n[kael-os]\\nSigLevel = Optional TrustAll\\nServer = https://leetheorc.github.io/kael-os-repo/\\n" | tee -a /etc/pacman.conf
     fi
     if [ "$HAS_CACHY" = "true" ]; then
-        KEY_ID="F3B607488DB35A47"
-        echo "--> Attuning to the CachyOS Forge..."
-        if (pacman-key --recv-keys "$KEY_ID" --keyserver hkp://keyserver.ubuntu.com || pacman-key --recv-keys "$KEY_ID" --keyserver hkp://keys.openpgp.org); then
-            echo "CachyOS key received from keyserver."
-        elif (curl -sL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x$KEY_ID" | pacman-key --add - && pacman-key --updatedb); then
-            echo "CachyOS key received via direct HTTPS download."
-        else
-            echo "FATAL: Could not retrieve CachyOS key. Attunement failed." >&2; exit 1
-        fi
-        pacman-key --lsign-key "$KEY_ID"
-        pacman -U --noconfirm --needed 'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-keyring-20240331-1-any.pkg.tar.zst' 'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-mirrorlist-22-1-any.pkg.tar.zst' 'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-v3-mirrorlist-22-1-any.pkg.tar.zst' 'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-v4-mirrorlist-22-1-any.pkg.tar.zst'
+        echo "--> Attuning to the CachyOS Forge using the official script..."
+        curl https://mirror.cachyos.org/cachyos-repo.tar.xz -o cachyos-repo.tar.xz || error "Failed to download CachyOS repository setup."
+        tar xvf cachyos-repo.tar.xz || error "Failed to extract CachyOS repository setup."
+        (cd cachyos-repo && ./cachyos-repo.sh) || error "CachyOS setup script failed."
     fi
     if [ "$HAS_CHAOTIC" = "true" ]; then
         KEY_ID="3056513887B78AEB"
         echo "--> Attuning to the Chaotic-AUR..."
-        pacman-key --recv-key "$KEY_ID" --keyserver keyserver.ubuntu.com
+        pacman-key --recv-key "$KEY_ID" --keyserver keyserver.ubuntu.com || { echo "--> ERROR: Could not retrieve Chaotic-AUR key."; exit 1; }
         pacman-key --lsign-key "$KEY_ID"
-        pacman -U --noconfirm --needed 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst' 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst'
+        pacman -U --noconfirm --needed 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst'
+        pacman -U --noconfirm --needed 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst'
         grep -q "chaotic-aur" /etc/pacman.conf || echo -e "\\n[chaotic-aur]\\nInclude = /etc/pacman.d/chaotic-mirrorlist" | tee -a /etc/pacman.conf
     fi
     cp /etc/pacman.conf releng/pacman.conf
     mkdir -p releng/airootfs/etc/pacman.d
-    if [ "$HAS_CACHY" = "true" ]; then cp /etc/pacman.d/cachyos-mirrorlist releng/airootfs/etc/pacman.d/; cp /etc/pacman.d/cachyos-v3-mirrorlist releng/airootfs/etc/pacman.d/; cp /etc/pacman.d/cachyos-v4-mirrorlist releng/airootfs/etc/pacman.d/; mkdir -p releng/airootfs/etc/pacman.d/cachyos-repo-files; cp /var/cache/pacman/pkg/cachyos-*.pkg.tar.zst releng/airootfs/etc/pacman.d/cachyos-repo-files/; fi
-    if [ "$HAS_CHAOTIC" = "true" ]; then cp /etc/pacman.d/chaotic-mirrorlist releng/airootfs/etc/pacman.d/; mkdir -p releng/airootfs/etc/pacman.d/chaotic-repo-files; cp /var/cache/pacman/pkg/chaotic-*.pkg.tar.zst releng/airootfs/etc/pacman.d/chaotic-repo-files/; fi
+    if [ "$HAS_CACHY" = "true" ]; then cp /etc/pacman.d/cachyos-mirrorlist releng/airootfs/etc/pacman.d/; cp /etc/pacman.d/cachyos-v3-mirrorlist releng/airootfs/etc/pacman.d/; cp /etc/pacman.d/cachyos-v4-mirrorlist releng/airootfs/etc/pacman.d/; fi
+    if [ "$HAS_CHAOTIC" = "true" ]; then cp /etc/pacman.d/chaotic-mirrorlist releng/airootfs/etc/pacman.d/; fi
     info "--> Synchronizing pacman databases..."; pacman -Syu --noconfirm
 fi
 info "Adding blueprint packages to the ISO..."
@@ -476,7 +433,6 @@ echo "ISO build complete! Located at '~/kael-iso-build/out/'."
             case 'manual-forge': return <ManualForgeModal onClose={() => setActiveModal(null)} />;
             case 'athenaeum-mirror': return <AthenaeumMirrorModal onClose={() => setActiveModal(null)} />;
             case 'transmutation-ritual': return <TransmutationRitualModal onClose={() => setActiveModal(null)} />;
-            case 'khws-ritual': return <KhwsRitualModal onClose={() => setActiveModal(null)} />;
             case 'kael-service': return <KaelServiceModal onClose={() => setActiveModal(null)} />;
             case 'ai-core': return <AICoreModal script={aiCoreScript} onClose={() => setActiveModal(null)} />;
             case 'iso': return <IsoModal script={isoBuildScript} onClose={() => setActiveModal(null)} />;

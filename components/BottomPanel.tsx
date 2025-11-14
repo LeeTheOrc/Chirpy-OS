@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import type { LinkState } from '../types';
 import { 
     SendIcon, PaperClipIcon, SparklesIcon, BookOpenIcon, ScanIcon, KeyIcon, 
-    VideoCameraIcon, EyeIcon, ForgeIcon, MagnifyingGlassIcon, 
+    VideoCameraIcon, ForgeIcon, MagnifyingGlassIcon, 
     RocketLaunchIcon, ScrollIcon, ShieldCheckIcon, PackageIcon, ComputerDesktopIcon,
     PaintBrushIcon, BroomIcon, LibraryIcon, WrenchScrewdriverIcon, DuplicateIcon, BeakerIcon, ServerStackIcon, TerminalIcon,
     SignalIcon, ShellPromptIcon, Cog6ToothIcon, ClockIcon, TowerIcon
@@ -15,7 +15,7 @@ type ModalType =
     | 'athenaeum-scryer' | 'housekeeping' | 'chronicler'
     | 'forge-inspector' | 'sigil-crafter' | 'keyring-attunement' 
     | 'local-source-ritual' | 'manual-forge' | 'athenaeum-mirror' | 'transmutation-ritual'
-    | 'khws-ritual' | 'kael-service'
+    | 'kael-service'
     | 'forge-builder' | 'tui-installer' | 'kael-console' | 'kael-status-conduit'
     | 'kaelic-shell' | 'allied-forges' | 'hoarding-ritual' | 'chrono-shift'
     | 'athenaeum-attunement' | 'athenaeum-verifier'
@@ -97,7 +97,6 @@ export const BottomPanel: React.FC<BottomPanelProps> = ({ value, onChange, onSen
                     <TooltipButton title="Athenaeum Mirroring" onClick={() => onOpenMenu('athenaeum-mirror')} colorClass="text-blue-400"><DuplicateIcon className="w-5 h-5" /></TooltipButton>
                     <TooltipButton title="The Hoarding Ritual" onClick={() => onOpenMenu('hoarding-ritual')} colorClass="text-blue-400"><ServerStackIcon className="w-5 h-5" /></TooltipButton>
                     <TooltipButton title="Keyring Attunement" onClick={() => onOpenMenu('keyring-attunement')} colorClass="text-orc-steel"><ShieldCheckIcon className="w-5 h-5" /></TooltipButton>
-                    <TooltipButton title="Ritual of Insight (khws)" onClick={() => onOpenMenu('khws-ritual')} colorClass="text-blue-400"><EyeIcon className="w-5 h-5" /></TooltipButton>
                     <TooltipButton title="Allied Forge Ritual (Manual)" onClick={() => onOpenMenu('manual-forge')} colorClass="text-red-400"><WrenchScrewdriverIcon className="w-5 h-5" /></TooltipButton>
                     <TooltipButton title="Package from Local Source" onClick={() => onOpenMenu('local-source-ritual')} colorClass="text-green-400"><PackageIcon className="w-5 h-5" /></TooltipButton>
                     <TooltipButton title="Ritual of Transmutation" onClick={() => onOpenMenu('transmutation-ritual')} colorClass="text-magic-purple"><BeakerIcon className="w-5 h-5" /></TooltipButton>

@@ -10,8 +10,9 @@ export const TuiInstallerModal: React.FC<TuiInstallerModalProps> = ({ script, on
     const [copied, setCopied] = useState(false);
     
     // The script is an installer for the TUI, which itself is a script.
+    // It must be run with sudo to place the final command in /usr/local/bin.
     const encodedScript = btoa(unescape(encodeURIComponent(script)));
-    const fullCommand = `echo "${encodedScript}" | base64 --decode | bash`;
+    const fullCommand = `echo "${encodedScript}" | base64 --decode | sudo bash`;
 
     const handleCopy = () => {
         navigator.clipboard.writeText(fullCommand);
@@ -36,7 +37,7 @@ export const TuiInstallerModal: React.FC<TuiInstallerModalProps> = ({ script, on
                        This ritual will install the <strong className="text-dragon-fire">Kael Forge TUI</strong>, a terminal-based interface for applying your blueprint to an existing Arch Linux system.
                     </p>
                     <p>
-                        Run this single command in your terminal. It will install the TUI script to <code className="font-mono text-xs">~/.local/bin/kael-installer</code> and ensure it's in your system's PATH.
+                        Run this single command in your terminal. It will install the TUI script to <code className="font-mono text-xs">/usr/local/bin/kael-installer</code>, making it available system-wide.
                     </p>
                      <div className="relative group my-2">
                         <pre className="bg-forge-bg border border-forge-border rounded-lg p-3 text-xs text-forge-text-secondary font-mono pr-12 whitespace-pre-wrap break-words max-h-48 overflow-y-auto">
@@ -51,7 +52,7 @@ export const TuiInstallerModal: React.FC<TuiInstallerModalProps> = ({ script, on
                         </button>
                     </div>
                      <p>
-                        After installation, open a <strong className="text-orc-steel">new terminal</strong> and run the command <code className="font-mono text-xs">kael-installer</code> to start the TUI.
+                        After installation is complete, you can run the command <code className="font-mono text-xs">sudo kael-installer</code> from any terminal to start the TUI.
                     </p>
                 </div>
             </div>

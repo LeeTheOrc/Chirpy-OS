@@ -61,27 +61,20 @@ sudo pacman-key --init
 sudo pacman-key --populate archlinux
 
 # --- CachyOS ---
-KEY_ID_CACHY="F3B607488DB35A47"
-echo "--> Attuning to the CachyOS Forge..."
-if (sudo pacman-key --recv-keys "$KEY_ID_CACHY" --keyserver hkp://keyserver.ubuntu.com || sudo pacman-key --recv-keys "$KEY_ID_CACHY" --keyserver hkp://keys.openpgp.org); then
-    echo "CachyOS key received from keyserver."
-elif (curl -sL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x$KEY_ID_CACHY" | sudo pacman-key --add - && sudo pacman-key --updatedb); then
-    echo "CachyOS key received via direct HTTPS download."
+echo "--> Attuning to the CachyOS Forge using the official script..."
+if curl https://mirror.cachyos.org/cachyos-repo.tar.xz -o /tmp/cachyos-repo.tar.xz; then
+    (cd /tmp && tar xvf cachyos-repo.tar.xz && cd cachyos-repo && sudo ./cachyos-repo.sh) || { echo "ERROR: CachyOS setup script failed." >&2; exit 1; }
 else
-    echo "FATAL: Could not retrieve CachyOS key. Attunement failed." >&2; exit 1
+    echo "ERROR: Failed to download CachyOS repository setup." >&2; exit 1
 fi
-sudo pacman-key --lsign-key "$KEY_ID_CACHY"
-sudo pacman -U --noconfirm --needed 'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-keyring-20240331-1-any.pkg.tar.zst' 'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-mirrorlist-22-1-any.pkg.tar.zst' 'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-v3-mirrorlist-22-1-any.pkg.tar.zst' 'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-v4-mirrorlist-22-1-any.pkg.tar.zst'
-add_repo_if_not_exists "cachyos-v3" "\\n[cachyos-v3]\\nInclude = /etc/pacman.d/cachyos-v3-mirrorlist"
-add_repo_if_not_exists "cachyos-v4" "\\n[cachyos-v4]\\nInclude = /etc/pacman.d/cachyos-v4-mirrorlist"
-add_repo_if_not_exists "cachyos" "\\n[cachyos]\\nInclude = /etc/pacman.d/cachyos-mirrorlist"
 
 # --- Chaotic-AUR ---
 KEY_ID_CHAOTIC="3056513887B78AEB"
 echo "--> Attuning to the Chaotic-AUR..."
-sudo pacman-key --recv-key "$KEY_ID_CHAOTIC" --keyserver keyserver.ubuntu.com
+sudo pacman-key --recv-key "$KEY_ID_CHAOTIC" --keyserver keyserver.ubuntu.com || { echo "FATAL: Could not retrieve Chaotic-AUR key. Attunement failed." >&2; exit 1; }
 sudo pacman-key --lsign-key "$KEY_ID_CHAOTIC"
-sudo pacman -U --noconfirm --needed 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst' 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst'
+sudo pacman -U --noconfirm --needed 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst'
+sudo pacman -U --noconfirm --needed 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst'
 add_repo_if_not_exists "chaotic-aur" "\\n[chaotic-aur]\\nInclude = /etc/pacman.d/chaotic-mirrorlist"
 
 # --- Final Sync ---

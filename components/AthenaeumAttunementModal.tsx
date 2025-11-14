@@ -1,3 +1,5 @@
+
+
 import React, { useState } from 'react';
 import { CloseIcon, CopyIcon, TowerIcon } from './Icons';
 
@@ -33,13 +35,14 @@ const CodeBlock: React.FC<{ children: React.ReactNode; lang?: string }> = ({ chi
 };
 
 const ATTUNEMENT_SCRIPT_RAW = `#!/bin/bash
-# Kael OS - Athenaeum Client Attunement Ritual v2
+# Kael OS - Athenaeum Client Attunement Ritual v4
 set -euo pipefail
 clear
-echo "--- Attuning this system to the Kael OS Athenaeum (v2) ---"
+echo "--- Attuning this system to the Kael OS Athenaeum (v4) ---"
 
-echo "--> Performing a Cache Cleansing Rite to ensure freshest data..."
-sudo pacman -Scc --noconfirm
+echo "--> Initializing pacman keyring..."
+sudo pacman-key --init
+sudo pacman-key --populate archlinux
 
 add_repo_if_not_exists() {
     local repo_name="$1"
@@ -55,16 +58,37 @@ echo "--> Attuning to the Kael OS Athenaeum..."
 KAEL_KEY_ID="8A7E40248B2A6582"
 KEY_URL="https://leetheorc.github.io/kael-os-repo/kael-os.asc"
 echo "--> Receiving the Master Key ($KAEL_KEY_ID)..."
+
+# Try keyservers first
 if (sudo pacman-key --recv-keys "$KAEL_KEY_ID" --keyserver hkp://keyserver.ubuntu.com || sudo pacman-key --recv-keys "$KAEL_KEY_ID" --keyserver hkp://keys.openpgp.org); then
     echo "Key received successfully from keyserver."
-elif (sudo pacman-key --delete "$KAEL_KEY_ID" 2>/dev/null || true) && curl -sL "$KEY_URL" | sudo pacman-key --add -; then
-    echo "Keyserver failed. Key purged and re-added successfully via direct HTTPS."
-    sudo pacman-key --updatedb
 else
-    echo "FATAL: Both keyserver and direct download methods failed." >&2
+    echo "Keyserver failed. Attempting direct download..."
+    TMP_KEY_FILE=$(mktemp)
+    trap 'rm -f "$TMP_KEY_FILE"' EXIT
+    if curl -sL "$KEY_URL" -o "$TMP_KEY_FILE"; then
+        echo "Key downloaded successfully."
+        if sudo pacman-key --add "$TMP_KEY_FILE"; then
+            echo "Key added successfully from file."
+        else
+            echo "FATAL: Failed to add downloaded key." >&2; exit 1
+        fi
+    else
+        echo "FATAL: Could not download key from URL." >&2; exit 1
+    fi
+fi
+
+echo "--> Updating trust database..."
+sudo pacman-key --updatedb
+
+echo "--> Signing the Master Key to establish local trust..."
+if sudo pacman-key --lsign-key "$KAEL_KEY_ID"; then
+    echo "Master Key has been locally signed."
+else
+    echo "FATAL: Failed to sign the Master Key." >&2
     exit 1
 fi
-echo "Athenaeum key has been added to the keyring."
+
 add_repo_if_not_exists "kael-os" "\\n[kael-os]\\nSigLevel = Optional TrustAll\\nServer = https://leetheorc.github.io/kael-os-repo/\\n"
 echo "--> Synchronizing all package databases..."
 sudo pacman -Syy
@@ -98,7 +122,7 @@ export const AthenaeumAttunementModal: React.FC<AthenaeumAttunementModalProps> =
                         This unified incantation will:
                     </p>
                      <ul className="list-decimal list-inside text-sm pl-4 space-y-1">
-                        <li>Perform a <strong className="text-magic-purple">Cache Cleansing Rite</strong> to ensure you get the latest data.</li>
+                        <li>Initialize your system's <strong className="text-magic-purple">pacman keyring</strong>.</li>
                         <li>Receive and trust our Athenaeum's master GPG key.</li>
                         <li>Add the <strong className="text-orc-steel">[kael-os]</strong> repository to your pacman configuration.</li>
                         <li>Force a synchronization of all package databases.</li>

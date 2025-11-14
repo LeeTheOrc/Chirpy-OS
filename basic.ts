@@ -1,4 +1,5 @@
 
+
 // KaelOS - The Core Law
 // This file contains the foundational principles, immutable rules, and the strategic
 // roadmap that define the Kael OS project. This is the "what Kael does" file.
@@ -212,28 +213,35 @@ The old text-based installer was functional, but a true Realm deserves a grander
 - **Status:** **Complete!** Forged into Law. The forge now produces a Calamares-driven ISO.
 
 ---
-### QUEST II: THE SOVEREIGN ATHENAEUM
+### QUEST II: THE RITE OF INSIGHT (KHWS)
+---
+Our hardware detection tool, \`khws\`, a fork of CachyOS's \`chwd\`, has proven troublesome. The signing keys cause friction during the build process. We must re-forge this tool to be more resilient.
+- **Plan:** Re-implement the \`khws\` artifact. Create a new, stable ritual for building it. This must include a failsafe way to handle the CachyOS artisan's PGP key to prevent build failures for other Architects. It must be branded as our own.
+- **Status:** Shelved. The path is known, but the ritual is not yet re-scribed.
+
+---
+### QUEST III: THE SOVEREIGN ATHENAEUM
 ---
 Time to build our own damn library. No more relying entirely on third-party repos. We must create our own pacman repository to host our custom-forged packages and ensure our supply lines are secure.
 - **Plan:** Establish a dedicated GitHub repository (\`kael-os-repo\`) served via GitHub Pages. The \`main\` branch will hold our \`PKGBUILD\` source files, while the \`gh-pages\` branch will serve the compiled packages to every Realm.
 - **Status:** **Design Complete!** Forged into Law as Rune XIV. The forging of the automation scripts is our next step.
 
 ---
-### QUEST III: THE TWIN HEARTS (KAEL-FORGED KERNELS)
+### QUEST IV: THE TWIN HEARTS (KAEL-FORGED KERNELS)
 ---
 Let's forge our own kernels. We'll slap our sigil on them, tune them for screaming performance, and create a script to automate the whole build process, making them truly our own.
 - **Plan:** Brand the Makefile, use \`make localmodconfig\` to tailor it to specific hardware, and apply our performance patches.
 - **Status:** The magic words are known. The spellbook (script) is yet to be written.
 
 ---
-### QUEST IV: THE ASTRAL BRIDGE (ACCOUNT INTEGRATION)
+### QUEST V: THE ASTRAL BRIDGE (ACCOUNT INTEGRATION)
 ---
 Let's make it trivially easy to hook the Realm into your cloud accounts, like Google Drive, Microsoft OneDrive, and GitHub. A seamless bridge between our sovereign fortress and your digital life, on your terms.
 - **Plan:** Leverage KDE's excellent built-in online account services. This provides native file manager integration for cloud storage and access to online services.
 - **Status:** Mostly done! The required packages are included in every KDE Plasma build by default.
 
 ---
-### THE GLOW-UP: AESTHETICS
+### QUEST VI: THE GLOW-UP (AESTHETICS)
 ---
 A Realm should look as good as it performs. We need to forge a complete, stunning, and unique look that is unmistakably ours.
 - **Plan:** Create a custom Plasma theme, a matching icon pack, and a set of epic wallpapers. Total aesthetic domination.

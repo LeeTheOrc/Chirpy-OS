@@ -1,86 +1,94 @@
-import React, { useState, useEffect } from 'react';
-import { GpuIcon, DiscIcon, ScanIcon, CloseIcon } from './Icons';
+import React, { useState } from 'react';
+import { ScanIcon, CloseIcon, CopyIcon } from './Icons';
 
 interface SystemScanModalProps {
   onClose: () => void;
   onComplete: (report: string) => void;
 }
 
-const scanItems = [
-    { name: 'Core Architecture', icon: <ScanIcon className="w-5 h-5 text-dragon-fire" /> },
-    { name: 'Graphics Card', icon: <GpuIcon className="w-5 h-5 text-dragon-fire" /> },
-    { name: 'Storage Drives', icon: <DiscIcon className="w-5 h-5 text-dragon-fire" /> },
-    { name: 'Memory Modules', icon: <ScanIcon className="w-5 h-5 text-dragon-fire" /> },
-    { name: 'Network Adapters', icon: <ScanIcon className="w-5 h-5 text-dragon-fire" /> },
-];
+const CodeBlock: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    const [copied, setCopied] = useState(false);
+    const textToCopy = React.Children.toArray(children).join('');
 
-const MOCK_SYSTEM_REPORT = `
-## Scrying Report: System Hardware
+    const handleCopy = () => {
+        if (!textToCopy) return;
+        navigator.clipboard.writeText(textToCopy);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
 
-- **CPU**: Intel Core i7-10700K @ 3.80GHz (8-core, 16-thread)
-- **GPU**: NVIDIA GeForce RTX 3080 (Hybrid)
-- **RAM**: 32 GB DDR4 @ 3200MHz
-- **Disks**:
-  - \`/dev/nvme0n1\`: 1TB NVMe SSD (Samsung 970 Evo Plus)
-  - \`/dev/sda\`: 2TB HDD (Seagate Barracuda)
-- **Network**:
-  - \`enp3s0\`: Realtek RTL8111/8168/8411 PCI Express Gigabit Ethernet Controller
-- **Architecture**: x86_64
-`;
+    return (
+        <div className="relative group my-2">
+            <pre className="bg-forge-bg border border-forge-border rounded-lg p-3 text-sm text-forge-text-secondary font-mono pr-12 whitespace-pre-wrap break-words">
+                <code>{children}</code>
+            </pre>
+            <button
+                onClick={handleCopy}
+                className="absolute top-2 right-2 p-1.5 bg-forge-panel/80 rounded-md text-forge-text-secondary hover:text-forge-text-primary transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
+                aria-label="Copy code"
+            >
+                {copied ? <span className="text-xs font-sans">Copied!</span> : <CopyIcon className="w-4 h-4" />}
+            </button>
+        </div>
+    );
+};
 
 export const SystemScanModal: React.FC<SystemScanModalProps> = ({ onClose, onComplete }) => {
-    const [currentItem, setCurrentItem] = useState(0);
-    const [isComplete, setIsComplete] = useState(false);
+    const [report, setReport] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-    useEffect(() => {
-        if (currentItem >= scanItems.length) {
-            setIsComplete(true);
-            return;
-        }
+    const handleSubmit = () => {
+        if (!report.trim()) return;
+        setIsSubmitting(true);
+        onComplete(report);
+        // Give a moment for the user to see the state change before closing
+        setTimeout(() => {
+            onClose();
+        }, 500);
+    };
 
-        const timeout = setTimeout(() => {
-            setCurrentItem(currentItem + 1);
-        }, 700);
-
-        return () => clearTimeout(timeout);
-    }, [currentItem]);
-
-    useEffect(() => {
-        if (isComplete) {
-            const timeout = setTimeout(() => {
-                onComplete(MOCK_SYSTEM_REPORT);
-                onClose();
-            }, 1000);
-            return () => clearTimeout(timeout);
-        }
-    }, [isComplete, onComplete, onClose]);
-    
     return (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center animate-fade-in-fast" onClick={onClose}>
-            <div className="bg-forge-panel border-2 border-forge-border rounded-lg shadow-2xl w-full max-w-md p-6 m-4" onClick={e => e.stopPropagation()}>
-                <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold text-forge-text-primary font-display tracking-wider">Scrying Hardware...</h2>
+            <div className="bg-forge-panel border-2 border-forge-border rounded-lg shadow-2xl w-full max-w-xl p-6 m-4 flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center mb-4 flex-shrink-0">
+                    <h2 className="text-xl font-bold text-forge-text-primary font-display tracking-wider flex items-center gap-3">
+                        <ScanIcon className="w-5 h-5 text-dragon-fire" />
+                        Scrying Local Hardware
+                    </h2>
                     <button onClick={onClose} className="text-forge-text-secondary hover:text-forge-text-primary">
                         <CloseIcon className="w-5 h-5" />
                     </button>
                 </div>
-                <div className="space-y-3">
-                    {scanItems.map((item, index) => (
-                         <div key={item.name} className={`flex items-center gap-3 transition-opacity duration-300 ${currentItem >= index ? 'opacity-100' : 'opacity-40'}`}>
-                           {item.icon}
-                            <span className="text-forge-text-secondary w-36 flex-shrink-0">{item.name}</span>
-                            <div className="flex-grow text-right">
-                                {currentItem > index && <span className="text-dragon-fire text-sm font-semibold">✓ Done</span>}
-                                {currentItem === index && <span className="text-magic-purple text-sm animate-pulse">Scrying...</span>}
-                            </div>
-                        </div>
-                    ))}
+                <div className="overflow-y-auto pr-2 space-y-4 text-forge-text-secondary leading-relaxed">
+                    <p>To give me a complete picture of your forge, please run the following command in your system's terminal. This will generate a detailed hardware report.</p>
+                    <p className="text-xs italic">You may need to install the tool first with: <code className="font-mono bg-forge-bg px-1 rounded">sudo pacman -S inxi</code></p>
+                    
+                    <div>
+                        <h3 className="font-semibold text-md text-orc-steel mb-1">Step 1: Run this command</h3>
+                        <CodeBlock>inxi -Fazy</CodeBlock>
+                    </div>
+
+                    <div>
+                        <h3 className="font-semibold text-md text-orc-steel mb-1">Step 2: Paste the output below</h3>
+                        <textarea
+                            value={report}
+                            onChange={(e) => setReport(e.target.value)}
+                            rows={8}
+                            className="w-full bg-forge-bg border border-forge-border rounded-lg p-2 text-sm font-mono text-forge-text-primary focus:ring-1 focus:ring-dragon-fire transition-colors"
+                            placeholder="Paste the full output from the 'inxi' command here..."
+                            disabled={isSubmitting}
+                        />
+                    </div>
                 </div>
-                {isComplete && (
-                    <p className="text-center text-dragon-fire mt-6 animate-pulse">
-                        Scrying Complete! Inscribing report...
-                    </p>
-                )}
+                <div className="mt-6 flex-shrink-0 flex justify-end">
+                    <button
+                        onClick={handleSubmit}
+                        disabled={!report.trim() || isSubmitting}
+                        className="bg-dragon-fire hover:bg-yellow-400 text-black font-bold py-2 px-6 rounded-lg transition-colors inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {isSubmitting ? 'Sending...' : 'Send Report to Kael'}
+                    </button>
+                </div>
             </div>
         </div>
     );

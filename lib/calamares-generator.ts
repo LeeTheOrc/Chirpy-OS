@@ -109,22 +109,18 @@ ufw --force enable
 const getChwdScript = (): string => {
     return `#!/bin/bash
 set -e
-echo "--- Running the Ritual of Insight (chwd) ---"
-# Automatically detect and install all relevant drivers.
-# The --quiet flag reduces verbosity for the installer log.
-chwd -a --quiet
+echo "--- Running CachyOS Hardware Detection (chwd) ---"
+if command -v chwd &> /dev/null; then
+    echo "--> Automatically detecting and installing hardware drivers..."
+    chwd -a
+    echo "--> CHWD has completed."
+else
+    echo "--> WARNING: 'chwd' command not found. Skipping automatic hardware detection."
+fi
 `;
 };
 
 const getRepoSetupScript = (config: DistroConfig): string => {
-    const cachyRepo = `
-[cachyos-v3]
-Include = /etc/pacman.d/cachyos-v3-mirrorlist
-[cachyos-v4]
-Include = /etc/pacman.d/cachyos-v4-mirrorlist
-[cachyos]
-Include = /etc/pacman.d/cachyos-mirrorlist
-`;
     const chaoticRepo = `
 [chaotic-aur]
 Include = /etc/pacman.d/chaotic-mirrorlist
@@ -133,27 +129,22 @@ Include = /etc/pacman.d/chaotic-mirrorlist
     let scriptContent = '#!/bin/bash\nset -e\n';
     if (config.extraRepositories?.includes('cachy')) {
         scriptContent += `
-echo "--- Configuring CachyOS Repositories ---"
-KEY_ID="F3B607488DB35A47"
-if (pacman-key --recv-keys "$KEY_ID" --keyserver hkp://keyserver.ubuntu.com || pacman-key --recv-keys "$KEY_ID" --keyserver hkp://keys.openpgp.org); then
-    echo "CachyOS key received from keyserver."
-elif (curl -sL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x$KEY_ID" | pacman-key --add - && pacman-key --updatedb); then
-    echo "CachyOS key received via direct HTTPS download."
+echo "--- Configuring CachyOS Repositories using the official script ---"
+if curl https://mirror.cachyos.org/cachyos-repo.tar.xz -o /tmp/cachyos-repo.tar.xz; then
+    (cd /tmp && tar xvf cachyos-repo.tar.xz && cd cachyos-repo && ./cachyos-repo.sh) || echo "WARNING: CachyOS setup script failed."
 else
-    echo "FATAL: Could not retrieve CachyOS key." >&2; exit 1
+    echo "WARNING: Failed to download CachyOS repository setup. Skipping."
 fi
-pacman-key --lsign-key "$KEY_ID"
-pacman -U --noconfirm --needed /etc/pacman.d/cachyos-repo-files/cachyos-keyring-*.pkg.tar.zst /etc/pacman.d/cachyos-repo-files/cachyos-mirrorlist-*.pkg.tar.zst /etc/pacman.d/cachyos-repo-files/cachyos-v3-mirrorlist-*.pkg.tar.zst /etc/pacman.d/cachyos-repo-files/cachyos-v4-mirrorlist-*.pkg.tar.zst
-echo -e "${cachyRepo}" >> /etc/pacman.conf
 `;
     }
     if (config.extraRepositories?.includes('chaotic')) {
         scriptContent += `
 echo "--- Configuring Chaotic-AUR Repository ---"
 KEY_ID="3056513887B78AEB"
-pacman-key --recv-key "$KEY_ID" --keyserver keyserver.ubuntu.com
+pacman-key --recv-key "$KEY_ID" --keyserver keyserver.ubuntu.com || { echo "--> ERROR: Could not retrieve Chaotic-AUR key."; exit 1; }
 pacman-key --lsign-key "$KEY_ID"
-pacman -U --noconfirm --needed /etc/pacman.d/chaotic-repo-files/chaotic-keyring.pkg.tar.zst /etc/pacman.d/chaotic-repo-files/chaotic-mirrorlist.pkg.tar.zst
+pacman -U --noconfirm --needed 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst'
+pacman -U --noconfirm --needed 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst'
 echo -e "${chaoticRepo}" >> /etc/pacman.conf
 `;
     }
@@ -337,8 +328,8 @@ const generatePackagesConf = (config: DistroConfig): string => {
         'ollama', 'xorg', 'plasma-meta', 'sddm', 'konsole', 'dolphin',
         'ufw', 'gufw', 'kaccounts-integration', 'kaccounts-providers', 'kio-gdrive',
         'qemu-guest-agent', 'virtualbox-guest-utils',
-        'remmina', 'google-chrome', 'chwd', 'kaelic-shell', 'python-prompt_toolkit',
-        'anydesk-bin'
+        'remmina', 'google-chrome', 'kaelic-shell', 'python-prompt_toolkit',
+        'anydesk-bin', 'chwd'
     ]);
 
     (config.kernels || []).forEach(k => packageList.add(k));
@@ -391,19 +382,19 @@ const generateShellprocessConf = (): string => `
         name: "repositories"
         file: "/etc/calamares/scripts/setup-repos.sh"
         chrooted: true
-    -   # Second job: run hardware detection
-        name: "chwd"
+    -   # New job: run chwd for hardware detection
+        name: "hardwareattunement"
         file: "/etc/calamares/scripts/run-chwd.sh"
         chrooted: true
-    -   # Third job: set default shell
+    -   # Second job: set default shell
         name: "shellsetup"
         file: "/etc/calamares/scripts/set-default-shell.sh"
         chrooted: true
-    -   # Fourth job: configure firewall
+    -   # Third job: configure firewall
         name: "firewall"
         file: "/etc/calamares/scripts/setup-firewall.sh"
         chrooted: true
-    -   # Fifth job: attune the AI core
+    -   # Fourth job: attune the AI core
         name: "aicore"
         file: "/etc/calamares/scripts/attune-ai-core.sh"
         chrooted: true

@@ -29,7 +29,7 @@ export const APPRENTICE_PRESETS = {
   development: {
     name: 'Software Development',
     description: 'For coding, containers, and version control.',
-    packages: 'vscode, git, docker, podman, gitkraken',
+    packages: 'code, git, docker, podman, gitkraken',
     gpuDriver: 'intel', // Another safe default
   }
 };
@@ -104,7 +104,7 @@ export const INITIAL_DISTRO_CONFIG: DistroConfig = {
     architecture: 'x86_64',
     ram: '8GB',
     swapSize: '10GB', // Default assuming 8GB RAM + 2GB
-    packages: 'firefox, vscode, git, docker, kael-console, kael-status-conduit, kaelic-shell, python-prompt_toolkit',
+    packages: 'firefox, code, git, docker, kael-console, kael-status-conduit, kaelic-shell, python-prompt_toolkit',
     gpuDriver: 'nvidia',
     graphicsMode: 'nvidia',
     shell: 'kaelic-shell',
@@ -149,22 +149,22 @@ export const CODEX_SNIPPETS: Snippet[] = [
         content: `
 # Use a tool like cfdisk or fdisk
 # Example for UEFI/GPT with cfdisk
-cfdisk /dev/sdX
+sudo cfdisk /dev/sdX
 
 # 1. Create EFI System Partition (512M, type: EFI System)
 # 2. Create Swap Partition (e.g., 4G, type: Linux swap)
 # 3. Create Root Partition (remaining space, type: Linux root (x86-64))
 
 # Format the partitions
-mkfs.fat -F32 /dev/sdX1
-mkswap /dev/sdX2
-mkfs.btrfs /dev/sdX3 # or mkfs.ext4 /dev/sdX3
+sudo mkfs.fat -F32 /dev/sdX1
+sudo mkswap /dev/sdX2
+sudo mkfs.btrfs /dev/sdX3 # or mkfs.ext4 /dev/sdX3
 
 # Mount the partitions
-mount /dev/sdX3 /mnt
-mkdir -p /mnt/boot
-mount /dev/sdX1 /mnt/boot
-swapon /dev/sdX2
+sudo mount /dev/sdX3 /mnt
+sudo mkdir -p /mnt/boot
+sudo mount /dev/sdX1 /mnt/boot
+sudo swapon /dev/sdX2
         `.trim(),
     },
     {
@@ -172,7 +172,7 @@ swapon /dev/sdX2
         title: 'Connect to Wi-Fi (iwctl)',
         content: `
 # Start the iwd service if not running
-systemctl start iwd
+sudo systemctl start iwd
 
 # Launch the interactive tool
 iwctl
@@ -200,24 +200,24 @@ ping archlinux.org
         title: 'Pacman Basics',
         content: `
 # Synchronize package databases
-pacman -Sy
+sudo pacman -Sy
 
 # Synchronize and update all packages
-pacman -Syu
+sudo pacman -Syu
 
 # Install a package
-pacman -S <package_name>
+sudo pacman -S <package_name>
 
 # Install multiple packages
-pacman -S <package1> <package2>
+sudo pacman -S <package1> <package2>
 
 # Remove a package
-pacman -R <package_name>
+sudo pacman -R <package_name>
 
 # Remove a package and its dependencies
-pacman -Rs <package_name>
+sudo pacman -Rs <package_name>
 
-# Search for a package
+# Search for a package (does not require sudo)
 pacman -Ss <search_term>
 `.trim(),
     },
@@ -226,17 +226,18 @@ pacman -Ss <search_term>
         title: 'Enable Chaotic-AUR Repository',
         content: `
 # Install the primary key
-pacman-key --recv-key 3056513887B78AEB --keyserver keyserver.ubuntu.com
-pacman-key --lsign-key 3056513887B78AEB
+sudo pacman-key --recv-key 3056513887B78AEB --keyserver keyserver.ubuntu.com
+sudo pacman-key --lsign-key 3056513887B78AEB
 
 # Install keyring and mirrorlist packages
-pacman -U 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst' 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst'
+sudo pacman -U 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst'
+sudo pacman -U 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst'
 
 # Add to /etc/pacman.conf
-echo -e "\\n[chaotic-aur]\\nInclude = /etc/pacman.d/chaotic-mirrorlist" >> /etc/pacman.conf
+echo -e "\\n[chaotic-aur]\\nInclude = /etc/pacman.d/chaotic-mirrorlist" | sudo tee -a /etc/pacman.conf
 
 # Synchronize databases
-pacman -Syu
+sudo pacman -Syu
 `.trim(),
     },
     {

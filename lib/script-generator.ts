@@ -105,24 +105,8 @@ WantedBy=timers.target
 `;
 };
 
-// Main function to generate the entire script
-export const generateAICoreScript = (config: DistroConfig): string => {
-    
-    // Main script structure with helper functions
-    const scriptHeader = `#!/bin/bash
-# Kael AI System Attunement Script v5.2 (Adamantite Key)
-set -euo pipefail
-
-# --- Logging Helpers ---
-log_info() { echo -e "\\e[34m--> \\e[0m$1"; }
-log_warn() { echo -e "\\e[33m--> WARNING: \\e[0m$1"; }
-log_error() { echo -e "\\e[31m--> ERROR: \\e[0m$1"; }
-log_success() { echo -e "\\e[32m--> SUCCESS: \\e[0m$1"; }
-
-# --- SCRIPT START ---
-log_info "--- Kael AI System Attunement ---"
-
-# --- PART 1: REPOSITORY SETUP ---
+export const getAttunementScriptParts = (config: DistroConfig) => {
+    const repoSetupScript = `
 log_info "Configuring external repositories..."
 add_repo_if_not_exists() {
     local repo_name="$1"
@@ -137,61 +121,56 @@ add_repo_if_not_exists() {
 log_info "Initializing and populating the system keyring..."
 pacman-key --init
 pacman-key --populate archlinux
-
-`;
-
-    const cachyRepoScript = config.extraRepositories.includes('cachy') ? `
-KEY_ID="F3B607488DB35A47"
-log_info "Attuning to the CachyOS Forge..."
-if ! (pacman-key --recv-keys "$KEY_ID" --keyserver hkp://keyserver.ubuntu.com || pacman-key --recv-keys "$KEY_ID" --keyserver hkp://keys.openpgp.org); then
-    log_warn "Keyserver failed for CachyOS key, trying direct download..."
-    curl -sL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x$KEY_ID" | pacman-key --add - && pacman-key --updatedb || { log_error "Could not retrieve CachyOS key."; exit 1; }
+${config.extraRepositories.includes('cachy') ? `
+log_info "Attuning to the CachyOS Forge using the official script..."
+if curl https://mirror.cachyos.org/cachyos-repo.tar.xz -o /tmp/cachyos-repo.tar.xz; then
+    (cd /tmp && tar xvf cachyos-repo.tar.xz && cd cachyos-repo && ./cachyos-repo.sh) || { log_error "CachyOS setup script failed."; exit 1; }
+else
+    log_error "Failed to download CachyOS repository setup."
+    exit 1
 fi
-pacman-key --lsign-key "$KEY_ID"
-pacman -U --noconfirm --needed 'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-keyring-20240331-1-any.pkg.tar.zst' 'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-mirrorlist-22-1-any.pkg.tar.zst' 'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-v3-mirrorlist-22-1-any.pkg.tar.zst' 'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-v4-mirrorlist-22-1-any.pkg.tar.zst'
-add_repo_if_not_exists "cachyos-v3" "\\n[cachyos-v3]\\nInclude = /etc/pacman.d/cachyos-v3-mirrorlist"
-add_repo_if_not_exists "cachyos-v4" "\\n[cachyos-v4]\\nInclude = /etc/pacman.d/cachyos-v4-mirrorlist"
-add_repo_if_not_exists "cachyos" "\\n[cachyos]\\nInclude = /etc/pacman.d/cachyos-mirrorlist"
-` : '';
-
-    const chaoticRepoScript = config.extraRepositories.includes('chaotic') ? `
+` : ''}
+${config.extraRepositories.includes('chaotic') ? `
 KEY_ID="3056513887B78AEB"
 log_info "Attuning to the Chaotic-AUR..."
-pacman-key --recv-key "$KEY_ID" --keyserver keyserver.ubuntu.com
+pacman-key --recv-key "$KEY_ID" --keyserver keyserver.ubuntu.com || { log_error "Could not retrieve Chaotic-AUR key."; exit 1; }
 pacman-key --lsign-key "$KEY_ID"
-pacman -U --noconfirm --needed 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst' 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst'
+pacman -U --noconfirm --needed 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst'
+pacman -U --noconfirm --needed 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst'
 add_repo_if_not_exists "chaotic-aur" "\\n[chaotic-aur]\\nInclude = /etc/pacman.d/chaotic-mirrorlist"
-` : '';
+` : ''}
+`;
 
-    const kaelRepoScript = config.extraRepositories.includes('kael-os') ? `
+    const kaelRepoScript = `
+${config.extraRepositories.includes('kael-os') ? `
 log_info "Attuning to the Kael OS Athenaeum..."
 KAEL_KEY_ID="8A7E40248B2A6582"
 KEY_URL="https://leetheorc.github.io/kael-os-repo/kael-os.asc"
-KEY_FILE=$(mktemp)
-trap 'rm -f "$KEY_FILE"' EXIT
 
 log_info "--> Receiving the Master Key ($KAEL_KEY_ID)..."
+# Try keyservers first
 if pacman-key --recv-keys "$KAEL_KEY_ID" --keyserver hkp://keyserver.ubuntu.com; then
     log_success "Key received successfully from keyserver."
 else
     log_warn "Keyserver failed. Attempting direct download..."
-    if curl -sLf "$KEY_URL" -o "$KEY_FILE"; then
-        log_info "--> Key downloaded. Purging old entry and adding new key..."
-        # Purge any potentially corrupt key first
-        pacman-key --delete "$KAEL_KEY_ID" &>/dev/null || true
-        # Add the downloaded key from the temporary file
-        if pacman-key --add "$KEY_FILE"; then
-            pacman-key --updatedb
-            log_success "Key added successfully from direct download."
+    TMP_KEY_FILE=$(mktemp)
+    trap 'rm -f "$TMP_KEY_FILE"' EXIT
+    if curl -sL "$KEY_URL" -o "$TMP_KEY_FILE"; then
+        log_success "Key downloaded to temporary file."
+        if pacman-key --add "$TMP_KEY_FILE"; then
+            log_success "Key added to keyring from file."
         else
-            log_error "Failed to add downloaded key."
+            log_error "Failed to add downloaded key to keyring."
             exit 1
         fi
     else
-        log_error "Could not download Kael OS key from $KEY_URL."
+        log_error "Could not download key from $KEY_URL."
         exit 1
     fi
 fi
+
+log_info "--> Updating trust database..."
+pacman-key --updatedb
 
 log_info "--> Signing the Master Key to establish local trust..."
 if pacman-key --lsign-key "$KAEL_KEY_ID"; then
@@ -201,7 +180,8 @@ else
     exit 1
 fi
 add_repo_if_not_exists "kael-os" "\\n[kael-os]\\nSigLevel = Optional TrustAll\\nServer = https://leetheorc.github.io/kael-os-repo/\\n"
-` : '';
+` : '# Kael OS repository not in blueprint. Skipping.'}
+`;
 
     const syncScript = `
 log_info "Synchronizing package databases and upgrading system..."
@@ -231,13 +211,52 @@ if ! pacman -S --noconfirm --needed \$PACKAGES_TO_INSTALL; then
 fi
 `;
     
-    const hardwareAttunementScript = `
-log_info "--- Attuning Hardware Drivers ---"
-log_info "Running the Ritual of Insight (chwd) to install hardware drivers..."
-chwd -a --noconfirm
+    // Fix: Add hardware script for TUI installer.
+    const hardwareScript = `
+log_info "--- Attuning Hardware with CHWD ---"
+if command -v chwd &> /dev/null; then
+    log_info "Running CachyOS Hardware Detection (chwd) to install drivers..."
+    # The -a flag will automatically install all detected drivers.
+    if chwd -a; then
+        log_success "CHWD completed successfully."
+    else
+        log_error "CHWD encountered an error during driver installation."
+    fi
+else
+    log_warn "'chwd' command not found. Skipping automatic hardware attunement."
+    log_warn "Please ensure 'chwd' is installed from the CachyOS repository."
+fi
 `;
-    
+
     const aiCoreScript = generateAiCoreSetupScript(config);
+
+    return {
+        repo_setup: repoSetupScript.trim(),
+        kael_repo: kaelRepoScript.trim(),
+        sync: syncScript.trim(),
+        package_install: packageInstallScript.trim(),
+        hardware: hardwareScript.trim(),
+        ai_core: aiCoreScript.trim(),
+    };
+};
+
+// Main function to generate the entire script
+export const generateAICoreScript = (config: DistroConfig): string => {
+    
+    // Main script structure with helper functions
+    const scriptHeader = `#!/bin/bash
+# Kael AI System Attunement Script v5.2 (Adamantite Key)
+set -euo pipefail
+
+# --- Logging Helpers ---
+log_info() { echo -e "\\e[34m--> \\e[0m$1"; }
+log_warn() { echo -e "\\e[33m--> WARNING: \\e[0m$1"; }
+log_error() { echo -e "\\e[31m--> ERROR: \\e[0m$1"; }
+log_success() { echo -e "\\e[32m--> SUCCESS: \\e[0m$1"; }
+
+# --- SCRIPT START ---
+log_info "--- Kael AI System Attunement ---"
+`;
 
     const completionScript = `
 # --- COMPLETION ---
@@ -246,16 +265,18 @@ log_success "--- ✅ System Attunement Complete ---"
 log_info "Log out and log back in for all changes to take effect."
 `;
 
+    const parts = getAttunementScriptParts(config);
+
     // Assemble the full script
     return [
         scriptHeader,
-        cachyRepoScript,
-        chaoticRepoScript,
-        kaelRepoScript,
-        syncScript,
-        packageInstallScript,
-        hardwareAttunementScript,
-        aiCoreScript,
+        parts.repo_setup,
+        parts.kael_repo,
+        parts.sync,
+        parts.package_install,
+        // The hardware script is part of the full attunement.
+        parts.hardware,
+        parts.ai_core,
         completionScript
-    ].join('');
+    ].join('\n\n');
 };
