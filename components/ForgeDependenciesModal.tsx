@@ -1,21 +1,38 @@
+
 import React from 'react';
-import { CloseIcon, BeakerIcon } from './Icons';
+import { CloseIcon, PackageIcon } from './Icons';
 import { CodeBlock } from './CodeBlock';
 
 interface ForgeDependenciesModalProps {
   onClose: () => void;
 }
 
-const DEPENDENCIES_SCRIPT_RAW = `#!/bin/bash
+const FORGE_DEPS_SCRIPT_RAW = `#!/bin/bash
 set -euo pipefail
+
+# --- CONFIGURATION & GLOBAL VARS ---
+SYSTEM_REPO_DIR="/var/lib/kael-local-repo"
+TEMP_DIR=""
+TEMP_KEY_FILE=""
+TMP_CONFIG=""
 
 # --- GLOBAL CLEANUP TRAP ---
 # This function will be called on script exit to clean up temporary files/directories.
 cleanup() {
     # The '-n' checks if the variable is set, and the file/dir check ensures we don't try to delete nothing.
-    [[ -n "\${TEMP_DIR-}" && -d "$TEMP_DIR" ]] && rm -rf -- "$TEMP_DIR"
-    [[ -n "\${TEMP_KEY_FILE-}" && -f "$TEMP_KEY_FILE" ]] && rm -f -- "$TEMP_KEY_FILE"
-    [[ -n "\${TMP_CONFIG-}" && -f "$TMP_CONFIG" ]] && rm -f -- "$TMP_CONFIG"
+    [[ -n "$TEMP_DIR" && -d "$TEMP_DIR" ]] && rm -rf -- "$TEMP_DIR"
+    [[ -n "$TEMP_KEY_FILE" && -f "$TEMP_KEY_FILE" ]] && rm -f -- "$TEMP_KEY_FILE"
+    [[ -n "$TMP_CONFIG" && -f "$TMP_CONFIG" ]] && rm -f -- "$TMP_CONFIG"
+    
+    # Unmount and remove our system-wide repo dir if it was created
+    # Use sudo here since we created it with sudo
+    if mountpoint -q "\${SYSTEM_REPO_DIR}/repo" 2>/dev/null; then
+        echo "--> Dismantling system-wide access point..."
+        sudo umount "\${SYSTEM_REPO_DIR}/repo"
+    fi
+    if [ -d "$SYSTEM_REPO_DIR" ]; then
+        sudo rm -rf "$SYSTEM_REPO_DIR"
+    fi
 }
 trap cleanup EXIT SIGINT SIGTERM
 
@@ -23,13 +40,13 @@ trap cleanup EXIT SIGINT SIGTERM
 echo "--- Forge Dependencies Ritual ---"
 echo "This ritual prepares your system by installing essential tools and attuning it to our allies' repositories."
 
-# --- [1/5] Install Core Forge Tools ---
+# --- [1/5] Install Bootstrap Tools ---
 echo ""
-echo "--> [1/5] Installing core development tools (base-devel, git, curl, etc.)..."
-# Use --needed to only install missing packages. Added 'curl' as it's required by subsequent steps.
-# This now includes 'chronicler', assuming it has been published to the local/remote repo.
-sudo pacman -S --needed --noconfirm base-devel git pacman-contrib lftp github-cli curl chronicler
-echo "✅ Core tools are ready."
+echo "--> [1/5] Installing bootstrap tools (base-devel, curl)..."
+# We only install the absolute minimum needed for the rest of the script to function.
+# The rest of the tools are installed after all repositories are configured.
+sudo pacman -S --needed --noconfirm base-devel curl
+echo "✅ Bootstrap tools are ready."
 echo ""
 
 # --- [2/5] Attune to CachyOS Repository ---
@@ -83,7 +100,7 @@ else
         echo "❌ ERROR: Failed to download the Kael OS master key." >&2
         exit 1
     fi
-    KEY_ID=\$(gpg --show-keys --with-colons "\${TEMP_KEY_FILE}" 2>/dev/null | grep '^pub' | cut -d: -f5)
+    KEY_ID=$(gpg --show-keys --with-colons "\${TEMP_KEY_FILE}" 2>/dev/null | grep '^pub' | cut -d: -f5)
     if [[ -z "\${KEY_ID}" ]]; then
         echo "❌ ERROR: Could not extract a valid Key ID from the downloaded key." >&2
         exit 1
@@ -95,85 +112,121 @@ fi
 
 # Part B: Repository Configuration
 CONFIG_FILE="/etc/pacman.conf"
-if grep -q "^\\[kael-os-local\\]" "\${CONFIG_FILE}"; then
-    echo "--> Kael OS repositories already configured in pacman.conf. Skipping."
-else
-    echo "--> Configuring Kael OS repositories in pacman.conf..."
-    BACKUP_FILE="/etc/pacman.conf.kael-deps.bak"
-    if [ ! -f "\$BACKUP_FILE" ]; then
-        sudo cp "\$CONFIG_FILE" "\$BACKUP_FILE"
-        echo "--> Created backup: \${BACKUP_FILE}"
-    fi
-    
-    # Correctly determine the user's home directory, even under sudo
-    USER_HOME=\$(getent passwd "\${SUDO_USER:-\$USER}" | cut -d: -f6)
-    
-    LOCAL_REPO_SERVER="file://\${USER_HOME}/forge/repo"
-    LOCAL_REPO_ENTRY="[kael-os-local]\\nSigLevel = Required DatabaseOptional\\nServer = \${LOCAL_REPO_SERVER}"
-    ONLINE_REPO_ENTRY="[kael-os]\\nSigLevel = Required DatabaseOptional\\nServer = https://leetheorc.github.io/kael-os-repo/"
-    
-    TMP_CONFIG=\$(mktemp)
-    
-    printf "%b\\n\\n" "\$LOCAL_REPO_ENTRY" > "\$TMP_CONFIG"
-    awk '
-      /^\\[kael-os-local\\]/ { in_section=1; next }
-      /^\\[kael-os\\]/       { in_section=1; next }
-      /^\\s*\\[/           { in_section=0 }
-      !in_section       { print }
-    ' "\$CONFIG_FILE" >> "\$TMP_CONFIG"
-    printf "\\n%b\\n" "\$ONLINE_REPO_ENTRY" >> "\$TMP_CONFIG"
-    
-    cat "\$TMP_CONFIG" | sudo tee "\$CONFIG_FILE" > /dev/null
-    echo "✅ pacman.conf configured for Kael OS Athenaeum."
+echo "--> Configuring Kael OS repositories in pacman.conf..."
+BACKUP_FILE="/etc/pacman.conf.kael-deps.bak"
+if [ ! -f "$BACKUP_FILE" ]; then
+    sudo cp "$CONFIG_FILE" "$BACKUP_FILE"
+    echo "--> Created backup: \${BACKUP_FILE}"
 fi
+
+# Correctly determine the user's home directory, even under sudo
+USER_HOME=$(getent passwd "\${SUDO_USER:-\$USER}" | cut -d: -f6)
+LOCAL_REPO_PATH="\$USER_HOME/forge/repo"
+
+ONLINE_REPO_ENTRY="[kael-os]\\nSigLevel = Required DatabaseOptional\\nServer = https://leetheorc.github.io/kael-os-repo/"
+
+TMP_CONFIG=$(mktemp)
+
+# Conditionally add the local repo entry only if the DATABASE FILE exists
+if [ -f "\$LOCAL_REPO_PATH/kael-os-local.db" ]; then
+    echo "--> Sanctified local forge detected. Creating system-wide access point via bind mount..."
+    
+    REPO_MOUNT_POINT="\${SYSTEM_REPO_DIR}/repo"
+
+    # The trap will handle unmounting and deletion on exit.
+    sudo rm -rf "$SYSTEM_REPO_DIR"
+    sudo mkdir -p "$REPO_MOUNT_POINT"
+    
+    # Create a bind mount. This makes the user's repo directory accessible at the system path
+    # without running into home directory permission issues that can foil symlinks.
+    sudo mount --bind "\$LOCAL_REPO_PATH" "\$REPO_MOUNT_POINT"
+    
+    LOCAL_REPO_SERVER="file://\${REPO_MOUNT_POINT}"
+    # This SigLevel is crucial for security. It requires that both the packages
+    # and the repository database itself are signed with a trusted GPG key.
+    LOCAL_REPO_ENTRY="[kael-os-local]\\nSigLevel = Required DatabaseRequired\\nServer = \$LOCAL_REPO_SERVER"
+
+    # The local repo MUST come first to be prioritized.
+    printf "%b\\n\\n" "\$LOCAL_REPO_ENTRY" > "\$TMP_CONFIG"
+else
+    echo "--> No sanctified local forge detected. Using online-only Athenaeum."
+    echo "    (If you have a local forge, run the 'sanctify-athenaeum' ritual)."
+    # Create an empty temp file if no local repo
+    > "\$TMP_CONFIG"
+fi
+
+# Append the rest of pacman.conf, but filter out our managed entries.
+# The regexes here are carefully escaped for bash inside a JS template literal.
+# We want awk to see '/^\\[section\\]/', so we escape the backslashes once for JS -> \\[
+awk '
+    /^\\\[kael-os-local\\\]/ { in_section=1; next }
+    /^\\\[kael-os\\\]/       { in_section=1; next }
+    /^\\s*\\\[/            { in_section=0 }
+    !in_section         { print }
+' "\$CONFIG_FILE" >> "\$TMP_CONFIG"
+
+# Append our online repo entry to the end of the temp file.
+printf "\\n%b\\n" "\$ONLINE_REPO_ENTRY" >> "\$TMP_CONFIG"
+
+# Replace the original config with our new one.
+cat "\$TMP_CONFIG" | sudo tee "\$CONFIG_FILE" > /dev/null
+echo "✅ pacman.conf configured for Kael OS Athenaeum."
 echo ""
 
-# --- [5/5] Final Synchronization ---
-echo "--> [5/5] Synchronizing all package databases..."
+# --- [5/5] Final Synchronization & Full Tool Installation ---
+echo "--> [5/5] Synchronizing all package databases and installing remaining tools..."
 sudo pacman -Sy
+
+echo "--> Installing remaining forge tools..."
+# Before installing, check for the old manual chronicler script and remove it to prevent conflicts.
+echo "--> Checking for conflicting manual installations..."
+if [ -f /usr/local/bin/chronicler ]; then
+    echo "--> Found manual installation of 'chronicler'. Removing to allow package installation..."
+    # We may need to remove the immutable flag set by the old package install script
+    sudo chattr -i /usr/local/bin/chronicler &>/dev/null || true
+    sudo rm -f /usr/local/bin/chronicler
+fi
+
+# Now that all repositories are configured, we can install everything else.
+sudo pacman -S --needed --noconfirm git pacman-contrib lftp github-cli chronicler
+echo "✅ All forge tools installed."
+
 
 echo ""
 echo "✨ Ritual Complete! Your forge is now fully equipped with all necessary dependencies."
 `;
 
 export const ForgeDependenciesModal: React.FC<ForgeDependenciesModalProps> = ({ onClose }) => {
-    // UTF-8 safe encoding
-    const encodedScript = btoa(unescape(encodeURIComponent(DEPENDENCIES_SCRIPT_RAW)));
-    const finalSetupCommand = `echo "${encodedScript}" | base64 --decode | bash`;
+    // The unified script is encoded to base64 to comply with Rune XVI.
+    const encodedScript = btoa(unescape(encodeURIComponent(FORGE_DEPS_SCRIPT_RAW)));
+    const finalForgeCommand = `echo "${encodedScript}" | base64 --decode | bash`;
 
-    return (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center animate-fade-in-fast" onClick={onClose}>
-            <div className="bg-forge-panel border-2 border-forge-border rounded-lg shadow-2xl w-full max-w-2xl p-6 m-4 flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
-                <div className="flex justify-between items-center mb-4 flex-shrink-0">
-                     <h2 className="text-xl font-bold text-forge-text-primary flex items-center gap-2 font-display tracking-wider">
-                        <BeakerIcon className="w-5 h-5 text-dragon-fire" />
-                        <span>Forge Dependencies Ritual</span>
-                    </h2>
-                    <button onClick={onClose} className="text-forge-text-secondary hover:text-forge-text-primary">
-                        <CloseIcon className="w-5 h-5" />
-                    </button>
-                </div>
-                <div className="overflow-y-auto pr-2 text-forge-text-secondary leading-relaxed space-y-4">
-                    <p>
-                        Architect, this is our master ritual for preparing a new system. It ensures all the tools, libraries, and allied connections we need are in place before we begin our work.
-                    </p>
-                    <p className="text-sm p-3 bg-magic-purple/10 border-l-4 border-magic-purple rounded mt-2">
-                        This one incantation will:
-                         <ul className="list-disc pl-5 mt-2 space-y-1">
-                            <li>Install essential packages like <code className="font-mono text-xs">base-devel</code>, <code className="font-mono text-xs">git</code>, <code className="font-mono text-xs">github-cli</code>, and our own <code className="font-mono text-xs">chronicler</code>.</li>
-                            <li>Attune <code className="font-mono text-xs">pacman</code> to the official <strong className="text-forge-text-primary">CachyOS</strong> repository for performance-tuned artifacts.</li>
-                            <li>Attune <code className="font-mono text-xs">pacman</code> to the <strong className="text-forge-text-primary">Chaotic-AUR</strong> for a vast library of pre-compiled AUR packages.</li>
-                            <li>Attune <code className="font-mono text-xs">pacman</code> to our own <strong className="text-forge-text-primary">Kael OS Athenaeum</strong>, prioritizing your local package mirror first.</li>
-                        </ul>
-                    </p>
-                    
-                    <h3 className="font-semibold text-lg text-magic-purple mt-4 mb-2">The Dependencies Incantation (Run Once on New Systems)</h3>
-                    <p>
-                        Run this command on any new Arch-based system to prepare it for our forge rituals. It is safe to run multiple times, as it will intelligently skip steps that have already been completed.
-                    </p>
-                    <CodeBlock lang="bash">{finalSetupCommand}</CodeBlock>
-                </div>
+  return (
+    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center animate-fade-in-fast" onClick={onClose}>
+        <div className="bg-forge-panel border-2 border-forge-border rounded-lg shadow-2xl w-full max-w-3xl p-6 m-4 flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4 flex-shrink-0">
+                 <h2 className="text-xl font-bold text-forge-text-primary flex items-center gap-2 font-display tracking-wider">
+                    <PackageIcon className="w-5 h-5 text-dragon-fire" />
+                    <span>Install Forge Dependencies</span>
+                </h2>
+                <button onClick={onClose} className="text-forge-text-secondary hover:text-forge-text-primary">
+                    <CloseIcon className="w-5 h-5" />
+                </button>
+            </div>
+            <div className="overflow-y-auto pr-2 text-forge-text-secondary leading-relaxed space-y-4">
+                <p>
+                    This grand ritual prepares your system to become a true forge. It will install all necessary tools and attune your machine to our allied repositories, including CachyOS for performance-tuned artifacts, the Chaotic-AUR for a vast selection of packages, and our own Kael OS Athenaeum.
+                </p>
+                <p className="text-sm p-3 bg-orc-steel/10 border-l-4 border-orc-steel rounded">
+                    <strong className="text-orc-steel">Conflict Resolution Update:</strong> This ritual will now automatically detect and remove any old, manually-installed <code className="font-mono text-xs">chronicler</code> scripts. This prevents the "conflicting files" error and allows the new, signed package to be installed correctly.
+                </p>
+                <h3 className="font-semibold text-lg text-orc-steel mt-4 mb-2">The Unified Incantation</h3>
+                <p>
+                    Copy and run this single command in your terminal. It contains the entire ritual, encoded for a flawless execution.
+                </p>
+                <CodeBlock lang="bash">{finalForgeCommand}</CodeBlock>
             </div>
         </div>
-    );
+    </div>
+  );
 };

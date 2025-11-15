@@ -1,30 +1,44 @@
+
+
+
 import React, { useState, useEffect, useRef } from 'react';
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 
 import type { Message } from './types';
 import { WELCOME_MESSAGE, CLOUD_AI_SYSTEM_PROMPT } from './kael-personality';
 
-// Component Imports
-import { Header } from './components/Header';
-import { ChatMessage } from './components/ChatMessage';
-import { BottomPanel } from './components/BottomPanel';
+// Core Component Imports
+import { Header } from './components/core/Header';
+import { ChatMessage } from './components/core/ChatMessage';
+import { BottomPanel } from './components/core/BottomPanel';
 
-// Modal Imports
-import { LawModal } from './components/LawModal';
-import { LevelUpModal } from './components/LevelUpModal';
-import { PersonalityModal } from './components/PersonalityModal';
-import { AthenaeumScribeModal } from './components/AthenaeumScribeModal';
-import { AthenaeumMirrorModal } from './components/AthenaeumMirrorModal';
-import { KeyringAttunementModal } from './components/KeyringAttunementModal';
-import { ForgeSetupModal } from './components/ForgeSetupModal';
-import { AthenaeumPathfindingModal } from './components/AthenaeumPathfindingModal';
-import { ForgeDependenciesModal } from './components/ForgeDependenciesModal';
-import { AthenaeumSanctificationModal } from './components/AthenaeumSanctificationModal';
-import { ChroniclerPackageModal } from './components/ChroniclerPackageModal';
-import { ChroniclerUsageModal } from './components/ChroniclerUsageModal';
+// Modal Imports by Category
+import { ForgeSetupModal } from './components/forge/ForgeSetupModal';
+import { ForgeDependenciesModal } from './components/forge/ForgeDependenciesModal';
+import { KeyringAttunementModal } from './components/forge/KeyringAttunementModal';
+import { AthenaeumMirrorModal } from './components/athenaeum/AthenaeumMirrorModal';
+import { AthenaeumPathfindingModal } from './components/athenaeum/AthenaeumPathfindingModal';
+import { AthenaeumSanctificationModal } from './components/athenaeum/AthenaeumSanctificationModal';
+import { AthenaeumScribeModal } from './components/athenaeum/AthenaeumScribeModal';
+import { WebDiskMirrorSetupModal } from './components/athenaeum/SftpMirrorSetupModal';
+import { WebDiskAttunementModal } from './components/athenaeum/WebDiskAttunementModal';
+import { AthenaeumConcordanceModal } from './components/athenaeum/AthenaeumConcordanceModal';
+import { AthenaeumVerifierModal } from './components/athenaeum/AthenaeumVerifierModal';
+import { ChroniclerUsageModal } from './components/chronicler/ChroniclerUsageModal';
+import { ChroniclerPackageModal } from './components/chronicler/ChroniclerPackageModal';
+import { LoreArchiveModal } from './components/lore/LoreArchiveModal';
+import { LawModal } from './components/lore/LawModal';
+import { LevelUpModal } from './components/lore/LevelUpModal';
+import { PersonalityModal } from './components/lore/PersonalityModal';
+import { GoNuclearModal } from './components/utility/GoNuclearModal';
 
 
-export type ModalType = 'law' | 'levelup' | 'personality' | 'athenaeumScribe' | 'athenaeumMirror' | 'keyringAttunement' | 'forgeSetup' | 'athenaeumPathfinding' | 'forgeDependencies' | 'athenaeumSanctification' | 'forgeChroniclerPackage' | 'chroniclerUsage' | null;
+export type ModalType = 
+  | 'law' | 'levelup' | 'personality' | 'goNuclear' | 'loreArchive'
+  | 'forgeSetup' | 'forgeDependencies' | 'keyringAttunement' | 'athenaeumMirror'
+  | 'athenaeumPathfinding' | 'athenaeumSanctification' | 'athenaeumScribe' | 'chroniclerUsage'
+  | 'chroniclerPackage' | 'webDiskMirrorSetup' | 'webDiskAttunement' | 'athenaeumConcordance' | 'athenaeumVerifier'
+  | null;
 
 const App: React.FC = () => {
     // --- State Management ---
@@ -107,15 +121,24 @@ const App: React.FC = () => {
             case 'law': return <LawModal onClose={() => setActiveModal(null)} />;
             case 'levelup': return <LevelUpModal onClose={() => setActiveModal(null)} />;
             case 'personality': return <PersonalityModal onClose={() => setActiveModal(null)} />;
-            case 'athenaeumScribe': return <AthenaeumScribeModal onClose={() => setActiveModal(null)} />;
-            case 'athenaeumMirror': return <AthenaeumMirrorModal onClose={() => setActiveModal(null)} />;
-            case 'keyringAttunement': return <KeyringAttunementModal onClose={() => setActiveModal(null)} />;
+            case 'goNuclear': return <GoNuclearModal onClose={() => setActiveModal(null)} />;
+            case 'loreArchive': return <LoreArchiveModal onClose={() => setActiveModal(null)} onNavigate={(modal) => setActiveModal(modal)} />;
+            
+            // Restored Modals
             case 'forgeSetup': return <ForgeSetupModal onClose={() => setActiveModal(null)} />;
-            case 'athenaeumPathfinding': return <AthenaeumPathfindingModal onClose={() => setActiveModal(null)} />;
             case 'forgeDependencies': return <ForgeDependenciesModal onClose={() => setActiveModal(null)} />;
+            case 'keyringAttunement': return <KeyringAttunementModal onClose={() => setActiveModal(null)} />;
+            case 'athenaeumMirror': return <AthenaeumMirrorModal onClose={() => setActiveModal(null)} />;
+            case 'athenaeumPathfinding': return <AthenaeumPathfindingModal onClose={() => setActiveModal(null)} />;
             case 'athenaeumSanctification': return <AthenaeumSanctificationModal onClose={() => setActiveModal(null)} />;
-            case 'forgeChroniclerPackage': return <ChroniclerPackageModal onClose={() => setActiveModal(null)} />;
+            case 'athenaeumScribe': return <AthenaeumScribeModal onClose={() => setActiveModal(null)} />;
             case 'chroniclerUsage': return <ChroniclerUsageModal onClose={() => setActiveModal(null)} />;
+            case 'chroniclerPackage': return <ChroniclerPackageModal onClose={() => setActiveModal(null)} />;
+            case 'webDiskMirrorSetup': return <WebDiskMirrorSetupModal onClose={() => setActiveModal(null)} />;
+            case 'webDiskAttunement': return <WebDiskAttunementModal onClose={() => setActiveModal(null)} />;
+            case 'athenaeumConcordance': return <AthenaeumConcordanceModal onClose={() => setActiveModal(null)} />;
+            case 'athenaeumVerifier': return <AthenaeumVerifierModal onClose={() => setActiveModal(null)} />;
+            
             default: return null;
         }
     };

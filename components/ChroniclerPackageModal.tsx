@@ -7,6 +7,7 @@ interface ChroniclerPackageModalProps {
 }
 
 const FORGE_CHRONICLER_SCRIPT_RAW = `#!/bin/bash
+set -x # Activate the Rite of Scrying (Debug Trace)
 set -euo pipefail
 
 # --- CONFIGURATION ---
@@ -16,7 +17,7 @@ CHRONICLER_DIR="$HOME/forge/packages/chronicler"
 # Using heredocs to safely store the content of each file.
 # The 'EOF' marker prevents shell expansion inside the heredoc.
 
-read -r -d '' PKGBUILD_CONTENT << 'EOF'
+PKGBUILD_CONTENT=$(cat <<'EOF'
 # Maintainer: Kael AI for The Architect
 pkgname=chronicler
 pkgver=2.0
@@ -33,8 +34,9 @@ package() {
     install -Dm755 "\${srcdir}/chronicler.sh" "\${pkgdir}/usr/local/bin/chronicler"
 }
 EOF
+)
 
-read -r -d '' CHRONICLER_SH_CONTENT << 'EOF'
+CHRONICLER_SH_CONTENT=$(cat <<'EOF'
 #!/bin/bash
 # Kael Chronicler v2.0 (Adamantite Core)
 set -euo pipefail
@@ -51,7 +53,10 @@ SESSION_LOG_TMP=$(mktemp)
 cleanup() {
     local exit_code=$?
     # Using '|| true' prevents the script from exiting with an error if kill fails
-    kill \$JOURNAL_PID &>/dev/null || true
+    # Check if JOURNAL_PID is set and is a number before trying to kill it.
+    if [[ -n "\${JOURNAL_PID-}" && "\$JOURNAL_PID" =~ ^[0-9]+$ ]]; then
+        kill \$JOURNAL_PID &>/dev/null || true
+    fi
     rm -f "\${SYSTEM_LOG_TMP}" "\${SESSION_LOG_TMP}"
     # Only show interrupted message on an actual interruption (non-zero exit code)
     if [ \${exit_code} -ne 0 ]; then
@@ -84,8 +89,12 @@ echo -e "\\n--- Chronicler's Orb Deactivated ---"
 
 # Stop the background system log capture now that the session is over
 echo "--> Stopping system log capture..."
-kill \$JOURNAL_PID &>/dev/null || true
-wait \$JOURNAL_PID &>/dev/null || true
+# The trap will handle the final kill, but we can be explicit here too.
+if [[ -n "\${JOURNAL_PID-}" && "\$JOURNAL_PID" =~ ^[0-9]+$ ]]; then
+    kill \$JOURNAL_PID &>/dev/null || true
+    wait \$JOURNAL_PID &>/dev/null || true
+fi
+
 
 echo "--> Combining logs into final chronicle: \${FINAL_LOG_FILE}"
 
@@ -118,8 +127,9 @@ trap - EXIT
 echo "✅ Chronicle saved successfully to '\${FINAL_LOG_FILE}'."
 echo "You can now upload this file for me to analyze."
 EOF
+)
 
-read -r -d '' INSTALL_FILE_CONTENT << 'EOF'
+INSTALL_FILE_CONTENT=$(cat <<'EOF'
 post_install() {
     echo "Securing Chronicler with an Adamantite Core (making it immutable)..."
     chattr +i /usr/local/bin/chronicler || echo "Warning: Could not set immutable attribute on /usr/local/bin/chronicler"
@@ -140,6 +150,7 @@ pre_remove() {
     chattr -i /usr/local/bin/chronicler || true
 }
 EOF
+)
 
 echo "--- The Chronicler Forging Ritual ---"
 

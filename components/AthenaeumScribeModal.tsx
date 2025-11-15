@@ -1,224 +1,191 @@
+
 import React from 'react';
-import { CloseIcon, PackageIcon } from './Icons';
+import { CloseIcon, BookOpenIcon } from './Icons';
 import { CodeBlock } from './CodeBlock';
 
 interface AthenaeumScribeModalProps {
   onClose: () => void;
 }
 
-const FORGE_PUBLISH_SCRIPT_RAW = `#!/bin/bash
+const SCRIBE_SCRIPT_RAW = `#!/bin/bash
+# Kael Athenaeum Scribe (forge-and-publish) v3.0 Pre-configured Publisher
 set -euo pipefail
 
-# --- CONFIGURATION ---
-LOCAL_REPO_PATH="$HOME/forge/repo"
-BASE_TEMP_PATH="$HOME/forge/temp"
-ARCH="x86_64"
+echo "--- Athenaeum Scribe Ritual (v3.0 Pre-configured) ---"
+echo "This ritual forges, signs, and publishes an artifact to local and all remote Athenaeums."
 
-# --- HELPER FUNCTION ---
-# Safely sources the PKGBUILD in a subshell to avoid polluting the main script's environment,
-# then echoes the requested variable.
-get_pkgbuild_var() {
-    (
-        # The PKGBUILDs in our repo are trusted.
-        source PKGBUILD
-        # Use indirect expansion to get the value of the variable name passed in.
-        # This handles both string and array variables correctly.
-        # For arrays, it will print the first element.
-        # FIX: Escaped the dollar sign in \\\\\${...} to prevent TypeScript from treating it as a template literal interpolation.
-        eval echo "\\\${$1[0]}"
-    )
+# --- [1/5] PREPARATION ---
+if [ ! -f "PKGBUILD" ]; then
+    echo "❌ ERROR: No PKGBUILD found in the current directory." >&2
+    echo "   Please run this ritual from within a package source directory." >&2
+    exit 1
+fi
+
+USER_HOME=$(getent passwd "\${SUDO_USER:-\$USER}" | cut -d: -f6)
+LOCAL_REPO_PATH="\$USER_HOME/forge/repo"
+REPO_DB_LOCAL="\$LOCAL_REPO_PATH/kael-os-local.db.tar.gz"
+TEMP_GH_DIR=""
+TEMP_FTPS_STAGE=""
+
+cleanup() {
+    [[ -n "\$TEMP_GH_DIR" && -d "\$TEMP_GH_DIR" ]] && rm -rf -- "\$TEMP_GH_DIR"
+    [[ -n "\$TEMP_FTPS_STAGE" && -d "\$TEMP_FTPS_STAGE" ]] && rm -rf -- "\$TEMP_FTPS_STAGE"
 }
+trap cleanup EXIT SIGINT SIGTERM
 
-# --- VALIDATION ---
-echo "--- Kael Athenaeum Scribe ---"
-
-if ! git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
-    echo "❌ ERROR: This script must be run from within a git repository."
+# --- [2/5] FORGE ARTIFACT ---
+echo "--> [2/5] Forging the artifact (makepkg -sf --sign)..."
+if ! makepkg -sf --sign; then
+    echo "❌ ERROR: makepkg failed to build or sign the artifact." >&2
     exit 1
 fi
 
-if [[ ! -f "PKGBUILD" ]]; then
-    echo "❌ ERROR: No PKGBUILD found in the current directory."
+mapfile -t PKG_FILES < <(find . -maxdepth 1 -name "*.pkg.tar.zst" ! -name "*.sig")
+if [ \${#PKG_FILES[@]} -eq 0 ]; then
+    echo "❌ ERROR: No package file found after build." >&2
     exit 1
 fi
 
-# Get details from PKGBUILD
-pkgname=$(get_pkgbuild_var pkgname)
-pkgver=$(get_pkgbuild_var pkgver)
-pkgrel=$(get_pkgbuild_var pkgrel)
-pkgarch=$(get_pkgbuild_var arch)
-REPO_ROOT=$(git rev-parse --show-toplevel)
-PKG_DIR_NAME=$(basename "$(pwd)")
-PKG_TEMP_PATH="\${BASE_TEMP_PATH}/\${pkgname}" # Package-specific temp path
-
-echo "--> Detected Package: $pkgname (Version: $pkgver-$pkgrel)"
-echo "--> Source Directory: $PKG_DIR_NAME"
-echo "--> Repository Root: $REPO_ROOT"
-echo "--> Local Repo Mirror: $LOCAL_REPO_PATH"
+echo "✅ Forged artifact: $(basename "\${PKG_FILES[0]}")"
 echo ""
 
-# --- STEP 1: VERSION CHECK & AUTO-INCREMENT ---
-echo "--- [1/7] Checking version against Athenaeum Armory ---"
-cd "$REPO_ROOT"
-git fetch origin gh-pages
-
-# Handle 'any' architecture
-if [[ "$pkgarch" == "any" ]]; then
-    ARCH="any"
+# --- [3/5] PUBLISH TO LOCAL ATHENAEUM ---
+echo "--> [3/5] Publishing to the Local Forge Athenaeum..."
+if [ ! -d "\$LOCAL_REPO_PATH" ]; then
+    echo "    -> Local Athenaeum not found. Creating it at '\$LOCAL_REPO_PATH'..."
+    mkdir -p "\$LOCAL_REPO_PATH"
 fi
 
-# Construct the expected filename for the current version
-EXPECTED_PKG_FILE="\${pkgname}-\${pkgver}-\${pkgrel}-\${ARCH}.pkg.tar.zst"
+COPIED_PKG_PATHS=()
+for pkg_path in "\${PKG_FILES[@]}"; do
+    pkg_basename=$(basename "\$pkg_path")
+    sig_path="\${pkg_path}.sig"
+    
+    cp "\$pkg_path" "\$LOCAL_REPO_PATH/"
+    COPIED_PKG_PATHS+=("\$LOCAL_REPO_PATH/\$pkg_basename")
 
-# Check if this exact version already exists in the remote gh-pages branch
-if git ls-tree -r --name-only origin/gh-pages | grep -Fxq "$EXPECTED_PKG_FILE"; then
-    echo "⚠️  Version $pkgver-$pkgrel already exists in the Armory."
-    cd "$REPO_ROOT/$PKG_DIR_NAME"
+    if [ ! -f "\$sig_path" ]; then
+        echo "❌ FATAL: Signature file '\$sig_path' not found!" >&2
+        echo "   Ensure your GPG key is configured in /etc/makepkg.conf (GPGKEY=...)." >&2
+        exit 1
+    fi
+    cp "\$sig_path" "\$LOCAL_REPO_PATH/"
+done
+
+echo "    -> Scribing artifact into the local database (kael-os-local.db)..."
+repo-add --sign "\$REPO_DB_LOCAL" "\${COPIED_PKG_PATHS[@]}"
+echo "✅ Published to Local Athenaeum."
+echo ""
+
+# --- [4/5] PUBLISH TO GITHUB ATHENAEUM ---
+echo "--> [4/5] Checking for GitHub Athenaeum..."
+if gh auth status &>/dev/null; then
+    echo "    -> Authenticated with GitHub. Preparing to publish..."
     
-    # Auto-increment pkgrel
-    new_pkgrel=$((pkgrel + 1))
-    echo "--> Automatically incrementing pkgrel to $new_pkgrel..."
+    GH_REPO_URL="https://github.com/LeeTheOrc/kael-os-repo.git"
+    TEMP_GH_DIR=$(mktemp -d)
     
-    # Using sed to update the PKGBUILD file.
-    # It looks for a line starting with optional whitespace, then 'pkgrel=' and replaces the number.
-    sed -i "s/^[[:space:]]*pkgrel=.*/pkgrel=$new_pkgrel/" PKGBUILD
+    echo "    -> Cloning gh-pages branch from \$GH_REPO_URL..."
+    git clone --branch=gh-pages --single-branch "\$GH_REPO_URL" "\$TEMP_GH_DIR"
     
-    # Update our variable for the rest of the script
-    pkgrel=$new_pkgrel
-    echo "✅ PKGBUILD updated. New version is $pkgver-$pkgrel."
+    REPO_DB_GITHUB="\$TEMP_GH_DIR/kael-os-repo.db.tar.gz"
+    COPIED_TO_GH=()
+    
+    echo "    -> Staging artifacts for GitHub..."
+    for pkg_path in "\${PKG_FILES[@]}"; do
+        cp "\$pkg_path" "\$pkg_path.sig" "\$TEMP_GH_DIR/"
+        COPIED_TO_GH+=("\$TEMP_GH_DIR/$(basename "\$pkg_path")")
+    done
+
+    echo "    -> Scribing artifact into the GitHub database (kael-os-repo.db)..."
+    (
+        cd "\$TEMP_GH_DIR"
+        repo-add --sign "\$REPO_DB_GITHUB" "\${COPIED_TO_GH[@]}"
+    )
+
+    (
+        cd "\$TEMP_GH_DIR"
+        git config user.name "Kael Scribe Bot"
+        git config user.email "kael-bot@users.noreply.github.com"
+        echo "    -> Committing and pushing changes to gh-pages..."
+        git add .
+        if git diff-index --quiet HEAD --; then
+            echo "    -> No changes detected in the GitHub Athenaeum. Nothing to commit."
+        else
+            git commit -m "chore(release): publish artifact(s)" -m "Published: $(basename "\${PKG_FILES[0]}")"
+            git push
+        fi
+    )
+    rm -rf "\$TEMP_GH_DIR" # Redundant with trap, but good practice
+    echo "✅ Published to GitHub Athenaeum."
 else
-    echo "--> Version $pkgver-$pkgrel is new. Proceeding."
+    echo "    -> Not authenticated with 'gh'. Skipping GitHub Pages publish."
+    echo "       (Run 'gh auth login' to enable this feature)."
 fi
 echo ""
 
+# --- [5/5] PUBLISH TO FTPS ATHENAEUM ---
+echo "--> [5/5] Publishing to the pre-configured FTPS Athenaeum..."
 
-# --- STEP 2: Scribe the Recipe (main branch) ---
-echo "--- [2/7] Scribing Recipe to 'main' branch ---"
-cd "$REPO_ROOT"
+FTP_HOST="ftp.leroyonline.co.za"
+FTP_USER="leroy@leroyonline.co.za"
+FTP_PASS='LeRoy0923!'
+FTP_BASE_PATH="/forge"
+FTP_REPO_PATH="\$FTP_BASE_PATH/repo"
+TEMP_FTPS_STAGE=$(mktemp -d)
 
-if [[ $(git rev-parse --abbrev-ref HEAD) != "main" ]]; then
-    echo "--> Switching to 'main' branch..."
-    git checkout main &>/dev/null
-fi
-git pull origin main --rebase
+echo "    -> Staging local repository for FTPS transmutation..."
+rsync -a "\$LOCAL_REPO_PATH/" "\$TEMP_FTPS_STAGE/"
 
-echo "--> Committing and pushing recipe for '$pkgname'..."
-git add "$PKG_DIR_NAME"
-if [[ -n $(git status --porcelain "$PKG_DIR_NAME") ]]; then
-    git commit -m "feat: Add/update PKGBUILD for $pkgname ($pkgver-$pkgrel)"
-    git push origin main
-    echo "✅ Recipe for '$pkgname' updated on 'main' branch."
+echo "    -> Transmuting database name for FTPS (kael-os-ftps.db)..."
+(
+    cd "\$TEMP_FTPS_STAGE"
+    find . -maxdepth 1 -name "kael-os-local.db*" -exec bash -c 'mv "$0" "\${0/kael-os-local/kael-os-ftps}"' {} \\;
+)
+
+echo "    -> Mirroring staged repository to ftps://\$FTP_HOST:21\$FTP_REPO_PATH..."
+COMMANDS="mirror -R -v --delete --only-newer \\"\$TEMP_FTPS_STAGE/\\" \\"\$FTP_REPO_PATH/\\"; quit"
+FTP_OPTIONS="set ftp:ssl-force true; set ssl:verify-certificate no;"
+if ! lftp -c "\$FTP_OPTIONS open -p 21 -u '\$FTP_USER','\$FTP_PASS' ftp://\$FTP_HOST; \$COMMANDS"; then
+    echo "⚠️  WARNING: FTPS publish failed. Please check your connection and credentials."
 else
-    echo "--> No changes detected for '$pkgname' recipe. Skipping commit."
+    echo "✅ Published to FTPS Athenaeum at \$FTP_HOST."
 fi
+
 echo ""
-
-
-# --- STEP 3: Forge the Artifact ---
-echo "--- [3/7] Forging Artifact ---"
-cd "$REPO_ROOT/$PKG_DIR_NAME"
-
-echo "--> Forging the package with 'makepkg'. This may ask for your sudo password to install dependencies."
-rm -f *.pkg.tar.zst
-# makepkg will use the (potentially updated) PKGBUILD
-makepkg -scf --noconfirm
-# Get the generated package file name. Should only be one.
-PKG_FILE=$(ls *.pkg.tar.zst)
-if [[ -z "$PKG_FILE" || ! -f "$PKG_FILE" ]]; then
-    echo "❌ ERROR: Failed to forge the artifact. Check makepkg output."
-    # Revert PKGBUILD change if we bumped it
-    git checkout -- PKGBUILD
-    exit 1
-fi
-echo "✅ Artifact '$PKG_FILE' forged."
-echo ""
-
-# --- STEP 4: Stage and Clean ---
-echo "--- [4/7] Staging Artifact and Cleaning Forge ---"
-echo "--> Creating unique sanctum and staging artifact at '$PKG_TEMP_PATH'..."
-# Clean up any potential leftovers from a previous failed run for this package
-rm -rf "\${PKG_TEMP_PATH}"
-mkdir -p "\${PKG_TEMP_PATH}"
-mv "$PKG_FILE" "\${PKG_TEMP_PATH}/"
-echo "✅ Artifact staged."
-
-echo "--> Cleaning up build artifacts from source directory..."
-git clean -fdx
-echo "✅ Forge is clean."
-echo ""
-
-# --- STEP 5: Archive in Remote Armory (gh-pages) ---
-echo "--- [5/7] Archiving in Remote Armory ('gh-pages') ---"
-cd "$REPO_ROOT"
-
-echo "--> Switching to 'gh-pages' branch and updating..."
-git checkout gh-pages &>/dev/null
-git pull origin gh-pages --rebase
-
-echo "--> Copying '$PKG_FILE' from sanctum to the Armory..."
-cp "\${PKG_TEMP_PATH}/\${PKG_FILE}" .
-
-echo "--> Updating the Athenaeum's indices..."
-repo-add kael-os.db.tar.gz "$PKG_FILE"
-repo-add kael-os-local.db.tar.gz "$PKG_FILE"
-
-echo "--> Committing and pushing artifact to the 'gh-pages' branch..."
-git add .
-git commit -m "build: Add $PKG_FILE"
-git push origin gh-pages
-echo "✅ Artifact archived in remote 'gh-pages' branch."
-echo ""
-
-# --- STEP 6: Mirror to Local Armory ---
-echo "--- [6/7] Mirroring to Local Armory ---"
-echo "--> Synchronizing local repository at '$LOCAL_REPO_PATH'..."
-(cd "$LOCAL_REPO_PATH" && git pull origin gh-pages --rebase)
-echo "✅ Local Armory synchronized."
-echo ""
-
-# --- STEP 7: Purge Sanctum & Return to Scribe's Desk ---
-echo "--- [7/7] Purging Sanctum & Returning to Scribe's Desk ---"
-echo "--> Purging temporary sanctum at '$PKG_TEMP_PATH'..."
-rm -rf "\${PKG_TEMP_PATH}"
-echo "✅ Sanctum purged."
-
-git checkout main &>/dev/null
-
-echo "✨ Ritual complete! The package '$pkgname' has been fully published and mirrored."
+echo "✨ Grand Publishing Ritual Complete!"
 `;
 
-const SETUP_COMMAND_RAW = `set -e
+const INSTALLER_SCRIPT_RAW = `set -e
 cat > /tmp/forge-and-publish << 'EOF'
-${FORGE_PUBLISH_SCRIPT_RAW}
+${SCRIBE_SCRIPT_RAW}
 EOF
 
 chmod +x /tmp/forge-and-publish
 sudo mv /tmp/forge-and-publish /usr/local/bin/forge-and-publish
 
-echo "✅ 'forge-and-publish' command has been forged."
-echo "   It is globally available from any directory."
+echo "✅ 'forge-and-publish' command has been reforged."
+echo "   It is now a global publisher."
 `;
 
-const WORKFLOW_STEPS = [
-    "cd kael-os-repo",
-    "mkdir my-new-package",
-    "# Add your PKGBUILD and source files to the 'my-new-package' directory.",
-    "cd my-new-package",
-    "forge-and-publish"
-].join('\n');
 
 export const AthenaeumScribeModal: React.FC<AthenaeumScribeModalProps> = ({ onClose }) => {
-    // UTF-8 safe encoding
-    const encodedScript = btoa(unescape(encodeURIComponent(SETUP_COMMAND_RAW)));
-    const finalSetupCommand = `echo "${encodedScript}" | base64 --decode | bash`;
+    // Inject the scribe script into the installer script
+    const finalInstallerScript = INSTALLER_SCRIPT_RAW.replace('${SCRIBE_SCRIPT_RAW}', SCRIBE_SCRIPT_RAW);
+    
+    // The unified script is encoded to base64 to comply with Rune XVI.
+    const encodedInstaller = btoa(unescape(encodeURIComponent(finalInstallerScript)));
+    const finalInstallCommand = `echo "${encodedInstaller}" | base64 --decode | bash`;
+    
+    const runCommand = `forge-and-publish`;
 
     return (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center animate-fade-in-fast" onClick={onClose}>
             <div className="bg-forge-panel border-2 border-forge-border rounded-lg shadow-2xl w-full max-w-3xl p-6 m-4 flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-center mb-4 flex-shrink-0">
                      <h2 className="text-xl font-bold text-forge-text-primary flex items-center gap-2 font-display tracking-wider">
-                        <PackageIcon className="w-5 h-5 text-dragon-fire" />
-                        <span>The Athenaeum Scribe's Grimoire</span>
+                        <BookOpenIcon className="w-5 h-5 text-dragon-fire" />
+                        <span>The Athenaeum Scribe</span>
                     </h2>
                     <button onClick={onClose} className="text-forge-text-secondary hover:text-forge-text-primary">
                         <CloseIcon className="w-5 h-5" />
@@ -226,26 +193,30 @@ export const AthenaeumScribeModal: React.FC<AthenaeumScribeModalProps> = ({ onCl
                 </div>
                 <div className="overflow-y-auto pr-2 text-forge-text-secondary leading-relaxed space-y-4">
                     <p>
-                        This grimoire contains the sacred rituals for forging new artifacts (packages). We will forge a master tool that automates the entire process of building, staging, publishing to the Athenaeum, and mirroring to your local repository.
+                        A wise decree, Architect. An artifact should be forged once, then distributed to all Athenaeums for resilience and redundancy. I have reforged the Scribe's ritual to do exactly that.
                     </p>
-                     <p className="text-sm p-3 bg-orc-steel/10 border-l-4 border-orc-steel rounded">
-                        <strong className="text-orc-steel">Update:</strong> This familiar now forges each artifact in a unique temporary sanctum (<code className="font-mono text-xs">~/forge/temp/package-name</code>). This sanctum is automatically purged upon a successful ritual, leaving a clean forge. If the ritual is interrupted, the sanctum remains, providing a clear sign of which artifact's forging failed. The familiar also automatically increments package revisions to prevent conflicts.
+                    <p className="text-sm p-3 bg-orc-steel/10 border-l-4 border-orc-steel rounded">
+                        The <code className="font-mono text-xs">forge-and-publish</code> command is now a global publisher. It will add your new package to the local Athenaeum, then publish it to all configured remote Athenaeums with the correct, platform-specific database names.
                     </p>
                     
-                    <h3 className="font-semibold text-lg text-orc-steel mt-4 mb-2">Ritual I: Forging the Master Tool (One-Time Setup)</h3>
+                    <h3 className="font-semibold text-lg text-orc-steel mt-4 mb-2">Publishing Destinations & Databases</h3>
+                     <ul className="list-disc list-inside space-y-2 text-sm">
+                        <li><strong className="text-forge-text-primary">Local Athenaeum:</strong> Publishes to <code className="font-mono text-xs">~/forge/repo</code> using <code className="font-mono text-xs">kael-os-local.db</code>.</li>
+                        <li><strong className="text-forge-text-primary">GitHub Athenaeum:</strong> Enabled via <code className="font-mono text-xs">gh auth login</code>. Rebuilds the database as <code className="font-mono text-xs">kael-os-repo.db</code>.</li>
+                        <li><strong className="text-forge-text-primary">FTPS Mirror:</strong> Pre-configured. Creates <code className="font-mono text-xs">kael-os-ftps.db</code> for the mirror.</li>
+                    </ul>
+
+                    <h3 className="font-semibold text-lg text-orc-steel mt-4 mb-2">Step 1: Forge the Scribe (One-Time Setup)</h3>
                     <p>
-                        This incantation forges the <code className="font-mono text-xs">forge-and-publish</code> familiar and places it in your system's path, making it globally available.
+                        Run this incantation once to create or upgrade the global <code className="font-mono text-xs">forge-and-publish</code> command.
                     </p>
-                    <CodeBlock lang="bash">{finalSetupCommand}</CodeBlock>
-                   
-                    <h3 className="font-semibold text-lg text-orc-steel mt-4 mb-2">Ritual II: The Scribing Workflow</h3>
-                     <p>
-                        Once the master tool is forged, this is your new workflow for every package you wish to create or update.
+                    <CodeBlock lang="bash">{finalInstallCommand}</CodeBlock>
+
+                     <h3 className="font-semibold text-lg text-orc-steel mt-4 mb-2">Step 2: Scribe an Artifact</h3>
+                    <p>
+                        Navigate into any directory containing a <code className="font-mono text-xs">PKGBUILD</code> file and invoke the Scribe. It will handle the rest.
                     </p>
-                     <CodeBlock lang="bash">{WORKFLOW_STEPS}</CodeBlock>
-                     <p>
-                        Simply run <code className="font-mono text-xs">forge-and-publish</code> from inside the package's directory. The familiar will handle the rest.
-                     </p>
+                    <CodeBlock lang="bash">{runCommand}</CodeBlock>
                 </div>
             </div>
         </div>
