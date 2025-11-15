@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 type IconProps = React.SVGProps<SVGSVGElement>;
@@ -587,24 +586,5 @@ export const HammerIcon: React.FC<IconProps> = (props) => (
     <path stroke="url(#orcSteelGradient)" strokeLinecap="round" strokeLinejoin="round" d="M14.25 6.083L17.917 9.75 9.75 17.917 6.083 14.25 14.25 6.083z" />
     <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" d="M5.167 13.333L2.25 16.25l5.5 5.5 2.917-2.917M14.25 6.083l5.5 5.5" />
     <path stroke="url(#orcSteelGradient)" strokeLinecap="round" strokeLinejoin="round" d="M14.25 6.083L16.5 3.75 20.25 7.5l-2.25 2.25" />
-  </svg>
-);
-
-export const CompletedGrimoireIcon: React.FC<IconProps> = (props) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} {...props}>
-    <defs>
-      <linearGradient id="coolGrayGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-        <stop offset="0%" stopColor="#a99ec3" />
-        <stop offset="100%" stopColor="#8d81ac" />
-      </linearGradient>
-      <linearGradient id="orcSteelGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-        <stop offset="0%" stopColor="#8cffcf" />
-        <stop offset="100%" stopColor="#7aebbe" />
-      </linearGradient>
-    </defs>
-    <path stroke="url(#coolGrayGradient)" strokeLinecap="round" strokeLinejoin="round" d="M4.5 21V3a2.25 2.25 0 012.25-2.25h9.528c.448 0 .88.172 1.197.489l2.524 2.524c.317.317.489.749.489 1.197V21M6.75 4.5h6.75" />
-    <path stroke="url(#coolGrayGradient)" strokeLinecap="round" strokeLinejoin="round" d="M18 21a2.25 2.25 0 00-2.25-2.25H8.25A2.25 2.25 0 006 21m12 0v-2.25" />
-    <path stroke="url(#orcSteelGradient)" strokeLinecap="round" strokeLinejoin="round" d="M9.75 14.25l1.5 1.5 3-3" />
-    <path stroke="url(#orcSteelGradient)" strokeLinecap="round" strokeLinejoin="round" d="M12 18a3.75 3.75 0 100-7.5 3.75 3.75 0 000 7.5z" />
   </svg>
 );

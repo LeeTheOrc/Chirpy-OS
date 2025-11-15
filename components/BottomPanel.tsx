@@ -1,10 +1,5 @@
-
-
-
-
-
 import React from 'react';
-import { SendIcon, RocketLaunchIcon, ScrollIcon, SparklesIcon, FlameIcon, ComputerDesktopIcon, PackageIcon, KeyIcon, TowerIcon, FolderIcon, ShieldCheckIcon, BookOpenIcon, QuestionMarkIcon, CompletedGrimoireIcon, ServerStackIcon, SignalIcon, EyeIcon } from './Icons';
+import { SendIcon, VideoCameraIcon, RocketLaunchIcon, ScrollIcon, SparklesIcon, PackageIcon, ServerStackIcon, ShieldCheckIcon, HammerIcon, TowerIcon, BeakerIcon, LibraryIcon } from './Icons';
 import type { ModalType } from '../App';
 
 interface BottomPanelProps {
@@ -47,26 +42,21 @@ export const BottomPanel: React.FC<BottomPanelProps> = ({ value, onChange, onSen
     return (
         <div className="bg-forge-panel/90 backdrop-blur-sm border-t-2 border-forge-border rounded-t-xl mt-auto pb-4 px-4 pt-2 shadow-2xl shadow-black/30">
             
-             <div className="flex items-center justify-center gap-2 p-2 flex-wrap border-b-2 border-forge-border/50 mb-2">
-                <TooltipButton title="Setup Local Forge" onClick={() => onOpenMenu('forgeSetup')} colorClass="text-orc-steel"><ComputerDesktopIcon className="w-5 h-5" /></TooltipButton>
-                <TooltipButton title="Install Forge Dependencies" onClick={() => onOpenMenu('forgeDependencies')} colorClass="text-orc-steel"><PackageIcon className="w-5 h-5" /></TooltipButton>
-                <TooltipButton title="Attune GPG Keyring" onClick={() => onOpenMenu('keyringAttunement')} colorClass="text-orc-steel"><KeyIcon className="w-5 h-5" /></TooltipButton>
+             <div className="flex items-center justify-center gap-2 p-2 flex-wrap">
+                <TooltipButton title="Chronicler's Orb (Usage)" onClick={() => onOpenMenu('chroniclerUsage')} colorClass="text-magic-purple"><VideoCameraIcon className="w-5 h-5" /></TooltipButton>
+                 <div className="w-px h-6 bg-forge-border/50 mx-1" />
+                <TooltipButton title="Forge Dependencies" onClick={() => onOpenMenu('forgeDependencies')} colorClass="text-magic-purple"><BeakerIcon className="w-5 h-5" /></TooltipButton>
+                <TooltipButton title="Setup Local Forge" onClick={() => onOpenMenu('forgeSetup')} colorClass="text-orc-steel"><HammerIcon className="w-5 h-5" /></TooltipButton>
+                <TooltipButton title="Forge Chronicler Package" onClick={() => onOpenMenu('forgeChroniclerPackage')} colorClass="text-orc-steel"><PackageIcon className="w-5 h-5" /></TooltipButton>
+                <TooltipButton title="Athenaeum Pathfinding" onClick={() => onOpenMenu('athenaeumPathfinding')} colorClass="text-sky-400"><TowerIcon className="w-5 h-5" /></TooltipButton>
+                <TooltipButton title="Athenaeum Sanctification" onClick={() => onOpenMenu('athenaeumSanctification')} colorClass="text-sky-400"><LibraryIcon className="w-5 h-5" /></TooltipButton>
+                <TooltipButton title="Athenaeum Scribe" onClick={() => onOpenMenu('athenaeumScribe')} colorClass="text-orc-steel"><PackageIcon className="w-5 h-5" /></TooltipButton>
+                <TooltipButton title="Athenaeum Mirror" onClick={() => onOpenMenu('athenaeumMirror')} colorClass="text-orc-steel"><ServerStackIcon className="w-5 h-5" /></TooltipButton>
+                <TooltipButton title="Keyring Attunement" onClick={() => onOpenMenu('keyringAttunement')} colorClass="text-orc-steel"><ShieldCheckIcon className="w-5 h-5" /></TooltipButton>
                 <div className="w-px h-6 bg-forge-border/50 mx-1" />
-                <TooltipButton title="Sync Athenaeum Mirrorlist" onClick={() => onOpenMenu('athenaeumMirror')} colorClass="text-sky-400"><TowerIcon className="w-5 h-5" /></TooltipButton>
-                <TooltipButton title="Configure Athenaeum Paths" onClick={() => onOpenMenu('athenaeumPathfinding')} colorClass="text-sky-400"><FolderIcon className="w-5 h-5" /></TooltipButton>
-                <TooltipButton title="Sanctify Athenaeum Repo" onClick={() => onOpenMenu('athenaeumSanctification')} colorClass="text-sky-400"><ShieldCheckIcon className="w-5 h-5" /></TooltipButton>
-                <div className="w-px h-6 bg-forge-border/50 mx-1" />
-                {/* FIX: Corrected modal type from 'sftpMirrorSetup' to 'webDiskMirrorSetup' to align with ModalType definition and updated title for consistency. */}
-                <TooltipButton title="Setup WebDisk Mirror" onClick={() => onOpenMenu('webDiskMirrorSetup')} colorClass="text-sky-400"><ServerStackIcon className="w-5 h-5" /></TooltipButton>
-                <TooltipButton title="Publish to Athenaeum" onClick={() => onOpenMenu('athenaeumScribe')} colorClass="text-sky-400"><BookOpenIcon className="w-5 h-5" /></TooltipButton>
-                <TooltipButton title="Sync All Athenaeums" onClick={() => onOpenMenu('athenaeumConcordance')} colorClass="text-sky-400"><SignalIcon className="w-5 h-5" /></TooltipButton>
-                <TooltipButton title="Verify Athenaeums" onClick={() => onOpenMenu('athenaeumVerifier')} colorClass="text-sky-400"><EyeIcon className="w-5 h-5" /></TooltipButton>
-            </div>
-
-            <div className="flex items-center justify-center gap-2 p-2 flex-wrap">
-                <TooltipButton title="Lore Archive" onClick={() => onOpenMenu('loreArchive')} colorClass="text-forge-text-secondary"><CompletedGrimoireIcon className="w-5 h-5" /></TooltipButton>
-                <div className="w-px h-6 bg-forge-border/50 mx-1" />
-                <TooltipButton title="Go Nuclear (Reset Forge)" onClick={() => onOpenMenu('goNuclear')} colorClass="text-dragon-fire"><FlameIcon className="w-5 h-5" /></TooltipButton>
+                <TooltipButton title="The Core Law" onClick={() => onOpenMenu('law')} colorClass="text-forge-text-secondary"><ScrollIcon className="w-5 h-5" /></TooltipButton>
+                <TooltipButton title="Level Up Manifesto" onClick={() => onOpenMenu('levelup')} colorClass="text-forge-text-secondary"><RocketLaunchIcon className="w-5 h-5" /></TooltipButton>
+                <TooltipButton title="Kael's Personality" onClick={() => onOpenMenu('personality')} colorClass="text-forge-text-secondary"><SparklesIcon className="w-5 h-5" /></TooltipButton>
             </div>
 
             <div className="relative">

@@ -1,92 +1,127 @@
-
 import React from 'react';
-import { CloseIcon, ComputerDesktopIcon } from './Icons';
+import { CloseIcon, HammerIcon } from './Icons';
 import { CodeBlock } from './CodeBlock';
 
 interface ForgeSetupModalProps {
   onClose: () => void;
 }
 
+// This is the actual logic that sets up the forge directories and repos.
 const FORGE_SETUP_SCRIPT_RAW = `#!/bin/bash
 set -euo pipefail
 
-echo "--- Local Forge Setup Ritual ---"
-echo "This ritual will create the necessary directories and clone the repositories."
-echo ""
+# --- CONFIGURATION ---
+FORGE_DIR="$HOME/forge"
+FORGE_REPO_URL="https://github.com/LeeTheOrc/Kael-OS.git"
+PACKAGES_REPO_URL="https://github.com/LeeTheOrc/kael-os-repo.git"
 
-# --- [1/4] Prerequisite Check ---
-echo "--> [1/4] Checking for required familiars (git, gh)..."
-if ! command -v git &> /dev/null; then
-    echo "❌ ERROR: 'git' is not installed. Please install it to proceed." >&2
-    exit 1
-fi
-if ! command -v gh &> /dev/null; then
-    echo "❌ ERROR: 'gh' (GitHub CLI) is not installed. Please install it to proceed." >&2
-    exit 1
-fi
-echo "✅ Required familiars are present."
-echo ""
+echo "--- The Forge Setup Ritual ---"
+echo "This ritual will create the sacred directories and summon the source grimoires."
 
-# --- [2/4] Authentication Check ---
-echo "--> [2/4] Verifying GitHub authentication..."
-if ! gh auth status &>/dev/null; then
-    echo "⚠️ You are not logged into GitHub."
-    echo "   Please run 'gh auth login' and follow the prompts, then re-run this ritual."
-    exit 1
-fi
-echo "✅ Authenticated with GitHub."
-echo ""
+# --- STEP 1: Create the main forge directory ---
+echo "--> [1/4] Forging the main sanctum at \${FORGE_DIR}..."
+mkdir -p "\${FORGE_DIR}"
+cd "\${FORGE_DIR}"
+echo "✅ Main sanctum is ready."
 
-# --- [3/4] Directory Structure ---
-USER_HOME=$(getent passwd "\${SUDO_USER:-\$USER}" | cut -d: -f6)
-FORGE_BASE="\$USER_HOME/forge"
-echo "--> [3/4] Forging the directory structure at \${FORGE_BASE}..."
-mkdir -p "\$FORGE_BASE/kael"
-mkdir -p "\$FORGE_BASE/repo"
-mkdir -p "\$FORGE_BASE/packages"
-echo "✅ Forge structure created:"
-echo "    - \${FORGE_BASE}/kael (Project Source)"
-echo "    - \${FORGE_BASE}/repo (Local Athenaeum/Pacman Repo)"
-echo "    - \${FORGE_BASE}/packages (PKGBUILD sources)"
-echo ""
-
-# --- [4/4] Repository Cloning ---
-echo "--> [4/4] Summoning the sacred texts from the cloud..."
-
-# Clone Kael-OS project
-if [ -d "\$FORGE_BASE/kael/.git" ]; then
-    echo "    -> Kael-OS project already exists. Skipping clone."
+# --- STEP 2: Clone the Forge (Kael-OS UI) repository ---
+echo "--> [2/4] Summoning The Forge (Kael-OS UI)..."
+if [ -d "kael" ]; then
+    echo "--> 'kael' directory already exists. Ensuring it's on the 'main' branch and pulling latest changes..."
+    (
+        cd kael
+        git fetch
+        current_branch=\$(git rev-parse --abbrev-ref HEAD)
+        if [ "\$current_branch" != "main" ]; then
+            echo "--> Switching from '\$current_branch' to 'main' branch."
+            git checkout main
+        fi
+        git pull origin main
+    )
 else
-    echo "    -> Cloning Kael-OS project into \${FORGE_BASE}/kael..."
-    git clone https://github.com/LeeTheOrc/Kael-OS.git "\$FORGE_BASE/kael"
+    git clone --branch main "\${FORGE_REPO_URL}" kael
 fi
+echo "✅ The Forge is now in '\${FORGE_DIR}/kael'."
 
-# Clone kael-os-repo to get PKGBUILDs
-TEMP_REPO_DIR=\$(mktemp -d)
-trap 'rm -rf -- "\$TEMP_REPO_DIR"' EXIT
-echo "    -> Cloning Athenaeum sources to a temporary location..."
-git clone https://github.com/LeeTheOrc/kael-os-repo.git "\$TEMP_REPO_DIR"
+# --- STEP 3: Clone the Athenaeum Recipe Book (packages source) ---
+echo "--> [3/4] Summoning the Athenaeum Recipe Book (PKGBUILDs)..."
+if [ -d "packages" ]; then
+    echo "--> 'packages' directory already exists. Ensuring it's on the 'main' branch and pulling latest changes..."
+    (
+        cd packages
+        git fetch
+        current_branch=\$(git rev-parse --abbrev-ref HEAD)
+        if [ "\$current_branch" != "main" ]; then
+            echo "--> Switching from '\$current_branch' to 'main' branch."
+            git checkout main
+        fi
+        git pull origin main
+    )
+else
+    git clone --branch main "\${PACKAGES_REPO_URL}" packages
+fi
+echo "✅ The Athenaeum Recipe Book is now in '\${FORGE_DIR}/packages'."
 
-echo "    -> Organizing PKGBUILD recipes into \${FORGE_BASE}/packages..."
-# Use find to copy all PKGBUILD directories into the packages folder
-find "\$TEMP_REPO_DIR" -mindepth 1 -maxdepth 1 -type d ! -name '.git' -exec cp -r {} "\$FORGE_BASE/packages/" \\;
+# --- STEP 4: Clone the Athenaeum Armory (local pacman repo mirror) ---
+echo "--> [4/4] Summoning the Athenaeum Armory (local pacman mirror)..."
+if [ -d "repo" ]; then
+    echo "--> Local Armory at '\${FORGE_DIR}/repo' already exists. Pulling latest artifacts..."
+    (
+        cd "repo"
+        git fetch
+        current_branch=\$(git rev-parse --abbrev-ref HEAD)
+        if [ "\$current_branch" != "gh-pages" ]; then
+            echo "--> Switching from '\$current_branch' to 'gh-pages' branch."
+            git checkout gh-pages
+        fi
+        git pull origin gh-pages
+    )
+else
+    git clone --branch gh-pages "\${PACKAGES_REPO_URL}" "repo"
+fi
+echo "✅ The Athenaeum Armory is now mirrored in '\${FORGE_DIR}/repo'."
+
 
 echo ""
-echo "✨ Ritual Complete! Your local forge is now set up and ready."
-echo "Your next step is to run the 'Install Forge Dependencies' ritual."
+echo "✨ Ritual Complete! Your local forge is now set up."
+echo "   - The Forge (UI Source):          \${FORGE_DIR}/kael"
+echo "   - The Athenaeum Recipe Book:    \${FORGE_DIR}/packages"
+echo "   - The Athenaeum Armory (Mirror):  \${FORGE_DIR}/repo"
 `;
 
+// This script installs the one above as an immutable command.
+const INSTALLER_SCRIPT_RAW = `set -e
+# Temporarily make the old script mutable if it exists, ignore error if it doesn't
+sudo chattr -i /usr/local/bin/setup-local-forge 2>/dev/null || true
+
+cat > /tmp/setup-local-forge.sh << 'EOF'
+${FORGE_SETUP_SCRIPT_RAW}
+EOF
+
+chmod +x /tmp/setup-local-forge.sh
+sudo mv /tmp/setup-local-forge.sh /usr/local/bin/setup-local-forge
+sudo chattr +i /usr/local/bin/setup-local-forge
+
+echo "✅ 'setup-local-forge' command has been forged and is now immutable."
+echo "   You can now run it from any directory to set up or update your forge."
+echo "   To update the command itself in the future, first run:"
+echo "   sudo chattr -i /usr/local/bin/setup-local-forge"
+`;
+
+
 export const ForgeSetupModal: React.FC<ForgeSetupModalProps> = ({ onClose }) => {
-    const encodedScript = btoa(unescape(encodeURIComponent(FORGE_SETUP_SCRIPT_RAW)));
-    const finalCommand = `echo "${encodedScript}" | base64 --decode | bash`;
+    // UTF-8 safe encoding for the installer script
+    const encodedInstaller = btoa(unescape(encodeURIComponent(INSTALLER_SCRIPT_RAW)));
+    const finalInstallCommand = `echo "${encodedInstaller}" | base64 --decode | bash`;
+    const runCommand = `setup-local-forge`;
 
     return (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center animate-fade-in-fast" onClick={onClose}>
-            <div className="bg-forge-panel border-2 border-forge-border rounded-lg shadow-2xl w-full max-w-3xl p-6 m-4 flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+            <div className="bg-forge-panel border-2 border-forge-border rounded-lg shadow-2xl w-full max-w-2xl p-6 m-4 flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-center mb-4 flex-shrink-0">
                      <h2 className="text-xl font-bold text-forge-text-primary flex items-center gap-2 font-display tracking-wider">
-                        <ComputerDesktopIcon className="w-5 h-5 text-dragon-fire" />
-                        <span>Setup Local Forge</span>
+                        <HammerIcon className="w-5 h-5 text-orc-steel" />
+                        <span>The Forge Setup Ritual</span>
                     </h2>
                     <button onClick={onClose} className="text-forge-text-secondary hover:text-forge-text-primary">
                         <CloseIcon className="w-5 h-5" />
@@ -94,21 +129,28 @@ export const ForgeSetupModal: React.FC<ForgeSetupModalProps> = ({ onClose }) => 
                 </div>
                 <div className="overflow-y-auto pr-2 text-forge-text-secondary leading-relaxed space-y-4">
                     <p>
-                        Architect, this is the foundational ritual. It prepares your local machine to become a true forge, capable of crafting and maintaining Kael OS artifacts.
+                        Architect, this ritual forges an <strong className="text-orc-steel">immutable master command</strong> for establishing your local forge. This ensures the setup process is always available, consistent, and protected from accidental changes.
                     </p>
-                    <p className="text-sm p-3 bg-orc-steel/10 border-l-4 border-orc-steel rounded">
-                        This incantation will create the necessary directory structure (<code className="font-mono text-xs">~/forge</code>) and clone the project repositories from GitHub, preparing your workspace for the quests ahead.
+                    <p className="text-sm p-3 bg-orc-steel/10 border-l-4 border-orc-steel rounded mt-2">
+                        The command will establish our three core sanctums:
+                        <ul className="list-disc pl-5 mt-2 space-y-1">
+                            <li><strong className="text-forge-text-primary">~/forge/kael:</strong> The Forge itself (UI source).</li>
+                            <li><strong className="text-forge-text-primary">~/forge/packages:</strong> The Athenaeum Recipe Book (PKGBUILDs).</li>
+                            <li><strong className="text-forge-text-primary">~/forge/repo:</strong> The Athenaeum Armory (Local pacman mirror).</li>
+                        </ul>
                     </p>
-                    <h3 className="font-semibold text-lg text-orc-steel mt-4 mb-2">Prerequisites</h3>
-                    <ul className="list-disc list-inside space-y-1 text-sm">
-                        <li>The <code className="font-mono text-xs">git</code> and <code className="font-mono text-xs">gh</code> (GitHub CLI) commands must be installed.</li>
-                        <li>You must be authenticated with GitHub via <code className="font-mono text-xs">gh auth login</code>.</li>
-                    </ul>
-                    <h3 className="font-semibold text-lg text-orc-steel mt-4 mb-2">The Forging Incantation</h3>
+                    
+                    <h3 className="font-semibold text-lg text-orc-steel mt-4 mb-2">Step 1: Forge the Immutable Command (One-Time Setup)</h3>
                     <p>
-                        Run this single command in your terminal. It will perform all the necessary setup steps.
+                        Run this incantation once. It will create the <code className="font-mono text-xs">setup-local-forge</code> command and make it immutable. If you run it again, it will safely update the command for you.
                     </p>
-                    <CodeBlock lang="bash">{finalCommand}</CodeBlock>
+                    <CodeBlock lang="bash">{finalInstallCommand}</CodeBlock>
+
+                     <h3 className="font-semibold text-lg text-orc-steel mt-4 mb-2">Step 2: Run the Setup Ritual</h3>
+                    <p>
+                        Now, and anytime you wish to update your forge, simply run the globally available command:
+                    </p>
+                    <CodeBlock lang="bash">{runCommand}</CodeBlock>
                 </div>
             </div>
         </div>
