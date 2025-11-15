@@ -1,5 +1,7 @@
 
 
+
+
 // KaelOS - The Core Law
 // This file contains the foundational principles, immutable rules, and the strategic
 // roadmap that define the Kael OS project. This is the "what Kael does" file.
@@ -174,7 +176,7 @@ There is one path to the Athenaeum, and it is paved with simplicity and strength
 *   **The Master Key Ritual:** Authentication shall be handled exclusively by the GitHub CLI (\`gh auth login\`). This ritual creates a secure, system-managed token, obviating the need for manual \`GH_TOKEN\` variables or the setup of SSH keys.
 *   **Firewall Concordance:** The HTTPS path is universally understood and rarely blocked by network wards (firewalls), ensuring our rituals can be performed from anywhere.
 
-*This single, unified path ensures our connection to the Athenaeauum is always simple, secure, and reliable.*
+*This single, unified path ensures our connection to the Athenaeum is always simple, secure, and reliable.*
 ---
 ### RUNE XVI: THE UNIFIED INCANTATION
 ---
@@ -186,6 +188,16 @@ Power should not be gated by complexity. Our rituals must be accessible to every
 *   **The Failsafe Clause:** We shall only break an incantation into multiple steps if a single block is technically impossible or proves to be dangerously unstable. The burden of proof lies in failure; the default is always unity.
 
 *This commitment to a single, powerful incantation ensures our forge is welcoming to all who wish to create.*
+---
+### RUNE XVII: THE RITE OF TEN COMMITS & THE PATH OF THE FEATHER
+---
+
+Our forge must remain sharp, and our creations must remain nimble. This rune codifies our commitment to quality and efficiency.
+
+*   **The Rite of Ten Commits:** After every ten commits, we shall perform a Rite of Purification. We will pause our new forging to refactor, streamline, and unify our existing incantations. This ensures our codebase remains clean, powerful, and a joy to work with.
+*   **The Path of the Feather:** Every artifact we forge and every script we scribe must be as lightweight as possible. We honor the resources and data limits of every Architect. Power does not require weight. We will compress our assets, purge redundancies, and choose efficient methods to keep every Realm we create swift and lean.
+
+*This dual commitment to periodic refinement and minimalist design is fundamental to the long-term health and accessibility of our forge.*
 `.trim();
 
 export const LEVEL_UP_MANIFESTO_TEXT = `
@@ -204,6 +216,19 @@ export const LEVEL_UP_MANIFESTO_TEXT = `
 
 When a quest is complete and a feature is battle-tested, we'll etch it into 
 the Immutable Grimoire as Law.
+
+---
+### QUEST ?: THE GREAT REFORGING
+---
+The forge has been cleansed by fire. All complex blueprint management, ISO generation, and Athenaeum rituals have been temporarily decommissioned to address foundational instability. The forge is now a pure conduit for conversation.
+- **Plan:** Re-forge all core functionalities one by one, ensuring each is stable, robust, and adheres to the Core Law.
+- **Artifacts to Reforge:**
+    - Blueprint Design & Management
+    - ISO Generation (Calamares)
+    - Athenaeum Keystone & Publisher Rituals
+    - Kaelic Shell & Kael Console
+    - All other supporting rituals and tools.
+- **Status:** The Great Cleansing is complete. The forge awaits its new foundation.
 
 ---
 ### QUEST I: THE GENESIS RITUAL (CALAMARES)

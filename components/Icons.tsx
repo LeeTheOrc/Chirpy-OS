@@ -574,3 +574,17 @@ export const TowerIcon: React.FC<IconProps> = (props) => (
     <path stroke="url(#skyBlueGradient)" strokeLinecap="round" strokeLinejoin="round" d="M3 21h18M5 21V9.75a.75.75 0 01.41-.665l.38-.21a.75.75 0 00.41-.665V3.75A.75.75 0 017 3h10a.75.75 0 01.75.75v4.32a.75.75 0 00.41.665l.38.21a.75.75 0 01.41.665V21M9 9h6v12H9V9z" />
   </svg>
 );
+
+export const HammerIcon: React.FC<IconProps> = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} {...props}>
+    <defs>
+      <linearGradient id="orcSteelGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stopColor="#8cffcf" />
+        <stop offset="100%" stopColor="#7aebbe" />
+      </linearGradient>
+    </defs>
+    <path stroke="url(#orcSteelGradient)" strokeLinecap="round" strokeLinejoin="round" d="M14.25 6.083L17.917 9.75 9.75 17.917 6.083 14.25 14.25 6.083z" />
+    <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" d="M5.167 13.333L2.25 16.25l5.5 5.5 2.917-2.917M14.25 6.083l5.5 5.5" />
+    <path stroke="url(#orcSteelGradient)" strokeLinecap="round" strokeLinejoin="round" d="M14.25 6.083L16.5 3.75 20.25 7.5l-2.25 2.25" />
+  </svg>
+);

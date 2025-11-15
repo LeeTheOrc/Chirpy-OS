@@ -1,9 +1,9 @@
+
 import React, { useState } from 'react';
 import type { Message } from '../types';
-import { GuardianAvatar } from './ChirpyAvatar';
+import { GuardianAvatar } from './GuardianAvatar';
 import { CopyIcon, KaelSigilIcon } from './Icons';
 import { FormattedContent } from './FormattedContent';
-import { AnalysisResultCard } from './AnalysisResultCard';
 
 interface ChatMessageProps {
   message: Message;
@@ -33,20 +33,6 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
     );
   }
 
-  if (isModel && message.analysis) {
-    return (
-       <div className={`flex gap-4 animate-fade-in`}>
-          <GuardianAvatar isOnline={message.linkState === 'online'} />
-          <div className="flex flex-col gap-2">
-            <div className="w-fit max-w-full md:max-w-2xl lg:max-w-3xl">
-              <p className="whitespace-pre-wrap font-sans text-base leading-relaxed px-4 py-2.5">{message.text}</p>
-              <AnalysisResultCard analysis={message.analysis} />
-            </div>
-          </div>
-       </div>
-    );
-  }
-
   return (
     <div className={`flex gap-4 animate-fade-in ${isModel ? '' : 'flex-row-reverse'}`}>
       {isModel && <GuardianAvatar isOnline={message.linkState === 'online'} />}
@@ -57,7 +43,14 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
             {isWelcome ? (
               <FormattedContent text={message.text} />
             ) : (
-              <p className="whitespace-pre-wrap font-sans text-base leading-relaxed">{message.text}</p>
+               <div className="prose prose-sm prose-invert max-w-none 
+                        prose-headings:font-display prose-headings:tracking-wider
+                        prose-strong:text-forge-text-primary 
+                        prose-a:text-orc-steel prose-a:no-underline hover:prose-a:underline
+                        prose-li:marker:text-dragon-fire
+                        prose-hr:border-forge-border">
+                <p className="whitespace-pre-wrap font-sans text-base leading-relaxed">{message.text}</p>
+              </div>
             )}
 
         </div>
